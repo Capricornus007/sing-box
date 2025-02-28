@@ -28,6 +28,7 @@ type _DirectOutboundOptions struct {
 	OverridePort uint16 `json:"override_port,omitempty"`
 	// Deprecated: removed
 	ProxyProtocol uint8 `json:"proxy_protocol,omitempty"`
+	Fragment *Fragment `json:"fragment,omitempty"`
 }
 
 type DirectOutboundOptions _DirectOutboundOptions

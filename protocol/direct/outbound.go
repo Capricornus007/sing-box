@@ -164,7 +164,11 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 		return nil, err
 	}
 	return h.loopBack.NewConn(conn), nil*/
-  if network == N.NetworkTCP && h.fragment != nil {
+  conn, err := h.dialer.DialContext(ctx, network, destination)
+	if err != nil {
+		return nil, err
+	}
+	if network == N.NetworkTCP && h.fragment != nil {
 		conn = &FragmentedClientHelloConn{
 			Conn:        conn,
 			ctx:         ctx,
@@ -174,7 +178,7 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 			maxInterval: time.Duration(h.fragment.MaxInterval) * time.Millisecond,
 		}
 	}
-	return h.dialer.DialContext(ctx, network, destination)
+	return conn, nil
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
@@ -246,6 +250,9 @@ func (h *Outbound) DialParallel(ctx context.Context, network string, destination
 		}
 	}
   conn, err := dialer.DialParallelNetwork(ctx, h.dialer, network, destination, destinationAddresses, domainStrategy == dns.DomainStrategyPreferIPv6, nil, nil, nil, h.fallbackDelay)
+  if err != nil {
+		return nil, err
+	}
   if network == N.NetworkTCP && h.fragment != nil {
 		conn = &FragmentedClientHelloConn{
 			Conn:        conn,
@@ -433,3 +440,4 @@ func writeFragmentedRecord(c *FragmentedClientHelloConn, contentType uint8, data
 
 	return err
 }
+
