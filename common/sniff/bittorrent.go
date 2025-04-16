@@ -23,7 +23,7 @@ func BitTorrent(_ context.Context, metadata *adapter.InboundContext, reader io.R
 	var first byte
 	err := binary.Read(reader, binary.BigEndian, &first)
 	if err != nil {
-		return err
+		return os.ErrInvalid
 	}
 
 	if first != 19 {
@@ -33,7 +33,7 @@ func BitTorrent(_ context.Context, metadata *adapter.InboundContext, reader io.R
 	var protocol [19]byte
 	_, err = reader.Read(protocol[:])
 	if err != nil {
-		return err
+		return os.ErrInvalid
 	}
 	if string(protocol[:]) != "BitTorrent protocol" {
 		return os.ErrInvalid
@@ -67,7 +67,9 @@ func UTP(_ context.Context, metadata *adapter.InboundContext, packet []byte) err
 		if err != nil {
 			return err
 		}
-
+		if extension > 0x04 {
+			return os.ErrInvalid
+		}
 		var length byte
 		err = binary.Read(reader, binary.BigEndian, &length)
 		if err != nil {

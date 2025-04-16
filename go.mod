@@ -5,13 +5,13 @@ go 1.23.1
 toolchain go1.23.6
 
 require (
-	github.com/anytls/sing-anytls v0.0.6
+	github.com/anytls/sing-anytls v0.0.8
 	github.com/caddyserver/certmagic v0.20.0
 	github.com/cloudflare/circl v1.3.7
 	github.com/cretz/bine v0.2.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/render v1.0.3
-	github.com/gofrs/uuid/v5 v5.3.0
+	github.com/gofrs/uuid/v5 v5.3.2
 	github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905
 	github.com/libdns/alidns v1.0.3
 	github.com/libdns/cloudflare v0.1.1
@@ -29,10 +29,10 @@ require (
 	github.com/sagernet/gvisor v0.0.0-20241123041152-536d05261cff
 	github.com/sagernet/quic-go v0.49.0-beta.1
 	github.com/sagernet/reality v0.0.0-20230406110435-ee17307e7691
-	github.com/sagernet/sing v0.6.1
-	github.com/sagernet/sing-dns v0.4.0
+	github.com/sagernet/sing v0.6.6-0.20250406121928-926a5a1e8bb7
+	github.com/sagernet/sing-dns v0.4.1
 	github.com/sagernet/sing-mux v0.3.1
-	github.com/sagernet/sing-quic v0.4.1-beta.1
+	github.com/sagernet/sing-quic v0.4.1
 	github.com/sagernet/sing-shadowsocks v0.2.7
 	github.com/sagernet/sing-shadowsocks2 v0.2.0
 	github.com/sagernet/sing-shadowtls v0.2.0

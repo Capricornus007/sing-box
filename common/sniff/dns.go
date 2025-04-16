@@ -5,14 +5,10 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
-	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
-	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
-	M "github.com/sagernet/sing/common/metadata"
-	"github.com/sagernet/sing/common/task"
 
 	mDNS "github.com/miekg/dns"
 )
@@ -28,15 +24,9 @@ func StreamDomainNameQuery(readCtx context.Context, metadata *adapter.InboundCon
 	}
 	buffer := buf.NewSize(int(length))
 	defer buffer.Release()
-	readCtx, cancel := context.WithTimeout(readCtx, time.Millisecond*100)
-	var readTask task.Group
-	readTask.Append0(func(ctx context.Context) error {
-		return common.Error(buffer.ReadFullFrom(reader, buffer.FreeLen()))
-	})
-	err = readTask.Run(readCtx)
-	cancel()
+	_, err = buffer.ReadFullFrom(reader, buffer.FreeLen())
 	if err != nil {
-		return err
+		return os.ErrInvalid
 	}
 	return DomainNameQuery(readCtx, metadata, buffer.Bytes())
 }
@@ -47,7 +37,7 @@ func DomainNameQuery(ctx context.Context, metadata *adapter.InboundContext, pack
 	if err != nil {
 		return err
 	}
-	if len(msg.Question) == 0 || msg.Question[0].Qclass != mDNS.ClassINET || !M.IsDomainName(msg.Question[0].Name) {
+	if len(msg.Question) == 0 {
 		return os.ErrInvalid
 	}
 	metadata.Protocol = C.ProtocolDNS
