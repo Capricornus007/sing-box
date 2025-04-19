@@ -94,6 +94,17 @@ func NewRouter(ctx context.Context, logFactory log.Factory, options option.Route
 		platformInterface:     service.FromContext[platform.Interface](ctx),
 		needWIFIState:         hasRule(options.Rules, isWIFIRule) || hasDNSRule(dnsOptions.Rules, isWIFIDNSRule),
 	}
+
+  // 设置并发拨号
+	dialer.ConcurrentDial = options.ConcurrentDial
+	
+	if router.network == nil {
+		// Router and DNS functionality require network manager to be present
+		router.network = &NetworkAdapter{
+			Dialer:  common.Must1(dialer.NewDefault(ctx, option.DialerOptions{})),
+			InterfaceMonitor: nil,
+		}
+	}
 	service.MustRegister[adapter.Router](ctx, router)
 	router.dnsClient = dns.NewClient(dns.ClientOptions{
 		DisableCache:     dnsOptions.DNSClientOptions.DisableCache,

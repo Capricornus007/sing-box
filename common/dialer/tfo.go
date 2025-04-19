@@ -34,18 +34,50 @@ func DialSlowContext(dialer *tcpDialer, ctx context.Context, network string, des
 	if dialer.DisableTFO || N.NetworkName(network) != N.NetworkTCP {
 		switch N.NetworkName(network) {
 		case N.NetworkTCP, N.NetworkUDP:
-			return dialer.Dialer.DialContext(ctx, network, destination.String())
+			return dialContextConcurrently(dialer.Dialer, ctx, network, destination.String())
 		default:
-			return dialer.Dialer.DialContext(ctx, network, destination.AddrString())
+			return dialContextConcurrently(dialer.Dialer, ctx, network, destination.AddrString())
 		}
+	}
+	conn, err := dialContextConcurrently(dialer.Dialer, ctx, network, destination.String())
+	if err != nil {
+		return nil, err
 	}
 	return &slowOpenConn{
 		dialer:      dialer,
 		ctx:         ctx,
 		network:     network,
 		destination: destination,
+		conn:        conn,
 		create:      make(chan struct{}),
 	}, nil
+}
+
+func tfoDialContextWithRetry(dialer *tfo.Dialer, ctx context.Context, network string, address string, b []byte) (net.Conn, error) {
+	var err error
+	for i := 0; i < 4; i++ {
+		var conn net.Conn
+		conn, err = dialer.DialContext(ctx, network, address, b)
+		if err == nil {
+			return conn, nil
+		}
+	}
+	return nil, err
+}
+
+func tfoDialContextConcurrently(dialer *tfo.Dialer, ctx context.Context, network string, address string, b []byte) (net.Conn, error) {
+	if !ConcurrentDial {
+		return tfoDialContextWithRetry(dialer, ctx, network, address, b)
+	}
+	connChan := make(chan ConnWithErr, 3)
+	for i := 0; i < 3; i++ {
+		go func() {
+			var conn ConnWithErr
+			conn.conn, conn.err = tfoDialContextWithRetry(dialer, ctx, network, address, b)
+			connChan <- conn
+		}()
+	}
+	return getResultFromConnChan(connChan)
 }
 
 func (c *slowOpenConn) Read(b []byte) (n int, err error) {
@@ -76,7 +108,7 @@ func (c *slowOpenConn) Write(b []byte) (n int, err error) {
 		return c.conn.Write(b)
 	default:
 	}
-	c.conn, err = c.dialer.DialContext(c.ctx, c.network, c.destination.String(), b)
+	c.conn, err = tfoDialContextConcurrently(c.dialer, c.ctx, c.network, c.destination.String(), b)
 	if err != nil {
 		c.conn = nil
 		c.err = E.Cause(err, "dial tcp fast open")
