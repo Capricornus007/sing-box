@@ -45,15 +45,16 @@ func DialSlowContext(dialer *tcpDialer, ctx context.Context, network string, des
 	if err != nil {
 		return nil, err
 	}
-	return &slowOpenConn{
+	slowConn := &slowOpenConn{
 		dialer:      dialer,
 		ctx:         ctx,
 		network:     network,
 		destination: destination,
-		conn:        conn,
 		create:      make(chan struct{}),
 		done:        make(chan struct{}),
-	}, nil
+	}
+	slowConn.conn.Store(conn.(*net.TCPConn))
+	return slowConn, nil
 }
 
 func tfoDialContextWithRetry(dialer *tfo.Dialer, ctx context.Context, network string, address string, b []byte) (net.Conn, error) {
@@ -116,7 +117,7 @@ func (c *slowOpenConn) Write(b []byte) (n int, err error) {
 		return 0, os.ErrClosed
 	default:
 	}
-	c.conn, err = tfoDialContextConcurrently(c.dialer, c.ctx, c.network, c.destination.String(), b)
+	conn, err := tfoDialContextConcurrently(c.dialer, c.ctx, c.network, c.destination.String(), b)
 	if err != nil {
 		c.err = err
 	} else {
