@@ -352,15 +352,7 @@ func (r *Router) matchRule(
 			newBuffer, newPackerBuffers, newErr := r.actionSniff(ctx, metadata, &R.RuleActionSniff{
 				OverrideDestination: metadata.InboundOptions.SniffOverrideDestination,
 				Timeout:             time.Duration(metadata.InboundOptions.SniffTimeout),
-<<<<<<< HEAD
-			}, inputConn, inputPacketConn, nil)
-			if newErr != nil {
-				fatalErr = newErr
-				return
-			}
-=======
 			}, inputConn, inputPacketConn, nil, nil)
->>>>>>> upstream/1.12.x
 			if newBuffer != nil {
 				buffers = []*buf.Buffer{newBuffer}
 			} else if len(newPackerBuffers) > 0 {
@@ -468,15 +460,7 @@ match:
 		switch action := currentRule.Action().(type) {
 		case *R.RuleActionSniff:
 			if !preMatch {
-<<<<<<< HEAD
-				newBuffer, newPacketBuffers, newErr := r.actionSniff(ctx, metadata, action, inputConn, inputPacketConn, buffers)
-				if newErr != nil {
-					fatalErr = newErr
-					return
-				}
-=======
 				newBuffer, newPacketBuffers, newErr := r.actionSniff(ctx, metadata, action, inputConn, inputPacketConn, buffers, packetBuffers)
->>>>>>> upstream/1.12.x
 				if newBuffer != nil {
 					buffers = append(buffers, newBuffer)
 				} else if len(newPacketBuffers) > 0 {
@@ -511,13 +495,8 @@ match:
 }
 
 func (r *Router) actionSniff(
-<<<<<<< HEAD
-	ctx context.Context, metadata *adapter.InboundContext, action *rule.RuleActionSniff,
-	inputConn net.Conn, inputPacketConn N.PacketConn, inputBuffers []*buf.Buffer,
-=======
 	ctx context.Context, metadata *adapter.InboundContext, action *R.RuleActionSniff,
 	inputConn net.Conn, inputPacketConn N.PacketConn, inputBuffers []*buf.Buffer, inputPacketBuffers []*N.PacketBuffer,
->>>>>>> upstream/1.12.x
 ) (buffer *buf.Buffer, packetBuffers []*N.PacketBuffer, fatalErr error) {
 	if sniff.Skip(metadata) {
 		r.logger.DebugContext(ctx, "sniff skipped due to port considered as server-first")
@@ -527,16 +506,12 @@ func (r *Router) actionSniff(
 		return
 	}
 	if inputConn != nil {
-<<<<<<< HEAD
-		sniffBuffer := buf.NewPacket()
-=======
 		if len(action.StreamSniffers) == 0 && len(action.PacketSniffers) > 0 {
 			return
 		} else if slices.Equal(metadata.SnifferNames, action.SnifferNames) && metadata.SniffError != nil && !errors.Is(metadata.SniffError, sniff.ErrNeedMoreData) {
 			r.logger.DebugContext(ctx, "packet sniff skipped due to previous error: ", metadata.SniffError)
 			return
 		}
->>>>>>> upstream/1.12.x
 		var streamSniffers []sniff.StreamSniffer
 		if len(action.StreamSniffers) > 0 {
 			streamSniffers = action.StreamSniffers
@@ -584,12 +559,6 @@ func (r *Router) actionSniff(
 			sniffBuffer.Release()
 		}
 	} else if inputPacketConn != nil {
-<<<<<<< HEAD
-		if metadata.PacketSniffError != nil && !errors.Is(metadata.PacketSniffError, sniff.ErrNeedMoreData) {
-			r.logger.DebugContext(ctx, "packet sniff skipped due to previous error: ", metadata.PacketSniffError)
-			return
-		}
-=======
 		if len(action.PacketSniffers) == 0 && len(action.StreamSniffers) > 0 {
 			return
 		} else if slices.Equal(metadata.SnifferNames, action.SnifferNames) && metadata.SniffError != nil && !errors.Is(metadata.SniffError, sniff.ErrNeedMoreData) {
@@ -639,7 +608,6 @@ func (r *Router) actionSniff(
 			goto finally
 		}
 		packetBuffers = inputPacketBuffers
->>>>>>> upstream/1.12.x
 		for {
 			var (
 				sniffBuffer = buf.NewPacket()
@@ -670,11 +638,7 @@ func (r *Router) actionSniff(
 					return
 				}
 			} else {
-<<<<<<< HEAD
-				if len(packetBuffers) > 0 || metadata.PacketSniffError != nil {
-=======
 				if quicMoreData() {
->>>>>>> upstream/1.12.x
 					err = sniff.PeekPacket(
 						ctx,
 						metadata,
@@ -694,12 +658,8 @@ func (r *Router) actionSniff(
 					Destination: destination,
 				}
 				packetBuffers = append(packetBuffers, packetBuffer)
-<<<<<<< HEAD
-				metadata.PacketSniffError = err
-=======
 				metadata.SnifferNames = action.SnifferNames
 				metadata.SniffError = err
->>>>>>> upstream/1.12.x
 				if errors.Is(err, sniff.ErrNeedMoreData) {
 					// TODO: replace with generic message when there are more multi-packet protocols
 					r.logger.DebugContext(ctx, "attempt to sniff fragmented QUIC client hello")
