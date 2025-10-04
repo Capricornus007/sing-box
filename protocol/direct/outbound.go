@@ -9,6 +9,7 @@ import (
 	"net/netip"
   "strconv"
   "strings"
+	"reflect"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -17,8 +18,6 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing-dns"
-	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
@@ -33,16 +32,18 @@ func RegisterOutbound(registry *outbound.Registry) {
 var (
 	_ N.ParallelDialer             = (*Outbound)(nil)
 	_ dialer.ParallelNetworkDialer = (*Outbound)(nil)
+	_ dialer.DirectDialer          = (*Outbound)(nil)
 )
 
 type Outbound struct {
 	outbound.Adapter
 	logger              logger.ContextLogger
 	dialer              dialer.ParallelInterfaceDialer
-	domainStrategy      dns.DomainStrategy
+	domainStrategy      C.DomainStrategy
 	fallbackDelay       time.Duration
 	overrideOption      int
 	overrideDestination M.Socksaddr
+	isEmpty             bool
 	// loopBack *loopBackDetector
   fragment            *Fragment
 }
@@ -56,16 +57,27 @@ type Fragment struct {
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.DirectOutboundOptions) (adapter.Outbound, error) {
 	options.UDPFragmentDefault = true
-	outboundDialer, err := dialer.NewDirect(ctx, options.DialerOptions)
+	if options.Detour != "" {
+		return nil, E.New("`detour` is not supported in direct context")
+	}
+	outboundDialer, err := dialer.NewWithOptions(dialer.Options{
+		Context:        ctx,
+		Options:        options.DialerOptions,
+		RemoteIsDomain: true,
+		DirectOutbound: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 	outbound := &Outbound{
-		Adapter:        outbound.NewAdapterWithDialerOptions(C.TypeDirect, tag, []string{N.NetworkTCP, N.NetworkUDP}, options.DialerOptions),
-		logger:         logger,
-		domainStrategy: dns.DomainStrategy(options.DomainStrategy),
+		Adapter: outbound.NewAdapterWithDialerOptions(C.TypeDirect, tag, []string{N.NetworkTCP, N.NetworkUDP}, options.DialerOptions),
+		logger:  logger,
+		//nolint:staticcheck
+		domainStrategy: C.DomainStrategy(options.DomainStrategy),
 		fallbackDelay:  time.Duration(options.FallbackDelay),
-		dialer:         outboundDialer,
+		dialer:         outboundDialer.(dialer.ParallelInterfaceDialer),
+		//nolint:staticcheck
+		isEmpty: reflect.DeepEqual(options.DialerOptions, option.DialerOptions{UDPFragmentDefault: true}) && options.OverrideAddress == "" && options.OverridePort == 0,
 		// loopBack:       newLoopBackDetector(router),
 	}
 	//nolint:staticcheck
@@ -230,26 +242,7 @@ func (h *Outbound) DialParallel(ctx context.Context, network string, destination
 	case N.NetworkUDP:
 		h.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	}
-	var domainStrategy dns.DomainStrategy
-	if h.domainStrategy != dns.DomainStrategyAsIS {
-		domainStrategy = h.domainStrategy
-	} else {
-		//nolint:staticcheck
-		domainStrategy = dns.DomainStrategy(metadata.InboundOptions.DomainStrategy)
-	}
-	switch domainStrategy {
-	case dns.DomainStrategyUseIPv4:
-		destinationAddresses = common.Filter(destinationAddresses, netip.Addr.Is4)
-		if len(destinationAddresses) == 0 {
-			return nil, E.New("no IPv4 address available for ", destination)
-		}
-	case dns.DomainStrategyUseIPv6:
-		destinationAddresses = common.Filter(destinationAddresses, netip.Addr.Is6)
-		if len(destinationAddresses) == 0 {
-			return nil, E.New("no IPv6 address available for ", destination)
-		}
-	}
-  conn, err := dialer.DialParallelNetwork(ctx, h.dialer, network, destination, destinationAddresses, domainStrategy == dns.DomainStrategyPreferIPv6, nil, nil, nil, h.fallbackDelay)
+  conn, err := dialer.DialParallelNetwork(ctx, h.dialer, network, destination, destinationAddresses, len(destinationAddresses) > 0 && destinationAddresses[0].Is6(), nil, nil, nil, h.fallbackDelay)
   if err != nil {
 		return nil, err
 	}
@@ -284,26 +277,7 @@ func (h *Outbound) DialParallelNetwork(ctx context.Context, network string, dest
 	case N.NetworkUDP:
 		h.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	}
-	var domainStrategy dns.DomainStrategy
-	if h.domainStrategy != dns.DomainStrategyAsIS {
-		domainStrategy = h.domainStrategy
-	} else {
-		//nolint:staticcheck
-		domainStrategy = dns.DomainStrategy(metadata.InboundOptions.DomainStrategy)
-	}
-	switch domainStrategy {
-	case dns.DomainStrategyUseIPv4:
-		destinationAddresses = common.Filter(destinationAddresses, netip.Addr.Is4)
-		if len(destinationAddresses) == 0 {
-			return nil, E.New("no IPv4 address available for ", destination)
-		}
-	case dns.DomainStrategyUseIPv6:
-		destinationAddresses = common.Filter(destinationAddresses, netip.Addr.Is6)
-		if len(destinationAddresses) == 0 {
-			return nil, E.New("no IPv6 address available for ", destination)
-		}
-	}
-	return dialer.DialParallelNetwork(ctx, h.dialer, network, destination, destinationAddresses, domainStrategy == dns.DomainStrategyPreferIPv6, networkStrategy, networkType, fallbackNetworkType, fallbackDelay)
+	return dialer.DialParallelNetwork(ctx, h.dialer, network, destination, destinationAddresses, len(destinationAddresses) > 0 && destinationAddresses[0].Is6(), networkStrategy, networkType, fallbackNetworkType, fallbackDelay)
 }
 
 func (h *Outbound) ListenSerialNetworkPacket(ctx context.Context, destination M.Socksaddr, destinationAddresses []netip.Addr, networkStrategy *C.NetworkStrategy, networkType []C.InterfaceType, fallbackNetworkType []C.InterfaceType, fallbackDelay time.Duration) (net.PacketConn, netip.Addr, error) {
@@ -330,6 +304,10 @@ func (h *Outbound) ListenSerialNetworkPacket(ctx context.Context, destination M.
 		return nil, netip.Addr{}, err
 	}
 	return conn, newDestination, nil
+}
+
+func (h *Outbound) IsEmpty() bool {
+	return h.isEmpty
 }
 
 /*func (h *Outbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext) error {

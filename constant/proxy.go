@@ -19,11 +19,15 @@ const (
 	TypeTor          = "tor"
 	TypeSSH          = "ssh"
 	TypeShadowTLS    = "shadowtls"
+	TypeAnyTLS       = "anytls"
 	TypeShadowsocksR = "shadowsocksr"
 	TypeVLESS        = "vless"
 	TypeTUIC         = "tuic"
 	TypeHysteria2    = "hysteria2"
-	TypeAnyTLS       = "anytls"
+	TypeTailscale    = "tailscale"
+	TypeDERP         = "derp"
+	TypeResolved     = "resolved"
+	TypeSSMAPI       = "ssm-api"
 )
 
 const (

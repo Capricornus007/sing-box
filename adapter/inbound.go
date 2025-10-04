@@ -53,11 +53,12 @@ type InboundContext struct {
 
 	// sniffer
 
-	Protocol         string
-	Domain           string
-	Client           string
-	SniffContext     any
-	PacketSniffError error
+	Protocol     string
+	Domain       string
+	Client       string
+	SniffContext any
+	SnifferNames []string
+	SniffError   error
 
 	// cache
 
@@ -72,13 +73,14 @@ type InboundContext struct {
 	UDPDisableDomainUnmapping bool
 	UDPConnect                bool
 	UDPTimeout                time.Duration
+	TLSFragment               bool
+	TLSFragmentFallbackDelay  time.Duration
+	TLSRecordFragment         bool
 
 	NetworkStrategy     *C.NetworkStrategy
 	NetworkType         []C.InterfaceType
 	FallbackNetworkType []C.InterfaceType
 	FallbackDelay       time.Duration
-
-	DNSServer string
 
 	DestinationAddresses []netip.Addr
 	SourceGeoIPCode      string
@@ -134,8 +136,7 @@ func ExtendContext(ctx context.Context) (context.Context, *InboundContext) {
 
 func OverrideContext(ctx context.Context) context.Context {
 	if metadata := ContextFrom(ctx); metadata != nil {
-		var newMetadata InboundContext
-		newMetadata = *metadata
+		newMetadata := *metadata
 		return WithContext(ctx, &newMetadata)
 	}
 	return ctx

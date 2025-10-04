@@ -1,7 +1,3 @@
----
-icon: material/new-box
----
-
 !!! quote "Changes in sing-box 1.10.0"
 
     :material-plus: `type: inline`
@@ -83,6 +79,8 @@ List of [Headless Rule](./headless-rule/).
 ==Required==
 
 Format of rule-set file, `source` or `binary`.
+
+Optional when `path` or `url` uses `json` or `srs` as extension.
 
 ### Local Fields
 

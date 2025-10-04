@@ -7,9 +7,10 @@ import (
 	"time"
 
 	box "github.com/sagernet/sing-box"
+	"github.com/sagernet/sing-box/adapter"
 )
 
-func CreateProxyHttpClient(box *box.Box) *http.Client {
+func CreateProxyHttpClient(box *box.Box, tracker adapter.ConnectionTracker) *http.Client {
 	transport := &http.Transport{
 		TLSHandshakeTimeout:   time.Second * 3,
 		ResponseHeaderTimeout: time.Second * 3,
@@ -17,7 +18,7 @@ func CreateProxyHttpClient(box *box.Box) *http.Client {
 
 	if box != nil {
 		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return DialContext(ctx, box, network, addr)
+			return DialContext(ctx, box, tracker, network, addr)
 		}
 	}
 

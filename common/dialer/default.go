@@ -10,11 +10,11 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/conntrack"
+	"github.com/sagernet/sing-box/common/listener"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/experimental/libbox/platform"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
-	"github.com/sagernet/sing/common/atomic"
 	"github.com/sagernet/sing/common/control"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
@@ -38,14 +38,14 @@ type DefaultDialer struct {
 	udpListener            net.ListenConfig
 	udpAddr4               string
 	udpAddr6               string
-	isWireGuardListener    bool
+	netns                  string
 	networkManager         adapter.NetworkManager
 	networkStrategy        *C.NetworkStrategy
 	defaultNetworkStrategy bool
 	networkType            []C.InterfaceType
 	fallbackNetworkType    []C.InterfaceType
 	networkFallbackDelay   time.Duration
-	networkLastFallback    atomic.TypedValue[time.Time]
+	networkLastFallback    common.TypedValue[time.Time]
 }
 
 func NewDefault(ctx context.Context, options option.DialerOptions) (*DefaultDialer, error) {
@@ -68,23 +68,19 @@ func NewDefault(ctx context.Context, options option.DialerOptions) (*DefaultDial
 		interfaceFinder = control.NewDefaultInterfaceFinder()
 	}
 	if options.BindInterface != "" {
+		if !(C.IsLinux || C.IsDarwin || C.IsWindows) {
+			return nil, E.New("`bind_interface` is only supported on Linux, macOS and Windows")
+		}
 		bindFunc := control.BindToInterface(interfaceFinder, options.BindInterface, -1)
 		dialer.Control = control.Append(dialer.Control, bindFunc)
 		listener.Control = control.Append(listener.Control, bindFunc)
 	}
 	if options.RoutingMark > 0 {
-		dialer.Control = control.Append(dialer.Control, control.RoutingMark(uint32(options.RoutingMark)))
-		listener.Control = control.Append(listener.Control, control.RoutingMark(uint32(options.RoutingMark)))
-	}
-	if networkManager != nil {
-		autoRedirectOutputMark := networkManager.AutoRedirectOutputMark()
-		if autoRedirectOutputMark > 0 {
-			if options.RoutingMark > 0 {
-				return nil, E.New("`routing_mark` is conflict with `tun.auto_redirect` with `tun.route_[_exclude]_address_set")
-			}
-			dialer.Control = control.Append(dialer.Control, control.RoutingMark(autoRedirectOutputMark))
-			listener.Control = control.Append(listener.Control, control.RoutingMark(autoRedirectOutputMark))
+		if !C.IsLinux {
+			return nil, E.New("`routing_mark` is only supported on Linux")
 		}
+		dialer.Control = control.Append(dialer.Control, setMarkWrapper(networkManager, uint32(options.RoutingMark), false))
+		listener.Control = control.Append(listener.Control, setMarkWrapper(networkManager, uint32(options.RoutingMark), false))
 	}
 	disableDefaultBind := options.BindInterface != "" || options.Inet4BindAddress != nil || options.Inet6BindAddress != nil
 	if disableDefaultBind || options.TCPFastOpen {
@@ -95,43 +91,46 @@ func NewDefault(ctx context.Context, options option.DialerOptions) (*DefaultDial
 
 	if networkManager != nil {
 		defaultOptions := networkManager.DefaultOptions()
-		if !disableDefaultBind {
-			if defaultOptions.BindInterface != "" {
-				bindFunc := control.BindToInterface(networkManager.InterfaceFinder(), defaultOptions.BindInterface, -1)
+		if defaultOptions.BindInterface != "" {
+			bindFunc := control.BindToInterface(networkManager.InterfaceFinder(), defaultOptions.BindInterface, -1)
+			dialer.Control = control.Append(dialer.Control, bindFunc)
+			listener.Control = control.Append(listener.Control, bindFunc)
+		} else if networkManager.AutoDetectInterface() && !disableDefaultBind {
+			if platformInterface != nil {
+				networkStrategy = (*C.NetworkStrategy)(options.NetworkStrategy)
+				networkType = common.Map(options.NetworkType, option.InterfaceType.Build)
+				fallbackNetworkType = common.Map(options.FallbackNetworkType, option.InterfaceType.Build)
+				if networkStrategy == nil && len(networkType) == 0 && len(fallbackNetworkType) == 0 {
+					networkStrategy = defaultOptions.NetworkStrategy
+					networkType = defaultOptions.NetworkType
+					fallbackNetworkType = defaultOptions.FallbackNetworkType
+				}
+				networkFallbackDelay = time.Duration(options.FallbackDelay)
+				if networkFallbackDelay == 0 && defaultOptions.FallbackDelay != 0 {
+					networkFallbackDelay = defaultOptions.FallbackDelay
+				}
+				if networkStrategy == nil {
+					networkStrategy = common.Ptr(C.NetworkStrategyDefault)
+					defaultNetworkStrategy = true
+				}
+				bindFunc := networkManager.ProtectFunc()
 				dialer.Control = control.Append(dialer.Control, bindFunc)
 				listener.Control = control.Append(listener.Control, bindFunc)
-			} else if networkManager.AutoDetectInterface() {
-				if platformInterface != nil {
-					networkStrategy = (*C.NetworkStrategy)(options.NetworkStrategy)
-					if networkStrategy == nil {
-						networkStrategy = common.Ptr(C.NetworkStrategyDefault)
-						defaultNetworkStrategy = true
-					}
-					networkType = common.Map(options.NetworkType, option.InterfaceType.Build)
-					fallbackNetworkType = common.Map(options.FallbackNetworkType, option.InterfaceType.Build)
-					if networkStrategy == nil && len(networkType) == 0 && len(fallbackNetworkType) == 0 {
-						networkStrategy = defaultOptions.NetworkStrategy
-						networkType = defaultOptions.NetworkType
-						fallbackNetworkType = defaultOptions.FallbackNetworkType
-					}
-					networkFallbackDelay = time.Duration(options.FallbackDelay)
-					if networkFallbackDelay == 0 && defaultOptions.FallbackDelay != 0 {
-						networkFallbackDelay = defaultOptions.FallbackDelay
-					}
-					bindFunc := networkManager.ProtectFunc()
-					dialer.Control = control.Append(dialer.Control, bindFunc)
-					listener.Control = control.Append(listener.Control, bindFunc)
-				} else {
-					bindFunc := networkManager.AutoDetectInterfaceFunc()
-					dialer.Control = control.Append(dialer.Control, bindFunc)
-					listener.Control = control.Append(listener.Control, bindFunc)
-				}
+			} else {
+				bindFunc := networkManager.AutoDetectInterfaceFunc()
+				dialer.Control = control.Append(dialer.Control, bindFunc)
+				listener.Control = control.Append(listener.Control, bindFunc)
 			}
 		}
 		if options.RoutingMark == 0 && defaultOptions.RoutingMark != 0 {
-			dialer.Control = control.Append(dialer.Control, control.RoutingMark(defaultOptions.RoutingMark))
-			listener.Control = control.Append(listener.Control, control.RoutingMark(defaultOptions.RoutingMark))
+			dialer.Control = control.Append(dialer.Control, setMarkWrapper(networkManager, defaultOptions.RoutingMark, true))
+			listener.Control = control.Append(listener.Control, setMarkWrapper(networkManager, defaultOptions.RoutingMark, true))
 		}
+	}
+	if networkManager != nil {
+		markFunc := networkManager.AutoRedirectOutputMarkFunc()
+		dialer.Control = control.Append(dialer.Control, markFunc)
+		listener.Control = control.Append(listener.Control, markFunc)
 	}
 	if options.ReuseAddr {
 		listener.Control = control.Append(listener.Control, control.ReuseAddr())
@@ -186,11 +185,6 @@ func NewDefault(ctx context.Context, options option.DialerOptions) (*DefaultDial
 		}
 		setMultiPathTCP(&dialer4)
 	}
-	if options.IsWireGuardListener {
-		for _, controlFn := range WgControlFns {
-			listener.Control = control.Append(listener.Control, controlFn)
-		}
-	}
 	tcpDialer4, err := newTCPDialer(dialer4, options.TCPFastOpen)
 	if err != nil {
 		return nil, err
@@ -207,7 +201,7 @@ func NewDefault(ctx context.Context, options option.DialerOptions) (*DefaultDial
 		udpListener:            listener,
 		udpAddr4:               udpAddr4,
 		udpAddr6:               udpAddr6,
-		isWireGuardListener:    options.IsWireGuardListener,
+		netns:                  options.NetNs,
 		networkManager:         networkManager,
 		networkStrategy:        networkStrategy,
 		defaultNetworkStrategy: defaultNetworkStrategy,
@@ -217,24 +211,44 @@ func NewDefault(ctx context.Context, options option.DialerOptions) (*DefaultDial
 	}, nil
 }
 
+func setMarkWrapper(networkManager adapter.NetworkManager, mark uint32, isDefault bool) control.Func {
+	if networkManager == nil {
+		return control.RoutingMark(mark)
+	}
+	return func(network, address string, conn syscall.RawConn) error {
+		if networkManager.AutoRedirectOutputMark() != 0 {
+			if isDefault {
+				return E.New("`route.default_mark` is conflict with `tun.auto_redirect`")
+			} else {
+				return E.New("`routing_mark` is conflict with `tun.auto_redirect`")
+			}
+		}
+		return control.RoutingMark(mark)(network, address, conn)
+	}
+}
+
 func (d *DefaultDialer) DialContext(ctx context.Context, network string, address M.Socksaddr) (net.Conn, error) {
 	if !address.IsValid() {
 		return nil, E.New("invalid address")
+	} else if address.IsFqdn() {
+		return nil, E.New("domain not resolved")
 	}
-	if d.networkStrategy == nil || DoNotSelectInterface {
-		switch N.NetworkName(network) {
-		case N.NetworkUDP:
-			if !address.IsIPv6() {
-				return trackConn(dialContextConcurrently(d.udpDialer4, ctx, network, address.String()))
-			} else {
-				return trackConn(dialContextConcurrently(d.udpDialer6, ctx, network, address.String()))
+	if DoNotSelectInterface || d.networkStrategy == nil {
+		return trackConn(listener.ListenNetworkNamespace[net.Conn](d.netns, func() (net.Conn, error) {
+			switch N.NetworkName(network) {
+			case N.NetworkUDP:
+				if !address.IsIPv6() {
+				  return trackConn(dialContextConcurrently(d.udpDialer4, ctx, network, address.String()))
+				} else {
+				  return trackConn(dialContextConcurrently(d.udpDialer6, ctx, network, address.String()))
+				}
 			}
-		}
-		if !address.IsIPv6() {
-			return trackConn(DialSlowContext(&d.dialer4, ctx, network, address))
-		} else {
-			return trackConn(DialSlowContext(&d.dialer6, ctx, network, address))
-		}
+			if !address.IsIPv6() {
+				return DialSlowContext(&d.dialer4, ctx, network, address)
+			} else {
+				return DialSlowContext(&d.dialer6, ctx, network, address)
+			}
+		}))
 	} else {
 		return d.DialParallelInterface(ctx, network, address, d.networkStrategy, d.networkType, d.fallbackNetworkType, d.networkFallbackDelay)
 	}
@@ -262,7 +276,7 @@ func (d *DefaultDialer) DialParallelInterface(ctx context.Context, network strin
 	} else {
 		dialer = d.udpDialer4
 	}
-	fastFallback := time.Now().Sub(d.networkLastFallback.Load()) < C.TCPTimeout
+	fastFallback := time.Since(d.networkLastFallback.Load()) < C.TCPTimeout
 	var (
 		conn      net.Conn
 		isPrimary bool
@@ -289,14 +303,16 @@ func (d *DefaultDialer) DialParallelInterface(ctx context.Context, network strin
 }
 
 func (d *DefaultDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
-	if d.networkStrategy == nil || DoNotSelectInterface {
-		if destination.IsIPv6() {
-			return trackPacketConn(listenPacketConcurrently(d.udpListener, ctx, N.NetworkUDP, d.udpAddr6))
-		} else if destination.IsIPv4() && !destination.Addr.IsUnspecified() {
-			return trackPacketConn(listenPacketConcurrently(d.udpListener, ctx, N.NetworkUDP+"4", d.udpAddr4))
-		} else {
-			return trackPacketConn(listenPacketConcurrently(d.udpListener, ctx, N.NetworkUDP, d.udpAddr4))
-		}
+	if DoNotSelectInterface || d.networkStrategy == nil {
+		return trackPacketConn(listener.ListenNetworkNamespace[net.PacketConn](d.netns, func() (net.PacketConn, error) {
+			if destination.IsIPv6() {
+			  return trackPacketConn(listenPacketConcurrently(d.udpListener, ctx, N.NetworkUDP, d.udpAddr6))
+			} else if destination.IsIPv4() && !destination.Addr.IsUnspecified() {
+			  return trackPacketConn(listenPacketConcurrently(d.udpListener, ctx, N.NetworkUDP+"4", d.udpAddr4))
+			} else {
+			  return trackPacketConn(listenPacketConcurrently(d.udpListener, ctx, N.NetworkUDP, d.udpAddr4))
+			}
+		}))
 	} else {
 		return d.ListenSerialInterfacePacket(ctx, destination, d.networkStrategy, d.networkType, d.fallbackNetworkType, d.networkFallbackDelay)
 	}
@@ -336,7 +352,17 @@ func (d *DefaultDialer) ListenSerialInterfacePacket(ctx context.Context, destina
 }
 
 func (d *DefaultDialer) ListenPacketCompat(network, address string) (net.PacketConn, error) {
-	return d.udpListener.ListenPacket(context.Background(), network, address)
+	udpListener := d.udpListener
+	udpListener.Control = control.Append(udpListener.Control, func(network, address string, conn syscall.RawConn) error {
+		for _, wgControlFn := range WgControlFns {
+			err := wgControlFn(network, address, conn)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return udpListener.ListenPacket(context.Background(), network, address)
 }
 
 func trackConn(conn net.Conn, err error) (net.Conn, error) {

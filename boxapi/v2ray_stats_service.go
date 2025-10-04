@@ -4,11 +4,11 @@ import (
 	"context"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing/common/atomic"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
 	N "github.com/sagernet/sing/common/network"
@@ -112,7 +112,7 @@ func (s *SbStatsService) RoutedPacketConnection(ctx context.Context, conn N.Pack
 		writeCounter = append(writeCounter, s.loadOrCreateCounter("user>>>"+user+">>>traffic>>>downlink"))
 	}
 	s.access.Unlock()
-	return bufio.NewInt64CounterPacketConn(conn, readCounter, writeCounter)
+	return bufio.NewInt64CounterPacketConn(conn, readCounter, nil, writeCounter, nil)
 }
 
 func (s *SbStatsService) GetStats(ctx context.Context, name string, reset bool) (int64, error) {

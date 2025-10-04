@@ -13,7 +13,6 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
-	"github.com/sagernet/sing/common/json/badoption"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/common/uot"
@@ -21,18 +20,8 @@ import (
 	anytls "github.com/anytls/sing-anytls"
 )
 
-type AnyTLSOutboundOptions struct {
-	option.DialerOptions
-	option.ServerOptions
-	option.OutboundTLSOptionsContainer
-	Password                 string             `json:"password,omitempty"`
-	IdleSessionCheckInterval badoption.Duration `json:"idle_session_check_interval,omitempty"`
-	IdleSessionTimeout       badoption.Duration `json:"idle_session_timeout,omitempty"`
-	MinIdleSession           int                `json:"min_idle_session,omitempty"`
-}
-
 func RegisterOutbound(registry *outbound.Registry) {
-	outbound.Register(registry, "anytls", NewOutbound)
+	outbound.Register[option.AnyTLSOutboundOptions](registry, C.TypeAnyTLS, NewOutbound)
 }
 
 type Outbound struct {
@@ -45,9 +34,9 @@ type Outbound struct {
 	logger    log.ContextLogger
 }
 
-func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options AnyTLSOutboundOptions) (adapter.Outbound, error) {
+func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.AnyTLSOutboundOptions) (adapter.Outbound, error) {
 	outbound := &Outbound{
-		Adapter: outbound.NewAdapterWithDialerOptions("anytls", tag, []string{N.NetworkTCP, N.NetworkUDP}, options.DialerOptions),
+		Adapter: outbound.NewAdapterWithDialerOptions(C.TypeAnyTLS, tag, []string{N.NetworkTCP, N.NetworkUDP}, options.DialerOptions),
 		server:  options.ServerOptions.Build(),
 		logger:  logger,
 	}
@@ -61,7 +50,11 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	outbound.tlsConfig = tlsConfig
 
-	outboundDialer, err := dialer.New(ctx, options.DialerOptions)
+	outboundDialer, err := dialer.NewWithOptions(dialer.Options{
+		Context:        ctx,
+		Options:        options.DialerOptions,
+		RemoteIsDomain: options.ServerIsDomain(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +97,7 @@ func (h *Outbound) dialOut(ctx context.Context) (net.Conn, error) {
 	}
 	tlsConn, err := tls.ClientHandshake(ctx, conn, h.tlsConfig)
 	if err != nil {
-		_ = common.Close(tlsConn, conn)
+		common.Close(tlsConn, conn)
 		return nil, err
 	}
 	return tlsConn, nil
