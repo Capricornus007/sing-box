@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/process"
 	"github.com/sagernet/sing-box/common/taskmonitor"
 	C "github.com/sagernet/sing-box/constant"
@@ -37,6 +38,7 @@ type Router struct {
 	processSearcher   process.Searcher
 	pauseManager      pause.Manager
 	trackers          []adapter.ConnectionTracker
+	nekoTracker       adapter.ConnectionTracker
 	platformInterface platform.Interface
 	needWIFIState     bool
 	started           bool
