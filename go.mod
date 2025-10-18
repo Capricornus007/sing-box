@@ -56,6 +56,7 @@ require (
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 	howett.net/plist v1.0.1
+	lukechampine.com/blake3 v1.3.0
 )
 
 //replace github.com/sagernet/sing => ../sing
@@ -134,5 +135,4 @@ require (
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	lukechampine.com/blake3 v1.3.0 // indirect
 )

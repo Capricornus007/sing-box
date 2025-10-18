@@ -2,7 +2,9 @@ package vless
 
 import (
 	"context"
+	"encoding/base64"
 	"net"
+	"strings"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
@@ -12,6 +14,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/vless/encryption"
 	"github.com/sagernet/sing-box/transport/v2ray"
 	"github.com/sagernet/sing-vmess/packetaddr"
 	"github.com/sagernet/sing-vmess/vless"
@@ -38,6 +41,7 @@ type Outbound struct {
 	transport       adapter.V2RayClientTransport
 	packetAddr      bool
 	xudp            bool
+	encryption      *encryption.ClientInstance
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.VLESSOutboundOptions) (adapter.Outbound, error) {
@@ -76,6 +80,53 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			return nil, E.New("unknown packet encoding: ", options.PacketEncoding)
 		}
 	}
+	// Parse encryption configuration
+	if options.Encryption != "" && options.Encryption != "none" {
+		parts := strings.Split(options.Encryption, ".")
+		if len(parts) < 4 {
+			return nil, E.New("invalid encryption format")
+		}
+		
+		// Parse encryption mode and parameters
+		// Format: mlkem768x25519plus.native.0rtt.KEY1.KEY2...
+		xorMode := uint32(0)
+		seconds := uint32(0)
+		padding := ""
+		
+		// Check for native/random mode
+		for _, part := range parts {
+			if part == "native" {
+				xorMode = 1
+			} else if part == "random" {
+				xorMode = 2
+			} else if part == "0rtt" || strings.HasSuffix(part, "rtt") {
+				// Extract seconds from 0rtt format
+				if part != "0rtt" {
+					seconds = 0 // Will be set by server
+				}
+			}
+		}
+		
+		// Extract public keys (skip mode/config parts)
+		var nfsPKeysBytes [][]byte
+		for i := 3; i < len(parts); i++ {
+			keyBytes, err := base64.RawURLEncoding.DecodeString(parts[i])
+			if err != nil {
+				return nil, E.Cause(err, "decode encryption key")
+			}
+			nfsPKeysBytes = append(nfsPKeysBytes, keyBytes)
+		}
+		
+		if len(nfsPKeysBytes) == 0 {
+			return nil, E.New("no encryption keys provided")
+		}
+		
+		outbound.encryption = &encryption.ClientInstance{}
+		if err := outbound.encryption.Init(nfsPKeysBytes, xorMode, seconds, padding); err != nil {
+			return nil, E.Cause(err, "initialize encryption")
+		}
+	}
+	
 	muxOpts := common.PtrValueOrDefault(options.Multiplex)
 	if muxOpts.Enabled {
 		options.Flow = ""
@@ -153,6 +204,13 @@ func (h *vlessDialer) DialContext(ctx context.Context, network string, destinati
 	if err != nil {
 		return nil, err
 	}
+	// Apply encryption if configured
+	if h.encryption != nil {
+		conn, err = h.encryption.Handshake(conn)
+		if err != nil {
+			return nil, E.Cause(err, "encryption handshake")
+		}
+	}
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
 		h.logger.InfoContext(ctx, "outbound connection to ", destination)
@@ -196,6 +254,14 @@ func (h *vlessDialer) ListenPacket(ctx context.Context, destination M.Socksaddr)
 	if err != nil {
 		common.Close(conn)
 		return nil, err
+	}
+	// Apply encryption if configured
+	if h.encryption != nil {
+		conn, err = h.encryption.Handshake(conn)
+		if err != nil {
+			common.Close(conn)
+			return nil, E.Cause(err, "encryption handshake")
+		}
 	}
 	if h.xudp {
 		return h.client.DialEarlyXUDPPacketConn(conn, destination)
