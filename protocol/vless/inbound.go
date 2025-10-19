@@ -2,8 +2,10 @@ package vless
 
 import (
 	"context"
+	"encoding/base64"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
@@ -14,6 +16,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/vless/encryption"
 	"github.com/sagernet/sing-box/transport/v2ray"
 	"github.com/sagernet/sing-vmess/packetaddr"
 	"github.com/sagernet/sing-vmess/vless"
@@ -35,14 +38,15 @@ var _ adapter.TCPInjectableInbound = (*Inbound)(nil)
 
 type Inbound struct {
 	inbound.Adapter
-	ctx       context.Context
-	router    adapter.ConnectionRouterEx
-	logger    logger.ContextLogger
-	listener  *listener.Listener
-	users     []option.VLESSUser
-	service   *vless.Service[int]
-	tlsConfig tls.ServerConfig
-	transport adapter.V2RayServerTransport
+	ctx        context.Context
+	router     adapter.ConnectionRouterEx
+	logger     logger.ContextLogger
+	listener   *listener.Listener
+	users      []option.VLESSUser
+	service    *vless.Service[int]
+	tlsConfig  tls.ServerConfig
+	transport  adapter.V2RayServerTransport
+	decryption *encryption.ServerInstance
 }
 
 func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.VLESSInboundOptions) (adapter.Inbound, error) {
@@ -77,6 +81,25 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		inbound.transport, err = v2ray.NewServerTransport(ctx, logger, common.PtrValueOrDefault(options.Transport), inbound.tlsConfig, (*inboundTransportHandler)(inbound))
 		if err != nil {
 			return nil, E.Cause(err, "create server transport: ", options.Transport.Type)
+		}
+	}
+	// Parse decryption configuration
+	if options.Decryption != "" && options.Decryption != "none" {
+		s := strings.Split(options.Decryption, ".")
+		var nfsSKeysBytes [][]byte
+		for _, r := range s {
+			b, err := base64.RawURLEncoding.DecodeString(r)
+			if err != nil {
+				continue
+			}
+			nfsSKeysBytes = append(nfsSKeysBytes, b)
+		}
+		if len(nfsSKeysBytes) > 0 {
+			inbound.decryption = &encryption.ServerInstance{}
+			if err := inbound.decryption.Init(nfsSKeysBytes, options.XorMode, options.SecondsFrom, options.SecondsTo, options.Padding); err != nil {
+				return nil, E.Cause(err, "initialize decryption")
+			}
+			logger.Debug("decryption initialized with ", len(nfsSKeysBytes), " keys")
 		}
 	}
 	inbound.listener = listener.New(listener.Options{
@@ -130,6 +153,9 @@ func (h *Inbound) Start(stage adapter.StartStage) error {
 }
 
 func (h *Inbound) Close() error {
+	if h.decryption != nil {
+		h.decryption.Close()
+	}
 	return common.Close(
 		h.service,
 		h.listener,
@@ -147,6 +173,16 @@ func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, metadata a
 			return
 		}
 		conn = tlsConn
+	}
+	// Apply decryption if configured
+	if h.decryption != nil {
+		encConn, err := h.decryption.Handshake(conn, nil)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			h.logger.ErrorContext(ctx, E.Cause(err, "process connection from ", metadata.Source, ": encryption handshake"))
+			return
+		}
+		conn = encConn
 	}
 	err := h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
 	if err != nil {
