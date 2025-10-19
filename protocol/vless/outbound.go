@@ -82,49 +82,75 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	// Parse encryption configuration
 	if options.Encryption != "" && options.Encryption != "none" {
-		parts := strings.Split(options.Encryption, ".")
-		if len(parts) < 4 {
-			return nil, E.New("invalid encryption format")
-		}
-		
-		// Parse encryption mode and parameters
-		// Format: mlkem768x25519plus.native.0rtt.KEY1.KEY2...
+		s := strings.Split(options.Encryption, ".")
+
+		// Parse xorMode, seconds, and padding from encryption string
+		// Format: mlkem768x25519plus.MODE.RTT[.PADDING].KEY1.KEY2...
+		// MODE: native=0, xorpub=1, random=2
+		// RTT: 0rtt=1 (enable), 1rtt=0 (disable), or time like "600s"
 		xorMode := uint32(0)
 		seconds := uint32(0)
 		padding := ""
-		
-		// Check for native/random mode
-		for _, part := range parts {
-			if part == "native" {
+		keyStartIndex := 0
+
+		if len(s) >= 3 && s[0] == "mlkem768x25519plus" {
+			// Parse mode
+			switch s[1] {
+			case "native":
+				xorMode = 0
+			case "xorpub":
 				xorMode = 1
-			} else if part == "random" {
+			case "random":
 				xorMode = 2
-			} else if part == "0rtt" || strings.HasSuffix(part, "rtt") {
-				// Extract seconds from 0rtt format
-				if part != "0rtt" {
-					seconds = 0 // Will be set by server
+			default:
+				logger.Warn("unknown encryption mode: ", s[1], ", using native")
+			}
+
+			// Parse RTT mode
+			if s[2] == "0rtt" {
+				seconds = 1 // enable 0-RTT
+			} else if s[2] == "1rtt" {
+				seconds = 0 // disable 0-RTT
+			} else if strings.HasSuffix(s[2], "s") {
+				// Server-side format like "600s", client should use 0-RTT
+				seconds = 1
+			}
+
+			keyStartIndex = 3
+
+			// Check if there's a padding parameter (short string before keys)
+			if len(s) > 3 {
+				// Padding is typically a short string like "100-111-1111"
+				// Keys are long base64 strings
+				if len(s[3]) < 50 { // heuristic: padding is much shorter than keys
+					testDecode, _ := base64.RawURLEncoding.DecodeString(s[3])
+					if len(testDecode) != 32 && len(testDecode) != 1184 {
+						padding = s[3]
+						keyStartIndex = 4
+					}
 				}
 			}
 		}
-		
-		// Extract public keys (skip mode/config parts)
+
+		// Extract keys
 		var nfsPKeysBytes [][]byte
-		for i := 3; i < len(parts); i++ {
-			keyBytes, err := base64.RawURLEncoding.DecodeString(parts[i])
-			if err != nil {
-				return nil, E.Cause(err, "decode encryption key")
+		for i := keyStartIndex; i < len(s); i++ {
+			b, _ := base64.RawURLEncoding.DecodeString(s[i])
+			// Only accept valid key lengths: 32 bytes for X25519, 1184 bytes for ML-KEM-768 public key
+			if len(b) == 32 || len(b) == 1184 {
+				nfsPKeysBytes = append(nfsPKeysBytes, b)
 			}
-			nfsPKeysBytes = append(nfsPKeysBytes, keyBytes)
 		}
-		
+
 		if len(nfsPKeysBytes) == 0 {
-			return nil, E.New("no encryption keys provided")
+			return nil, E.New("no valid encryption keys found in encryption string")
 		}
-		
+
 		outbound.encryption = &encryption.ClientInstance{}
 		if err := outbound.encryption.Init(nfsPKeysBytes, xorMode, seconds, padding); err != nil {
 			return nil, E.Cause(err, "initialize encryption")
 		}
+		logger.Debug("encryption initialized: keys=", len(nfsPKeysBytes), " xorMode=", xorMode, " seconds=", seconds, " padding=", padding)
 	}
 	
 	muxOpts := common.PtrValueOrDefault(options.Multiplex)
