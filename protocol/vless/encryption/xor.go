@@ -90,3 +90,15 @@ func (c *XorConn) Read(b []byte) (int, error) {
 	}
 	return n, err
 }
+
+func (c *XorConn) ReaderReplaceable() bool {
+	return true
+}
+
+func (c *XorConn) WriterReplaceable() bool {
+	return true
+}
+
+func (c *XorConn) Upstream() any {
+	return c.Conn
+}
