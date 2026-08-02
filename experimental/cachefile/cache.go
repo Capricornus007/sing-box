@@ -221,7 +221,11 @@ func (c *CacheFile) start() error {
 		return err
 	}
 	cacheFile.Close()
-	options := bbolt.Options{Timeout: time.Second}
+	options := bbolt.Options{
+		Timeout:        time.Second,
+		NoFreelistSync: true,
+		FreelistType:   bbolt.FreelistMapType,
+	}
 	var db *bbolt.DB
 	for range 10 {
 		db, err = bbolt.Open(c.path, fileMode, &options)
@@ -320,7 +324,11 @@ func (c *CacheFile) resetDB() {
 	defer c.resetAccess.Unlock()
 	c.DB.Close()
 	filemanager.Remove(c.ctx, c.path)
-	db, err := bbolt.Open(c.path, 0o666, &bbolt.Options{Timeout: time.Second})
+	db, err := bbolt.Open(c.path, 0o666, &bbolt.Options{
+		Timeout:        time.Second,
+		NoFreelistSync: true,
+		FreelistType:   bbolt.FreelistMapType,
+	})
 	if err == nil {
 		_ = filemanager.Chown(c.ctx, c.path)
 		c.DB = db
