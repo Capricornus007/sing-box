@@ -2,11 +2,15 @@ package option
 
 import (
 	"context"
+	"fmt"
 	"net/netip"
+	"net/url"
 	"reflect"
+	"strconv"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/schema"
+	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badjson"
@@ -36,6 +40,12 @@ type removedLegacyDNSOptions struct {
 	FakeIP json.RawMessage `json:"fakeip,omitempty"`
 }
 
+type legacyFakeIPOptions struct {
+	Enabled    bool   `json:"enabled"`
+	Inet4Range string `json:"inet4_range,omitempty"`
+	Inet6Range string `json:"inet6_range,omitempty"`
+}
+
 func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) error {
 	var legacyOptions removedLegacyDNSOptions
 	err := json.UnmarshalContext(ctx, content, &legacyOptions)
@@ -43,9 +53,116 @@ func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) e
 		return err
 	}
 	if len(legacyOptions.FakeIP) != 0 {
-		return E.New(legacyDNSFakeIPRemovedMessage)
+		// Legacy DNS fakeip options (sing-box < 1.12): auto-upgrade to the new
+		// fakeip DNS server format so old configs keep working.
+		var fakeIP legacyFakeIPOptions
+		if err = json.UnmarshalContext(ctx, legacyOptions.FakeIP, &fakeIP); err != nil {
+			return E.Cause(err, "decode legacy fakeip options")
+		}
+		if fakeIP.Enabled {
+			// Inject a fakeip server with the legacy ranges. Match servers that
+			// used "address":"fakeip", otherwise add a new one named "fakeip".
+			var raw map[string]any
+			if err = json.UnmarshalContext(ctx, content, &raw); err != nil {
+				return err
+			}
+			delete(raw, "fakeip")
+			servers, _ := raw["servers"].([]any)
+			newServers := make([]any, 0, len(servers)+1)
+			found := false
+			for _, s := range servers {
+				sm, ok := s.(map[string]any)
+				if !ok {
+					newServers = append(newServers, s)
+					continue
+				}
+				if addr, _ := sm["address"].(string); addr == "fakeip" {
+					delete(sm, "address")
+					delete(sm, "strategy")
+					sm["type"] = C.DNSTypeFakeIP
+					if fakeIP.Inet4Range != "" {
+						sm["inet4_range"] = fakeIP.Inet4Range
+					}
+					if fakeIP.Inet6Range != "" {
+						sm["inet6_range"] = fakeIP.Inet6Range
+					}
+					found = true
+				}
+				newServers = append(newServers, sm)
+			}
+			if !found {
+				fs := map[string]any{
+					"type": C.DNSTypeFakeIP,
+					"tag":  "fakeip",
+				}
+				if fakeIP.Inet4Range != "" {
+					fs["inet4_range"] = fakeIP.Inet4Range
+				}
+				if fakeIP.Inet6Range != "" {
+					fs["inet6_range"] = fakeIP.Inet6Range
+				}
+				newServers = append(newServers, fs)
+			}
+			raw["servers"] = newServers
+			content, err = json.MarshalContext(ctx, raw)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Disabled fakeip is a no-op in the legacy format.
+			var raw map[string]any
+			if err = json.UnmarshalContext(ctx, content, &raw); err != nil {
+				return err
+			}
+			delete(raw, "fakeip")
+			content, err = json.MarshalContext(ctx, raw)
+			if err != nil {
+				return err
+			}
+		}
 	}
-	return badjson.UnmarshallExcludedContext(ctx, content, legacyOptions, &o.RawDNSOptions)
+	err = badjson.UnmarshallExcludedContext(ctx, content, legacyOptions, &o.RawDNSOptions)
+	if err != nil {
+		return err
+	}
+	// Legacy rcode servers (sing-box < 1.14) are represented as an internal
+	// marker type. Remove them and rewrite rules that referenced them into
+	// "predefined" + rcode actions.
+	rcodeMap := make(map[string]int)
+	o.Servers = common.Filter(o.Servers, func(it DNSServerOptions) bool {
+		if it.Type == C.DNSTypeLegacyRcode {
+			rcodeMap[it.Tag] = it.Options.(int)
+			return false
+		}
+		return true
+	})
+	if len(rcodeMap) > 0 {
+		for i := 0; i < len(o.Rules); i++ {
+			rewriteDNSRcode(rcodeMap, &o.Rules[i])
+		}
+	}
+	return nil
+}
+
+func rewriteDNSRcode(rcodeMap map[string]int, rule *DNSRule) {
+	switch rule.Type {
+	case C.RuleTypeDefault:
+		rewriteDNSRcodeAction(rcodeMap, &rule.DefaultOptions.DNSRuleAction)
+	case C.RuleTypeLogical:
+		rewriteDNSRcodeAction(rcodeMap, &rule.LogicalOptions.DNSRuleAction)
+	}
+}
+
+func rewriteDNSRcodeAction(rcodeMap map[string]int, ruleAction *DNSRuleAction) {
+	if ruleAction.Action != C.RuleActionTypeRoute {
+		return
+	}
+	rcode, loaded := rcodeMap[ruleAction.RouteOptions.Server]
+	if !loaded {
+		return
+	}
+	ruleAction.Action = C.RuleActionTypePredefined
+	ruleAction.PredefinedOptions.Rcode = common.Ptr(DNSRCode(rcode))
 }
 
 func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
@@ -108,6 +225,8 @@ type DNSTransportOptionsRegistry interface {
 type _DNSServerOptions struct {
 	Type    string `json:"type,omitempty"`
 	Tag     string `json:"tag,omitempty"`
+	// Legacy address format (sing-box < 1.12), auto-upgraded below.
+	Address string `json:"address,omitempty"`
 	Options any    `json:"-"`
 }
 
@@ -121,6 +240,111 @@ func (o *DNSServerOptions) UnmarshalJSONContext(ctx context.Context, content []b
 	err := json.UnmarshalContext(ctx, content, (*_DNSServerOptions)(o))
 	if err != nil {
 		return err
+	}
+	if o.Type == "" && o.Address != "" {
+		// Legacy DNS server format (sing-box < 1.12): auto-upgrade to the new
+		// "type" format so old configs (e.g. NekoBox-generated) keep working.
+		serverURL, _ := url.Parse(o.Address)
+		var serverType string
+		if serverURL != nil && serverURL.Scheme != "" && serverURL.Host != "" {
+			serverType = serverURL.Scheme
+		} else {
+			switch o.Address {
+			case "local", "fakeip":
+				serverType = o.Address
+			default:
+				serverType = C.DNSTypeUDP
+			}
+		}
+		if serverType == "rcode" {
+			// Legacy rcode server (sing-box < 1.14). We keep it as an internal
+			// marker type; DNSOptions rewrites rules referencing it into
+			// "predefined" + rcode actions after parsing.
+			if serverURL == nil {
+				return E.New("invalid rcode server address")
+			}
+			var rcode int
+			switch serverURL.Host {
+			case "success":
+				rcode = 0
+			case "format_error":
+				rcode = 1
+			case "server_failure":
+				rcode = 2
+			case "name_error":
+				rcode = 3
+			case "not_implemented":
+				rcode = 4
+			case "refused":
+				rcode = 5
+			default:
+				return E.New("unknown rcode: ", serverURL.Host)
+			}
+			o.Type = C.DNSTypeLegacyRcode
+			o.Options = rcode
+			return nil
+		}
+		o.Type = serverType
+		// Rebuild content with type set and address removed, then unmarshal the
+		// type-specific options normally.
+		var raw map[string]any
+		if err = json.UnmarshalContext(ctx, content, &raw); err != nil {
+			return err
+		}
+		delete(raw, "address")
+		raw["type"] = o.Type
+		o.Address = "" // cleared; only meaningful for legacy upgrade
+		// Legacy "address_resolver"/"address_strategy" map onto the new
+		// "domain_resolver" dial option (same as upstream 1.13 Upgrade).
+		if resolver, _ := raw["address_resolver"].(string); resolver != "" {
+			delete(raw, "address_resolver")
+			dr := map[string]any{"server": resolver}
+			if strategy, _ := raw["address_strategy"].(string); strategy != "" {
+				delete(raw, "address_strategy")
+				dr["strategy"] = strategy
+			}
+			raw["domain_resolver"] = dr
+		} else {
+			delete(raw, "address_strategy")
+		}
+		if serverType == C.DNSTypeFakeIP {
+			// New fakeip server options only carry the ranges; a legacy
+			// "strategy" on a fakeip server is not supported anymore.
+			delete(raw, "strategy")
+		}
+		if serverType == C.DNSTypeUDP || serverType == C.DNSTypeTCP || serverType == C.DNSTypeTLS || serverType == C.DNSTypeQUIC || serverType == C.DNSTypeHTTPS || serverType == C.DNSTypeHTTP3 {
+			// address "https://host[:port]/path" or "8.8.8.8[:53]"
+			var host, port, path string
+			if serverURL != nil && serverURL.Scheme != "" && serverURL.Host != "" {
+				host = serverURL.Hostname()
+				port = serverURL.Port()
+				path = serverURL.Path
+			} else {
+				addr := M.ParseSocksaddr(o.Address)
+				host = addr.AddrString()
+				if addr.Port != 0 {
+					port = fmt.Sprint(addr.Port)
+				}
+			}
+			if host != "" {
+				raw["server"] = host
+			}
+			if port != "" {
+				p, err := strconv.ParseUint(port, 10, 16)
+				if err != nil {
+					return E.Cause(err, "invalid server port")
+				}
+				raw["server_port"] = p
+			}
+			if path != "" && path != "/dns-query" {
+				raw["path"] = path
+			}
+		}
+		newContent, err := json.MarshalContext(ctx, raw)
+		if err != nil {
+			return err
+		}
+		content = newContent
 	}
 	registry := service.FromContext[DNSTransportOptionsRegistry](ctx)
 	if registry == nil {
