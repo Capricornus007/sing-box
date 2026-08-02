@@ -4,6 +4,7 @@ go 1.24.7
 
 require (
 	filippo.io/age v1.3.1
+	github.com/amnezia-vpn/amneziawg-go v0.2.19
 	github.com/anthropics/anthropic-sdk-go v1.26.0
 	github.com/anytls/sing-anytls v0.0.11
 	github.com/caddyserver/certmagic v0.25.3-0.20260421143802-60d9d8b415d6
