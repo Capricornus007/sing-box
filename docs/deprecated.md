@@ -123,6 +123,11 @@ check [Migration](../migration/#migrate-wireguard-outbound-to-endpoint).
 
 Old outbound was removed in sing-box 1.13.0.
 
+#### AmneziaWG outbound
+
+AmneziaWG outbound has been removed. Use an AmneziaWG endpoint instead,
+see [Migration](../migration/#migrate-amneziawg-outbound-to-endpoint).
+
 #### GSO option in TUN
 
 GSO has no advantages for transparent proxy scenarios, is deprecated and no longer works in TUN.

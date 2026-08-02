@@ -90,6 +90,9 @@ jobs:
     strategy:
       max-parallel: 13
       matrix:
+        os: [ linux, windows, darwin, android ]
+        arch: [ "386", amd64, arm64 ]
+        legacy_go: [ false ]
         include:
           - { os: linux, arch: amd64, variant: purego, naive: true }
           - { os: linux, arch: amd64, variant: glibc, naive: true }
@@ -368,7 +371,6 @@ jobs:
         run: |-
           set -xeuo pipefail
           sudo gem install fpm
-          echo '%_rpmformat 4' > "$HOME/.rpmmacros"
           cp .fpm_systemd .fpm
           fpm -t rpm \
             -v "$PKG_VERSION" \

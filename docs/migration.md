@@ -1152,6 +1152,57 @@ WireGuard outbound is deprecated and can be replaced by endpoint.
     }
     ```
 
+### Migrate AmneziaWG outbound to endpoint
+
+AmneziaWG is a bidirectional network endpoint. Move the existing object from `outbounds` to `endpoints`;
+its type and option fields do not change.
+
+=== ":material-card-remove: Removed"
+
+    ```json
+    {
+      "outbounds": [
+        {
+          "type": "awg",
+          "tag": "awg-out",
+          "address": ["10.0.0.2/32"],
+          "private_key": "<private_key>",
+          "peers": [
+            {
+              "address": "127.0.0.1",
+              "port": 51820,
+              "public_key": "<peer_public_key>",
+              "allowed_ips": ["0.0.0.0/0"]
+            }
+          ]
+        }
+      ]
+    }
+    ```
+
+=== ":material-card-multiple: New"
+
+    ```json
+    {
+      "endpoints": [
+        {
+          "type": "awg",
+          "tag": "awg-ep",
+          "address": ["10.0.0.2/32"],
+          "private_key": "<private_key>",
+          "peers": [
+            {
+              "address": "127.0.0.1",
+              "port": 51820,
+              "public_key": "<peer_public_key>",
+              "allowed_ips": ["0.0.0.0/0"]
+            }
+          ]
+        }
+      ]
+    }
+    ```
+
 ## 1.10.0
 
 ### TUN address fields are merged

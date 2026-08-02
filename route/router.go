@@ -46,11 +46,13 @@ type Router struct {
 	neighborResolver  adapter.NeighborResolver
 	pauseManager      pause.Manager
 	trackers          []adapter.ConnectionTracker
+	nekoTracker       adapter.ConnectionTracker
 	platformInterface adapter.PlatformInterface
 	started           bool
 }
 
 func NewRouter(ctx context.Context, logFactory log.Factory, options option.RouteOptions, dnsOptions option.DNSOptions) *Router {
+	// 设置并发拨号
 	return &Router{
 		ctx:               ctx,
 		logger:            logFactory.NewLogger("router"),

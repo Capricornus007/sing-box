@@ -111,6 +111,7 @@ func NewClientWithOptions(options ClientOptions) (Config, error) {
 func ClientHandshake(ctx context.Context, conn net.Conn, config Config) (Conn, error) {
 	tlsConn, err := aTLS.ClientHandshake(ctx, conn, config)
 	if err != nil {
+		_ = conn.Close()
 		return nil, err
 	}
 	readWaitConn, err := badtls.NewReadWaitConn(tlsConn)

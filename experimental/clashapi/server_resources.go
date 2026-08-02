@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"crypto/tls"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -35,7 +36,7 @@ func (s *Server) checkAndDownloadExternalUI() {
 	}
 }
 
-func (s *Server) downloadExternalUI() error {
+func (s *Server) downloadExternalUI() (err error) {
 	var downloadURL string
 	if s.externalUIDownloadURL != "" {
 		downloadURL = s.externalUIDownloadURL
@@ -72,7 +73,13 @@ func (s *Server) downloadExternalUI() error {
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer func() {
+		_, copyErr := io.Copy(io.Discard, response.Body)
+		closeErr := response.Body.Close()
+		if err == nil {
+			err = errors.Join(copyErr, closeErr)
+		}
+	}()
 	if response.StatusCode != http.StatusOK {
 		return E.New("download external ui failed: ", response.Status)
 	}

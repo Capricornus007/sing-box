@@ -110,7 +110,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		for _, hostKey := range options.HostKey {
 			key, _, _, _, err := ssh.ParseAuthorizedKey([]byte(hostKey))
 			if err != nil {
-				return nil, E.Cause(err, "parse host key: ", hostKey)
+				return nil, E.New("parse host key ", key)
 			}
 			outbound.hostKey = append(outbound.hostKey, key)
 		}

@@ -39,6 +39,7 @@
 | `selector`     | [Selector](./selector/)         |
 | `urltest`      | [URLTest](./urltest/)           |
 | `naive`        | [NaiveProxy](./naive/)          |
+| `masque`       | [MASQUE](./masque/)              |
 
 #### tag
 
@@ -49,3 +50,4 @@ The tag of the outbound.
 #### Outbounds that support IP connection
 
 * `WireGuard`
+* `MASQUE`

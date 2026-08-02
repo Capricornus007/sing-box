@@ -14,7 +14,7 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/transport/wireguard"
-	"github.com/sagernet/sing-tun"
+	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -42,7 +42,9 @@ type Endpoint struct {
 	logger         logger.ContextLogger
 	localAddresses []netip.Prefix
 	endpoint       *wireguard.Endpoint
+	resolveOnStart bool
 	started        atomic.Bool
+	detoured       bool
 }
 
 func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.WireGuardEndpointOptions) (adapter.Endpoint, error) {
@@ -53,16 +55,19 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		dnsRouter:      service.FromContext[adapter.DNSRouter](ctx),
 		logger:         logger,
 		localAddresses: options.Address,
+		detoured:       options.Detour != "",
 	}
 	if options.Detour != "" && options.ListenPort != 0 {
 		return nil, E.New("`listen_port` is conflict with `detour`")
 	}
+	remoteIsDomain := common.Any(options.Peers, func(it option.WireGuardPeer) bool {
+		return !M.ParseAddr(it.Address).IsValid()
+	})
+	ep.resolveOnStart = remoteIsDomain && options.Detour != ""
 	outboundDialer, err := dialer.NewWithOptions(dialer.Options{
-		Context: ctx,
-		Options: options.DialerOptions,
-		RemoteIsDomain: common.Any(options.Peers, func(it option.WireGuardPeer) bool {
-			return !M.ParseAddr(it.Address).IsValid()
-		}),
+		Context:          ctx,
+		Options:          options.DialerOptions,
+		RemoteIsDomain:   remoteIsDomain,
 		ResolverOnDetour: true,
 	})
 	if err != nil {
@@ -109,9 +114,25 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		PrivateKey: options.PrivateKey,
 		ListenPort: options.ListenPort,
 		ResolvePeer: func(domain string) (netip.Addr, error) {
-			endpointAddresses, lookupErr := ep.dnsRouter.Lookup(ctx, domain, outboundDialer.(dialer.ResolveDialer).QueryOptions())
+			queryOptions := outboundDialer.(dialer.ResolveDialer).QueryOptions()
+			if options.Detour != "" {
+				var resolveErr error
+				queryOptions, resolveErr = dialer.PeerDomainQueryOptions(
+					service.FromContext[adapter.DNSTransportManager](ctx),
+					tag,
+					options.Detour,
+					queryOptions,
+				)
+				if resolveErr != nil {
+					return netip.Addr{}, resolveErr
+				}
+			}
+			endpointAddresses, lookupErr := ep.dnsRouter.Lookup(ctx, domain, queryOptions)
 			if lookupErr != nil {
 				return netip.Addr{}, lookupErr
+			}
+			if len(endpointAddresses) == 0 {
+				return netip.Addr{}, E.New("empty DNS response for ", domain)
 			}
 			return endpointAddresses[0], nil
 		},
@@ -137,7 +158,7 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 func (w *Endpoint) Start(stage adapter.StartStage) error {
 	switch stage {
 	case adapter.StartStateStart:
-		return w.endpoint.Start(false)
+		return w.endpoint.Start(w.resolveOnStart)
 	case adapter.StartStatePostStart:
 		err := w.endpoint.Start(true)
 		if err != nil {
@@ -154,7 +175,7 @@ func (w *Endpoint) Close() error {
 }
 
 func (w *Endpoint) InterfaceUpdated() {
-	if !w.started.Load() {
+	if !w.started.Load() || w.detoured {
 		return
 	}
 	err := w.endpoint.BindUpdate()

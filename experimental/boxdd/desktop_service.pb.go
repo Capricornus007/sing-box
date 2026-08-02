@@ -1423,6 +1423,102 @@ func (x *OOMReportFile) GetIsProfile() bool {
 	return false
 }
 
+type DataProtectionInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Key           []byte                 `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DataProtectionInfo) Reset() {
+	*x = DataProtectionInfo{}
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DataProtectionInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DataProtectionInfo) ProtoMessage() {}
+
+func (x *DataProtectionInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DataProtectionInfo.ProtoReflect.Descriptor instead.
+func (*DataProtectionInfo) Descriptor() ([]byte, []int) {
+	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *DataProtectionInfo) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *DataProtectionInfo) GetKey() []byte {
+	if x != nil {
+		return x.Key
+	}
+	return nil
+}
+
+type SetDataProtectionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetDataProtectionRequest) Reset() {
+	*x = SetDataProtectionRequest{}
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetDataProtectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetDataProtectionRequest) ProtoMessage() {}
+
+func (x *SetDataProtectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetDataProtectionRequest.ProtoReflect.Descriptor instead.
+func (*SetDataProtectionRequest) Descriptor() ([]byte, []int) {
+	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *SetDataProtectionRequest) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
 type SecuritySettings struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Available           bool                   `protobuf:"varint,1,opt,name=available,proto3" json:"available,omitempty"`
@@ -1433,7 +1529,7 @@ type SecuritySettings struct {
 
 func (x *SecuritySettings) Reset() {
 	*x = SecuritySettings{}
-	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[23]
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1445,7 +1541,7 @@ func (x *SecuritySettings) String() string {
 func (*SecuritySettings) ProtoMessage() {}
 
 func (x *SecuritySettings) ProtoReflect() protoreflect.Message {
-	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[23]
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1458,7 +1554,7 @@ func (x *SecuritySettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecuritySettings.ProtoReflect.Descriptor instead.
 func (*SecuritySettings) Descriptor() ([]byte, []int) {
-	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{23}
+	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SecuritySettings) GetAvailable() bool {
@@ -1484,7 +1580,7 @@ type SetInsecureModeEnabledRequest struct {
 
 func (x *SetInsecureModeEnabledRequest) Reset() {
 	*x = SetInsecureModeEnabledRequest{}
-	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[24]
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1496,7 +1592,7 @@ func (x *SetInsecureModeEnabledRequest) String() string {
 func (*SetInsecureModeEnabledRequest) ProtoMessage() {}
 
 func (x *SetInsecureModeEnabledRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[24]
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1509,7 +1605,7 @@ func (x *SetInsecureModeEnabledRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetInsecureModeEnabledRequest.ProtoReflect.Descriptor instead.
 func (*SetInsecureModeEnabledRequest) Descriptor() ([]byte, []int) {
-	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{24}
+	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SetInsecureModeEnabledRequest) GetEnabled() bool {
@@ -1528,7 +1624,7 @@ type InstallUpdateRequest struct {
 
 func (x *InstallUpdateRequest) Reset() {
 	*x = InstallUpdateRequest{}
-	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[25]
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1540,7 +1636,7 @@ func (x *InstallUpdateRequest) String() string {
 func (*InstallUpdateRequest) ProtoMessage() {}
 
 func (x *InstallUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[25]
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1553,7 +1649,7 @@ func (x *InstallUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstallUpdateRequest.ProtoReflect.Descriptor instead.
 func (*InstallUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{25}
+	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *InstallUpdateRequest) GetInstallerPath() string {
@@ -1572,7 +1668,7 @@ type InstallUpdateResponse struct {
 
 func (x *InstallUpdateResponse) Reset() {
 	*x = InstallUpdateResponse{}
-	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[26]
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1584,7 +1680,7 @@ func (x *InstallUpdateResponse) String() string {
 func (*InstallUpdateResponse) ProtoMessage() {}
 
 func (x *InstallUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[26]
+	mi := &file_experimental_boxdd_desktop_service_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1597,7 +1693,7 @@ func (x *InstallUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstallUpdateResponse.ProtoReflect.Descriptor instead.
 func (*InstallUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{26}
+	return file_experimental_boxdd_desktop_service_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *InstallUpdateResponse) GetResult() InstallUpdateResult {
@@ -1701,7 +1797,12 @@ const file_experimental_boxdd_desktop_service_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\fR\acontent\x12\x1d\n" +
 	"\n" +
-	"is_profile\x18\x03 \x01(\bR\tisProfile\"d\n" +
+	"is_profile\x18\x03 \x01(\bR\tisProfile\"@\n" +
+	"\x12DataProtectionInfo\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x10\n" +
+	"\x03key\x18\x02 \x01(\fR\x03key\"4\n" +
+	"\x18SetDataProtectionRequest\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\"d\n" +
 	"\x10SecuritySettings\x12\x1c\n" +
 	"\tavailable\x18\x01 \x01(\bR\tavailable\x122\n" +
 	"\x15insecure_mode_enabled\x18\x02 \x01(\bR\x13insecureModeEnabled\"9\n" +
@@ -1720,7 +1821,7 @@ const file_experimental_boxdd_desktop_service_proto_rawDesc = "" +
 	"!INSTALL_UPDATE_RESULT_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dINSTALL_UPDATE_RESULT_STARTED\x10\x01\x12)\n" +
 	"%INSTALL_UPDATE_RESULT_SIGNER_MISMATCH\x10\x02\x12#\n" +
-	"\x1fINSTALL_UPDATE_RESULT_NOT_NEWER\x10\x032\xc4\f\n" +
+	"\x1fINSTALL_UPDATE_RESULT_NOT_NEWER\x10\x032\xe7\r\n" +
 	"\x0eDesktopService\x12>\n" +
 	"\rGetDaemonInfo\x12\x16.google.protobuf.Empty\x1a\x13.desktop.DaemonInfo\"\x00\x12@\n" +
 	"\fClaimService\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12C\n" +
@@ -1741,6 +1842,8 @@ const file_experimental_boxdd_desktop_service_proto_rawDesc = "" +
 	"\x0fDeleteOOMReport\x12\x19.desktop.OOMReportRequest\x1a\x16.google.protobuf.Empty\"\x00\x12G\n" +
 	"\x13DeleteAllOOMReports\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12P\n" +
 	"\rInstallUpdate\x12\x1d.desktop.InstallUpdateRequest\x1a\x1e.desktop.InstallUpdateResponse\"\x00\x12J\n" +
+	"\x11GetDataProtection\x12\x16.google.protobuf.Empty\x1a\x1b.desktop.DataProtectionInfo\"\x00\x12U\n" +
+	"\x11SetDataProtection\x12!.desktop.SetDataProtectionRequest\x1a\x1b.desktop.DataProtectionInfo\"\x00\x12J\n" +
 	"\x13GetSecuritySettings\x12\x16.google.protobuf.Empty\x1a\x19.desktop.SecuritySettings\"\x00\x12Z\n" +
 	"\x16SetInsecureModeEnabled\x12&.desktop.SetInsecureModeEnabledRequest\x1a\x16.google.protobuf.Empty\"\x002\x87\x05\n" +
 	"\x12ApplicationService\x12?\n" +
@@ -1767,11 +1870,11 @@ func file_experimental_boxdd_desktop_service_proto_rawDescGZIP() []byte {
 
 var (
 	file_experimental_boxdd_desktop_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-	file_experimental_boxdd_desktop_service_proto_msgTypes  = make([]protoimpl.MessageInfo, 27)
+	file_experimental_boxdd_desktop_service_proto_msgTypes  = make([]protoimpl.MessageInfo, 29)
 	file_experimental_boxdd_desktop_service_proto_goTypes   = []any{
-		(DaemonOwnership)(0),                        // 0: desktop.DaemonOwnership
-		(InstallUpdateResult)(0),                    // 1: desktop.InstallUpdateResult
-		(ProfileContent_Type)(0),                    // 2: desktop.ProfileContent.Type
+		DaemonOwnership(0),                          // 0: desktop.DaemonOwnership
+		InstallUpdateResult(0),                      // 1: desktop.InstallUpdateResult
+		ProfileContent_Type(0),                      // 2: desktop.ProfileContent.Type
 		(*ArchiveReportRequest)(nil),                // 3: desktop.ArchiveReportRequest
 		(*StandaloneNetworkQualityTestRequest)(nil), // 4: desktop.StandaloneNetworkQualityTestRequest
 		(*StandaloneSTUNTestRequest)(nil),           // 5: desktop.StandaloneSTUNTestRequest
@@ -1795,16 +1898,17 @@ var (
 		(*OOMReportExportRequest)(nil),              // 23: desktop.OOMReportExportRequest
 		(*OOMReportContent)(nil),                    // 24: desktop.OOMReportContent
 		(*OOMReportFile)(nil),                       // 25: desktop.OOMReportFile
-		(*SecuritySettings)(nil),                    // 26: desktop.SecuritySettings
-		(*SetInsecureModeEnabledRequest)(nil),       // 27: desktop.SetInsecureModeEnabledRequest
-		(*InstallUpdateRequest)(nil),                // 28: desktop.InstallUpdateRequest
-		(*InstallUpdateResponse)(nil),               // 29: desktop.InstallUpdateResponse
-		(*emptypb.Empty)(nil),                       // 30: google.protobuf.Empty
-		(*daemon.NetworkQualityTestProgress)(nil),   // 31: daemon.NetworkQualityTestProgress
-		(*daemon.STUNTestProgress)(nil),             // 32: daemon.STUNTestProgress
+		(*DataProtectionInfo)(nil),                  // 26: desktop.DataProtectionInfo
+		(*SetDataProtectionRequest)(nil),            // 27: desktop.SetDataProtectionRequest
+		(*SecuritySettings)(nil),                    // 28: desktop.SecuritySettings
+		(*SetInsecureModeEnabledRequest)(nil),       // 29: desktop.SetInsecureModeEnabledRequest
+		(*InstallUpdateRequest)(nil),                // 30: desktop.InstallUpdateRequest
+		(*InstallUpdateResponse)(nil),               // 31: desktop.InstallUpdateResponse
+		(*emptypb.Empty)(nil),                       // 32: google.protobuf.Empty
+		(*daemon.NetworkQualityTestProgress)(nil),   // 33: daemon.NetworkQualityTestProgress
+		(*daemon.STUNTestProgress)(nil),             // 34: daemon.STUNTestProgress
 	}
 )
-
 var file_experimental_boxdd_desktop_service_proto_depIdxs = []int32{
 	0,  // 0: desktop.DaemonInfo.ownership:type_name -> desktop.DaemonOwnership
 	8,  // 1: desktop.StartServiceRequest.options:type_name -> desktop.StartOptions
@@ -1814,66 +1918,70 @@ var file_experimental_boxdd_desktop_service_proto_depIdxs = []int32{
 	21, // 5: desktop.OOMReportList.reports:type_name -> desktop.OOMReportEntry
 	25, // 6: desktop.OOMReportContent.files:type_name -> desktop.OOMReportFile
 	1,  // 7: desktop.InstallUpdateResponse.result:type_name -> desktop.InstallUpdateResult
-	30, // 8: desktop.DesktopService.GetDaemonInfo:input_type -> google.protobuf.Empty
-	30, // 9: desktop.DesktopService.ClaimService:input_type -> google.protobuf.Empty
-	30, // 10: desktop.DesktopService.TakeOverService:input_type -> google.protobuf.Empty
+	32, // 8: desktop.DesktopService.GetDaemonInfo:input_type -> google.protobuf.Empty
+	32, // 9: desktop.DesktopService.ClaimService:input_type -> google.protobuf.Empty
+	32, // 10: desktop.DesktopService.TakeOverService:input_type -> google.protobuf.Empty
 	7,  // 11: desktop.DesktopService.StartService:input_type -> desktop.StartServiceRequest
-	30, // 12: desktop.DesktopService.GetWorkingDirectory:input_type -> google.protobuf.Empty
-	30, // 13: desktop.DesktopService.DestroyWorkingDirectory:input_type -> google.protobuf.Empty
-	30, // 14: desktop.DesktopService.ListCrashReports:input_type -> google.protobuf.Empty
+	32, // 12: desktop.DesktopService.GetWorkingDirectory:input_type -> google.protobuf.Empty
+	32, // 13: desktop.DesktopService.DestroyWorkingDirectory:input_type -> google.protobuf.Empty
+	32, // 14: desktop.DesktopService.ListCrashReports:input_type -> google.protobuf.Empty
 	15, // 15: desktop.DesktopService.ReadCrashReport:input_type -> desktop.CrashReportRequest
 	15, // 16: desktop.DesktopService.MarkCrashReportRead:input_type -> desktop.CrashReportRequest
 	16, // 17: desktop.DesktopService.ExportCrashReport:input_type -> desktop.CrashReportExportRequest
 	15, // 18: desktop.DesktopService.DeleteCrashReport:input_type -> desktop.CrashReportRequest
-	30, // 19: desktop.DesktopService.DeleteAllCrashReports:input_type -> google.protobuf.Empty
-	30, // 20: desktop.DesktopService.ListOOMReports:input_type -> google.protobuf.Empty
+	32, // 19: desktop.DesktopService.DeleteAllCrashReports:input_type -> google.protobuf.Empty
+	32, // 20: desktop.DesktopService.ListOOMReports:input_type -> google.protobuf.Empty
 	22, // 21: desktop.DesktopService.ReadOOMReport:input_type -> desktop.OOMReportRequest
 	22, // 22: desktop.DesktopService.MarkOOMReportRead:input_type -> desktop.OOMReportRequest
 	23, // 23: desktop.DesktopService.ExportOOMReport:input_type -> desktop.OOMReportExportRequest
 	22, // 24: desktop.DesktopService.DeleteOOMReport:input_type -> desktop.OOMReportRequest
-	30, // 25: desktop.DesktopService.DeleteAllOOMReports:input_type -> google.protobuf.Empty
-	28, // 26: desktop.DesktopService.InstallUpdate:input_type -> desktop.InstallUpdateRequest
-	30, // 27: desktop.DesktopService.GetSecuritySettings:input_type -> google.protobuf.Empty
-	27, // 28: desktop.DesktopService.SetInsecureModeEnabled:input_type -> desktop.SetInsecureModeEnabledRequest
-	9,  // 29: desktop.ApplicationService.CheckConfig:input_type -> desktop.ConfigContent
-	9,  // 30: desktop.ApplicationService.FormatConfig:input_type -> desktop.ConfigContent
-	30, // 31: desktop.ApplicationService.GenerateConfigSchema:input_type -> google.protobuf.Empty
-	10, // 32: desktop.ApplicationService.EncodeProfile:input_type -> desktop.ProfileContent
-	11, // 33: desktop.ApplicationService.DecodeProfile:input_type -> desktop.ProfileData
-	3,  // 34: desktop.ApplicationService.ArchiveReport:input_type -> desktop.ArchiveReportRequest
-	4,  // 35: desktop.ApplicationService.StartStandaloneNetworkQualityTest:input_type -> desktop.StandaloneNetworkQualityTestRequest
-	5,  // 36: desktop.ApplicationService.StartStandaloneSTUNTest:input_type -> desktop.StandaloneSTUNTestRequest
-	6,  // 37: desktop.DesktopService.GetDaemonInfo:output_type -> desktop.DaemonInfo
-	30, // 38: desktop.DesktopService.ClaimService:output_type -> google.protobuf.Empty
-	30, // 39: desktop.DesktopService.TakeOverService:output_type -> google.protobuf.Empty
-	30, // 40: desktop.DesktopService.StartService:output_type -> google.protobuf.Empty
-	12, // 41: desktop.DesktopService.GetWorkingDirectory:output_type -> desktop.WorkingDirectoryInfo
-	30, // 42: desktop.DesktopService.DestroyWorkingDirectory:output_type -> google.protobuf.Empty
-	13, // 43: desktop.DesktopService.ListCrashReports:output_type -> desktop.CrashReportList
-	17, // 44: desktop.DesktopService.ReadCrashReport:output_type -> desktop.CrashReportContent
-	30, // 45: desktop.DesktopService.MarkCrashReportRead:output_type -> google.protobuf.Empty
-	19, // 46: desktop.DesktopService.ExportCrashReport:output_type -> desktop.CrashReportArchive
-	30, // 47: desktop.DesktopService.DeleteCrashReport:output_type -> google.protobuf.Empty
-	30, // 48: desktop.DesktopService.DeleteAllCrashReports:output_type -> google.protobuf.Empty
-	20, // 49: desktop.DesktopService.ListOOMReports:output_type -> desktop.OOMReportList
-	24, // 50: desktop.DesktopService.ReadOOMReport:output_type -> desktop.OOMReportContent
-	30, // 51: desktop.DesktopService.MarkOOMReportRead:output_type -> google.protobuf.Empty
-	19, // 52: desktop.DesktopService.ExportOOMReport:output_type -> desktop.CrashReportArchive
-	30, // 53: desktop.DesktopService.DeleteOOMReport:output_type -> google.protobuf.Empty
-	30, // 54: desktop.DesktopService.DeleteAllOOMReports:output_type -> google.protobuf.Empty
-	29, // 55: desktop.DesktopService.InstallUpdate:output_type -> desktop.InstallUpdateResponse
-	26, // 56: desktop.DesktopService.GetSecuritySettings:output_type -> desktop.SecuritySettings
-	30, // 57: desktop.DesktopService.SetInsecureModeEnabled:output_type -> google.protobuf.Empty
-	30, // 58: desktop.ApplicationService.CheckConfig:output_type -> google.protobuf.Empty
-	9,  // 59: desktop.ApplicationService.FormatConfig:output_type -> desktop.ConfigContent
-	9,  // 60: desktop.ApplicationService.GenerateConfigSchema:output_type -> desktop.ConfigContent
-	11, // 61: desktop.ApplicationService.EncodeProfile:output_type -> desktop.ProfileData
-	10, // 62: desktop.ApplicationService.DecodeProfile:output_type -> desktop.ProfileContent
-	30, // 63: desktop.ApplicationService.ArchiveReport:output_type -> google.protobuf.Empty
-	31, // 64: desktop.ApplicationService.StartStandaloneNetworkQualityTest:output_type -> daemon.NetworkQualityTestProgress
-	32, // 65: desktop.ApplicationService.StartStandaloneSTUNTest:output_type -> daemon.STUNTestProgress
-	37, // [37:66] is the sub-list for method output_type
-	8,  // [8:37] is the sub-list for method input_type
+	32, // 25: desktop.DesktopService.DeleteAllOOMReports:input_type -> google.protobuf.Empty
+	30, // 26: desktop.DesktopService.InstallUpdate:input_type -> desktop.InstallUpdateRequest
+	32, // 27: desktop.DesktopService.GetDataProtection:input_type -> google.protobuf.Empty
+	27, // 28: desktop.DesktopService.SetDataProtection:input_type -> desktop.SetDataProtectionRequest
+	32, // 29: desktop.DesktopService.GetSecuritySettings:input_type -> google.protobuf.Empty
+	29, // 30: desktop.DesktopService.SetInsecureModeEnabled:input_type -> desktop.SetInsecureModeEnabledRequest
+	9,  // 31: desktop.ApplicationService.CheckConfig:input_type -> desktop.ConfigContent
+	9,  // 32: desktop.ApplicationService.FormatConfig:input_type -> desktop.ConfigContent
+	32, // 33: desktop.ApplicationService.GenerateConfigSchema:input_type -> google.protobuf.Empty
+	10, // 34: desktop.ApplicationService.EncodeProfile:input_type -> desktop.ProfileContent
+	11, // 35: desktop.ApplicationService.DecodeProfile:input_type -> desktop.ProfileData
+	3,  // 36: desktop.ApplicationService.ArchiveReport:input_type -> desktop.ArchiveReportRequest
+	4,  // 37: desktop.ApplicationService.StartStandaloneNetworkQualityTest:input_type -> desktop.StandaloneNetworkQualityTestRequest
+	5,  // 38: desktop.ApplicationService.StartStandaloneSTUNTest:input_type -> desktop.StandaloneSTUNTestRequest
+	6,  // 39: desktop.DesktopService.GetDaemonInfo:output_type -> desktop.DaemonInfo
+	32, // 40: desktop.DesktopService.ClaimService:output_type -> google.protobuf.Empty
+	32, // 41: desktop.DesktopService.TakeOverService:output_type -> google.protobuf.Empty
+	32, // 42: desktop.DesktopService.StartService:output_type -> google.protobuf.Empty
+	12, // 43: desktop.DesktopService.GetWorkingDirectory:output_type -> desktop.WorkingDirectoryInfo
+	32, // 44: desktop.DesktopService.DestroyWorkingDirectory:output_type -> google.protobuf.Empty
+	13, // 45: desktop.DesktopService.ListCrashReports:output_type -> desktop.CrashReportList
+	17, // 46: desktop.DesktopService.ReadCrashReport:output_type -> desktop.CrashReportContent
+	32, // 47: desktop.DesktopService.MarkCrashReportRead:output_type -> google.protobuf.Empty
+	19, // 48: desktop.DesktopService.ExportCrashReport:output_type -> desktop.CrashReportArchive
+	32, // 49: desktop.DesktopService.DeleteCrashReport:output_type -> google.protobuf.Empty
+	32, // 50: desktop.DesktopService.DeleteAllCrashReports:output_type -> google.protobuf.Empty
+	20, // 51: desktop.DesktopService.ListOOMReports:output_type -> desktop.OOMReportList
+	24, // 52: desktop.DesktopService.ReadOOMReport:output_type -> desktop.OOMReportContent
+	32, // 53: desktop.DesktopService.MarkOOMReportRead:output_type -> google.protobuf.Empty
+	19, // 54: desktop.DesktopService.ExportOOMReport:output_type -> desktop.CrashReportArchive
+	32, // 55: desktop.DesktopService.DeleteOOMReport:output_type -> google.protobuf.Empty
+	32, // 56: desktop.DesktopService.DeleteAllOOMReports:output_type -> google.protobuf.Empty
+	31, // 57: desktop.DesktopService.InstallUpdate:output_type -> desktop.InstallUpdateResponse
+	26, // 58: desktop.DesktopService.GetDataProtection:output_type -> desktop.DataProtectionInfo
+	26, // 59: desktop.DesktopService.SetDataProtection:output_type -> desktop.DataProtectionInfo
+	28, // 60: desktop.DesktopService.GetSecuritySettings:output_type -> desktop.SecuritySettings
+	32, // 61: desktop.DesktopService.SetInsecureModeEnabled:output_type -> google.protobuf.Empty
+	32, // 62: desktop.ApplicationService.CheckConfig:output_type -> google.protobuf.Empty
+	9,  // 63: desktop.ApplicationService.FormatConfig:output_type -> desktop.ConfigContent
+	9,  // 64: desktop.ApplicationService.GenerateConfigSchema:output_type -> desktop.ConfigContent
+	11, // 65: desktop.ApplicationService.EncodeProfile:output_type -> desktop.ProfileData
+	10, // 66: desktop.ApplicationService.DecodeProfile:output_type -> desktop.ProfileContent
+	32, // 67: desktop.ApplicationService.ArchiveReport:output_type -> google.protobuf.Empty
+	33, // 68: desktop.ApplicationService.StartStandaloneNetworkQualityTest:output_type -> daemon.NetworkQualityTestProgress
+	34, // 69: desktop.ApplicationService.StartStandaloneSTUNTest:output_type -> daemon.STUNTestProgress
+	39, // [39:70] is the sub-list for method output_type
+	8,  // [8:39] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name
 	8,  // [8:8] is the sub-list for extension extendee
 	0,  // [0:8] is the sub-list for field type_name
@@ -1890,7 +1998,7 @@ func file_experimental_boxdd_desktop_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_experimental_boxdd_desktop_service_proto_rawDesc), len(file_experimental_boxdd_desktop_service_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   27,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

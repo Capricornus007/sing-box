@@ -141,7 +141,11 @@ func urlTest(ctx context.Context, link string, detour N.Dialer) (t uint16, err e
 	if err != nil {
 		return
 	}
-	resp.Body.Close()
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
 	t = uint16(time.Since(start) / time.Millisecond)
 	return
 }

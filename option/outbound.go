@@ -43,6 +43,8 @@ func (h *Outbound) UnmarshalJSONContext(ctx context.Context, content []byte) err
 	switch h.Type {
 	case C.TypeDNS:
 		return E.New("dns outbound is deprecated in sing-box 1.11.0 and removed in sing-box 1.13.0, use rule actions instead")
+	case C.TypeAwg:
+		return E.New("AmneziaWG outbound has been removed, use AmneziaWG endpoint instead")
 	}
 	options, loaded := registry.CreateOptions(h.Type)
 	if !loaded {

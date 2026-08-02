@@ -36,6 +36,7 @@ type Daemon struct {
 	closed                  bool
 	peerAccess              sync.Mutex
 	peerConnections         map[peerConnection]peerIdentity
+	dataProtectionAccess    sync.Mutex
 	platform                daemonPlatform
 }
 

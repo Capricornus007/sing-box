@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -11,6 +12,12 @@ import (
 
 	"golang.org/x/exp/slices"
 )
+
+func drainAndClose(body io.ReadCloser) error {
+	_, copyErr := io.Copy(io.Discard, body)
+	closeErr := body.Close()
+	return errors.Join(copyErr, closeErr)
+}
 
 func main() {
 	err := updateMozillaIncludedRootCAs()
@@ -23,12 +30,14 @@ func main() {
 	}
 }
 
-func updateMozillaIncludedRootCAs() error {
+func updateMozillaIncludedRootCAs() (err error) {
 	response, err := http.Get("https://ccadb.my.salesforce-sites.com/mozilla/IncludedCACertificateReportPEMCSV")
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer func() {
+		err = errors.Join(err, drainAndClose(response.Body))
+	}()
 	reader := csv.NewReader(response.Body)
 	header, err := reader.Read()
 	if err != nil {
@@ -66,12 +75,14 @@ func mozillaIncludedPEM() string {
 	return os.WriteFile("common/certificate/mozilla.go", []byte(generated.String()), 0o644)
 }
 
-func fetchChinaFingerprints() (map[string]bool, error) {
+func fetchChinaFingerprints() (chinaFingerprints map[string]bool, err error) {
 	response, err := http.Get("https://ccadb.my.salesforce-sites.com/ccadb/AllCertificateRecordsCSVFormatv4")
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		err = errors.Join(err, drainAndClose(response.Body))
+	}()
 	reader := csv.NewReader(response.Body)
 	header, err := reader.Read()
 	if err != nil {
@@ -80,7 +91,7 @@ func fetchChinaFingerprints() (map[string]bool, error) {
 	countryIndex := slices.Index(header, "Country")
 	fingerprintIndex := slices.Index(header, "SHA-256 Fingerprint")
 
-	chinaFingerprints := make(map[string]bool)
+	chinaFingerprints = make(map[string]bool)
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -95,7 +106,7 @@ func fetchChinaFingerprints() (map[string]bool, error) {
 	return chinaFingerprints, nil
 }
 
-func updateChromeIncludedRootCAs() error {
+func updateChromeIncludedRootCAs() (err error) {
 	chinaFingerprints, err := fetchChinaFingerprints()
 	if err != nil {
 		return err
@@ -105,7 +116,9 @@ func updateChromeIncludedRootCAs() error {
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer func() {
+		err = errors.Join(err, drainAndClose(response.Body))
+	}()
 	reader := csv.NewReader(response.Body)
 	header, err := reader.Read()
 	if err != nil {

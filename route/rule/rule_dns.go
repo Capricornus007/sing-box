@@ -272,6 +272,11 @@ func NewDefaultDNSRule(ctx context.Context, logger log.ContextLogger, options op
 		rule.items = append(rule.items, item)
 		rule.allItems = append(rule.allItems, item)
 	}
+	if len(options.PackageNameExclude) > 0 {
+		item := NewPackageNameExcludeItem(options.PackageNameExclude)
+		rule.items = append(rule.items, item)
+		rule.allItems = append(rule.allItems, item)
+	}
 	if len(options.PackageNameRegex) > 0 {
 		item, err := NewPackageNameRegexItem(options.PackageNameRegex)
 		if err != nil {

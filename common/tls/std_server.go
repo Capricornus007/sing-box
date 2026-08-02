@@ -289,7 +289,7 @@ func (c *STDServerConfig) certificateUpdated(path string) error {
 		for _, certPath := range c.clientCertificatePath {
 			content, err := filemanager.ReadFile(c.ctx, certPath)
 			if err != nil {
-				c.logger.Error(E.Cause(err, "reload certificate from ", certPath))
+				c.logger.Error(E.Cause(err, "reload certificate from ", c.clientCertificatePath))
 				continue
 			}
 			if !clientCertificateCA.AppendCertsFromPEM(content) {
