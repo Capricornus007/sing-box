@@ -311,6 +311,11 @@ func (o *DNSServerOptions) UnmarshalJSONContext(ctx context.Context, content []b
 			// New fakeip server options only carry the ranges; a legacy
 			// "strategy" on a fakeip server is not supported anymore.
 			delete(raw, "strategy")
+		} else {
+			// Server-level DNS response strategy was removed in the new DNS
+			// server format (only the top-level dns.strategy exists now).
+			// Drop it during upgrade so legacy configs keep parsing.
+			delete(raw, "strategy")
 		}
 		if serverType == C.DNSTypeUDP || serverType == C.DNSTypeTCP || serverType == C.DNSTypeTLS || serverType == C.DNSTypeQUIC || serverType == C.DNSTypeHTTPS || serverType == C.DNSTypeHTTP3 {
 			// address "https://host[:port]/path" or "8.8.8.8[:53]"
