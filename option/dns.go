@@ -293,6 +293,7 @@ func (o *DNSServerOptions) UnmarshalJSONContext(ctx context.Context, content []b
 		}
 		delete(raw, "address")
 		raw["type"] = o.Type
+		legacyAddress := o.Address
 		o.Address = "" // cleared; only meaningful for legacy upgrade
 		// Legacy "address_resolver"/"address_strategy" map onto the new
 		// "domain_resolver" dial option (same as upstream 1.13 Upgrade).
@@ -325,7 +326,7 @@ func (o *DNSServerOptions) UnmarshalJSONContext(ctx context.Context, content []b
 				port = serverURL.Port()
 				path = serverURL.Path
 			} else {
-				addr := M.ParseSocksaddr(o.Address)
+				addr := M.ParseSocksaddr(legacyAddress)
 				host = addr.AddrString()
 				if addr.Port != 0 {
 					port = fmt.Sprint(addr.Port)
