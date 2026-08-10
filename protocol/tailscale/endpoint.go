@@ -103,6 +103,7 @@ type Endpoint struct {
 	cfg           *wgcfg.Config
 	dnsCfg        *tsDNS.Config
 	routeDomains  common.TypedValue[map[string]bool]
+	routeSuffixes common.TypedValue[[]string]
 	searchDomains atomic.Bool
 	routePrefixes atomic.Pointer[netipx.IPSet]
 
@@ -905,6 +906,11 @@ func (t *Endpoint) PreferredDomain(metadata *adapter.InboundContext, domain stri
 	if routeDomains[domain] {
 		return true
 	}
+	for _, suffix := range t.routeSuffixes.Load() {
+		if mDNS.IsSubDomain(suffix, domain) {
+			return true
+		}
+	}
 	return !strings.Contains(domain, ".") && t.searchDomains.Load()
 }
 
@@ -931,13 +937,18 @@ func (t *Endpoint) onReconfig(cfg *wgcfg.Config, routerCfg *router.Config, dnsCf
 	t.dnsCfg = dnsCfg
 
 	routeDomains := make(map[string]bool)
-	for fqdn := range dnsCfg.Routes {
+	for fqdn := range dnsCfg.Hosts {
 		routeDomains[fqdn.WithoutTrailingDot()] = true
 	}
 	for _, fqdn := range dnsCfg.SearchDomains {
 		routeDomains[fqdn.WithoutTrailingDot()] = true
 	}
+	routeSuffixes := make([]string, 0, len(dnsCfg.Routes))
+	for fqdn := range dnsCfg.Routes {
+		routeSuffixes = append(routeSuffixes, fqdn.WithoutTrailingDot())
+	}
 	t.routeDomains.Store(routeDomains)
+	t.routeSuffixes.Store(routeSuffixes)
 	t.searchDomains.Store(len(dnsCfg.SearchDomains) > 0)
 
 	var builder netipx.IPSetBuilder
