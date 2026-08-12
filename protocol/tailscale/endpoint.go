@@ -57,12 +57,10 @@ import (
 	"github.com/sagernet/tailscale/types/nettype"
 	"github.com/sagernet/tailscale/version"
 	"github.com/sagernet/tailscale/wgengine"
-	"github.com/sagernet/tailscale/wgengine/filter"
 	"github.com/sagernet/tailscale/wgengine/router"
 	"github.com/sagernet/tailscale/wgengine/wgcfg"
 
 	mDNS "github.com/miekg/dns"
-	"go4.org/netipx"
 )
 
 var (
@@ -92,7 +90,6 @@ type Endpoint struct {
 	server            *tsnet.Server
 	stack             *stack.Stack
 	icmpForwarder     *tun.ICMPForwarder
-	filter            *atomic.Pointer[filter.Filter]
 	returnAccess      sync.Mutex
 	returnPath        tun.Return
 	wgEngine          wgengine.ExportedUserspaceEngine
@@ -104,7 +101,6 @@ type Endpoint struct {
 	routeDomains  common.TypedValue[map[string]bool]
 	routeSuffixes common.TypedValue[[]string]
 	searchDomains atomic.Bool
-	routePrefixes atomic.Pointer[netipx.IPSet]
 
 	acceptRoutes               bool
 	exitNode                   string
@@ -329,7 +325,7 @@ func (t *Endpoint) start() error {
 		}
 		t.systemTun = systemTun
 		t.systemDialer = systemDialer
-		t.server.TunDevice = wgTunDevice
+		t.server.Tun = wgTunDevice
 	}
 	if t.network.AutoRedirectOutputMark() != 0 {
 		netns.SetControlFunc(t.network.AutoRedirectOutputMarkFunc())
@@ -466,12 +462,10 @@ func (t *Endpoint) postStart() error {
 			t.logger.Warn("SSH server degraded: ", degraded)
 		}
 	}
-	localBackend := t.server.ExportLocalBackend()
 	err = t.editPrefs(sshEnabled)
 	if err != nil {
 		return err
 	}
-	t.filter = localBackend.ExportFilter()
 	if sshEnabled {
 		sshServer, err := tailssh.New(t.ctx, t.server, t.platformInterface, t.sshServerOptions, t.logger)
 		if err != nil {
@@ -903,11 +897,11 @@ func (t *Endpoint) PreferredDomain(metadata *adapter.InboundContext, domain stri
 }
 
 func (t *Endpoint) PreferredAddress(metadata *adapter.InboundContext, address netip.Addr) bool {
-	routePrefixes := t.routePrefixes.Load()
-	if routePrefixes == nil {
+	if !t.started.Load() {
 		return false
 	}
-	return routePrefixes.Contains(address)
+	peer, found := t.server.ExportLocalBackend().PeerForIP(address)
+	return found && !peer.IsSelf && peer.Route.Bits() > 0
 }
 
 func (t *Endpoint) Server() *tsnet.Server {
@@ -938,17 +932,6 @@ func (t *Endpoint) onReconfig(cfg *wgcfg.Config, routerCfg *router.Config, dnsCf
 	t.routeDomains.Store(routeDomains)
 	t.routeSuffixes.Store(routeSuffixes)
 	t.searchDomains.Store(len(dnsCfg.SearchDomains) > 0)
-
-	var builder netipx.IPSetBuilder
-	for _, peer := range cfg.Peers {
-		for _, allowedIP := range peer.AllowedIPs {
-			if allowedIP.Bits() == 0 {
-				continue
-			}
-			builder.AddPrefix(allowedIP)
-		}
-	}
-	t.routePrefixes.Store(common.Must1(builder.IPSet()))
 
 	if t.onReconfigHook != nil {
 		t.onReconfigHook(cfg, routerCfg, dnsCfg)
