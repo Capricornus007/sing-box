@@ -4,8 +4,8 @@ go 1.25.5
 
 require (
 	filippo.io/age v1.3.1
-	github.com/amnezia-vpn/amneziawg-go v1.0.4
-	github.com/amnezia-vpn/amneziawg-go/v3 v3.0.20260805
+	github.com/amnezia-vpn/amneziawg-go v0.2.19
+	github.com/amnezia-vpn/amneziawg-go/v3 v3.0.3
 	github.com/andybalholm/brotli v1.1.1
 	github.com/andybalholm/cascadia v1.3.4
 	github.com/antchfx/htmlquery v1.3.6
@@ -191,7 +191,6 @@ require (
 	github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc // indirect
 	github.com/tailscale/web-client-prebuilt v0.0.0-20250124233751-d4cd19a26976 // indirect
 	github.com/tetratelabs/wazero v1.12.0 // indirect
-	github.com/tevino/abool v1.2.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -203,7 +202,6 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
 	gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go4.org/mem v0.0.0-20240501181205-ae6ca9944745 // indirect
@@ -215,12 +213,10 @@ require (
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gvisor.dev/gvisor v0.0.0-20250606233247-e3c4c4cad86f // indirect
+	gvisor.dev/gvisor v0.0.0-20231202080848-1f7806d17489 // indirect
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )
 
 replace github.com/sagernet/sing-snell => github.com/reF1nd/sing-snell v0.0.0-20260713132549-9711346e2b35
-
-replace gvisor.dev/gvisor => gvisor.dev/gvisor v0.0.0-20231202080848-1f7806d17489
 
 replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.2.8-mod.1-nb4a
