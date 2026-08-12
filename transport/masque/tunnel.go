@@ -257,14 +257,13 @@ func (t *Tunnel) connectH3(ctx context.Context) (*tunnelSession, error) {
 	if t.options.H3Endpoint == nil {
 		return nil, E.New("missing HTTP/3 endpoint")
 	}
-	udpConn, err := t.options.Dialer.ListenPacket(ctx, M.SocksaddrFromNetIP(t.options.H3Endpoint.AddrPort()))
+	udpConn, err := t.options.Dialer.DialContext(ctx, N.NetworkUDP, M.SocksaddrFromNetIP(t.options.H3Endpoint.AddrPort()))
 	if err != nil {
 		return nil, E.Cause(err, "dial UDP")
 	}
 	quicConn, err := qtls.DialEarly(
 		ctx,
 		udpConn,
-		t.options.H3Endpoint,
 		t.options.TLSConfig,
 		DefaultQuicConfig(t.options.UDPKeepalivePeriod, t.options.UDPInitialPacketSize, t.options.DisablePathMTUDiscovery),
 	)
