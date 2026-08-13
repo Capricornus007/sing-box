@@ -59,6 +59,8 @@ type CacheFile struct {
 	optimisticTimeout  time.Duration
 	DB                 *bbolt.DB
 	resetAccess        sync.Mutex
+	saveMetadataAccess sync.Mutex
+	saveMetadata       *adapter.FakeIPMetadata
 	saveMetadataTimer  *time.Timer
 	saveFakeIPAccess   sync.RWMutex
 	saveDomain         map[netip.Addr]string
