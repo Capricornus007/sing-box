@@ -16,6 +16,12 @@ func init() {
 		TailscaleStopped:        "已停止",
 		TailscaleStarting:       "启动中",
 		TailscaleRunning:        "运行中",
+<<<<<<< HEAD
+=======
+		TaildropReceiving:       "正在接收来自 %[2]s 的 %[1]s",
+		TaildropReceived:        "已收到来自 %[2]s 的 %[1]s",
+		TaildropSendCanceled:    "发送 %s 已被接收方取消",
+>>>>>>> sagerNet/testing
 		VPNConnecting:           "正在连接",
 		VPNAuthentication:       "需要认证",
 		VPNConnected:            "已连接",

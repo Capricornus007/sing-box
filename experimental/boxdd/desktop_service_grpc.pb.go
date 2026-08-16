@@ -35,10 +35,16 @@ const (
 	DesktopService_DeleteOOMReport_FullMethodName         = "/desktop.DesktopService/DeleteOOMReport"
 	DesktopService_DeleteAllOOMReports_FullMethodName     = "/desktop.DesktopService/DeleteAllOOMReports"
 	DesktopService_InstallUpdate_FullMethodName           = "/desktop.DesktopService/InstallUpdate"
+<<<<<<< HEAD
 	DesktopService_GetDataProtection_FullMethodName       = "/desktop.DesktopService/GetDataProtection"
 	DesktopService_SetDataProtection_FullMethodName       = "/desktop.DesktopService/SetDataProtection"
 	DesktopService_GetSecuritySettings_FullMethodName     = "/desktop.DesktopService/GetSecuritySettings"
 	DesktopService_SetInsecureModeEnabled_FullMethodName  = "/desktop.DesktopService/SetInsecureModeEnabled"
+=======
+	DesktopService_GetSecuritySettings_FullMethodName     = "/desktop.DesktopService/GetSecuritySettings"
+	DesktopService_SetInsecureModeEnabled_FullMethodName  = "/desktop.DesktopService/SetInsecureModeEnabled"
+	DesktopService_SetLocale_FullMethodName               = "/desktop.DesktopService/SetLocale"
+>>>>>>> sagerNet/testing
 )
 
 // DesktopServiceClient is the client API for DesktopService service.
@@ -64,10 +70,16 @@ type DesktopServiceClient interface {
 	DeleteOOMReport(ctx context.Context, in *OOMReportRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAllOOMReports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	InstallUpdate(ctx context.Context, in *InstallUpdateRequest, opts ...grpc.CallOption) (*InstallUpdateResponse, error)
+<<<<<<< HEAD
 	GetDataProtection(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DataProtectionInfo, error)
 	SetDataProtection(ctx context.Context, in *SetDataProtectionRequest, opts ...grpc.CallOption) (*DataProtectionInfo, error)
 	GetSecuritySettings(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SecuritySettings, error)
 	SetInsecureModeEnabled(ctx context.Context, in *SetInsecureModeEnabledRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+=======
+	GetSecuritySettings(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SecuritySettings, error)
+	SetInsecureModeEnabled(ctx context.Context, in *SetInsecureModeEnabledRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetLocale(ctx context.Context, in *SetLocaleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+>>>>>>> sagerNet/testing
 }
 
 type desktopServiceClient struct {
@@ -268,6 +280,7 @@ func (c *desktopServiceClient) InstallUpdate(ctx context.Context, in *InstallUpd
 	return out, nil
 }
 
+<<<<<<< HEAD
 func (c *desktopServiceClient) GetDataProtection(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DataProtectionInfo, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DataProtectionInfo)
@@ -288,6 +301,8 @@ func (c *desktopServiceClient) SetDataProtection(ctx context.Context, in *SetDat
 	return out, nil
 }
 
+=======
+>>>>>>> sagerNet/testing
 func (c *desktopServiceClient) GetSecuritySettings(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SecuritySettings, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SecuritySettings)
@@ -308,6 +323,19 @@ func (c *desktopServiceClient) SetInsecureModeEnabled(ctx context.Context, in *S
 	return out, nil
 }
 
+<<<<<<< HEAD
+=======
+func (c *desktopServiceClient) SetLocale(ctx context.Context, in *SetLocaleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DesktopService_SetLocale_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+>>>>>>> sagerNet/testing
 // DesktopServiceServer is the server API for DesktopService service.
 // All implementations must embed UnimplementedDesktopServiceServer
 // for forward compatibility.
@@ -331,10 +359,16 @@ type DesktopServiceServer interface {
 	DeleteOOMReport(context.Context, *OOMReportRequest) (*emptypb.Empty, error)
 	DeleteAllOOMReports(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	InstallUpdate(context.Context, *InstallUpdateRequest) (*InstallUpdateResponse, error)
+<<<<<<< HEAD
 	GetDataProtection(context.Context, *emptypb.Empty) (*DataProtectionInfo, error)
 	SetDataProtection(context.Context, *SetDataProtectionRequest) (*DataProtectionInfo, error)
 	GetSecuritySettings(context.Context, *emptypb.Empty) (*SecuritySettings, error)
 	SetInsecureModeEnabled(context.Context, *SetInsecureModeEnabledRequest) (*emptypb.Empty, error)
+=======
+	GetSecuritySettings(context.Context, *emptypb.Empty) (*SecuritySettings, error)
+	SetInsecureModeEnabled(context.Context, *SetInsecureModeEnabledRequest) (*emptypb.Empty, error)
+	SetLocale(context.Context, *SetLocaleRequest) (*emptypb.Empty, error)
+>>>>>>> sagerNet/testing
 	mustEmbedUnimplementedDesktopServiceServer()
 }
 
@@ -421,6 +455,7 @@ func (UnimplementedDesktopServiceServer) InstallUpdate(context.Context, *Install
 	return nil, status.Error(codes.Unimplemented, "method InstallUpdate not implemented")
 }
 
+<<<<<<< HEAD
 func (UnimplementedDesktopServiceServer) GetDataProtection(context.Context, *emptypb.Empty) (*DataProtectionInfo, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDataProtection not implemented")
 }
@@ -429,6 +464,8 @@ func (UnimplementedDesktopServiceServer) SetDataProtection(context.Context, *Set
 	return nil, status.Error(codes.Unimplemented, "method SetDataProtection not implemented")
 }
 
+=======
+>>>>>>> sagerNet/testing
 func (UnimplementedDesktopServiceServer) GetSecuritySettings(context.Context, *emptypb.Empty) (*SecuritySettings, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSecuritySettings not implemented")
 }
@@ -436,6 +473,13 @@ func (UnimplementedDesktopServiceServer) GetSecuritySettings(context.Context, *e
 func (UnimplementedDesktopServiceServer) SetInsecureModeEnabled(context.Context, *SetInsecureModeEnabledRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetInsecureModeEnabled not implemented")
 }
+<<<<<<< HEAD
+=======
+
+func (UnimplementedDesktopServiceServer) SetLocale(context.Context, *SetLocaleRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetLocale not implemented")
+}
+>>>>>>> sagerNet/testing
 func (UnimplementedDesktopServiceServer) mustEmbedUnimplementedDesktopServiceServer() {}
 func (UnimplementedDesktopServiceServer) testEmbeddedByValue()                        {}
 
@@ -799,6 +843,7 @@ func _DesktopService_InstallUpdate_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+<<<<<<< HEAD
 func _DesktopService_GetDataProtection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -835,6 +880,8 @@ func _DesktopService_SetDataProtection_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+=======
+>>>>>>> sagerNet/testing
 func _DesktopService_GetSecuritySettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -871,6 +918,27 @@ func _DesktopService_SetInsecureModeEnabled_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+<<<<<<< HEAD
+=======
+func _DesktopService_SetLocale_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetLocaleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DesktopServiceServer).SetLocale(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DesktopService_SetLocale_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DesktopServiceServer).SetLocale(ctx, req.(*SetLocaleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+>>>>>>> sagerNet/testing
 // DesktopService_ServiceDesc is the grpc.ServiceDesc for DesktopService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -955,6 +1023,7 @@ var DesktopService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _DesktopService_InstallUpdate_Handler,
 		},
 		{
+<<<<<<< HEAD
 			MethodName: "GetDataProtection",
 			Handler:    _DesktopService_GetDataProtection_Handler,
 		},
@@ -963,6 +1032,8 @@ var DesktopService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _DesktopService_SetDataProtection_Handler,
 		},
 		{
+=======
+>>>>>>> sagerNet/testing
 			MethodName: "GetSecuritySettings",
 			Handler:    _DesktopService_GetSecuritySettings_Handler,
 		},
@@ -970,6 +1041,13 @@ var DesktopService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "SetInsecureModeEnabled",
 			Handler:    _DesktopService_SetInsecureModeEnabled_Handler,
 		},
+<<<<<<< HEAD
+=======
+		{
+			MethodName: "SetLocale",
+			Handler:    _DesktopService_SetLocale_Handler,
+		},
+>>>>>>> sagerNet/testing
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "experimental/boxdd/desktop_service.proto",

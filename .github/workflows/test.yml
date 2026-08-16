@@ -31,8 +31,13 @@ jobs:
           - windows-latest
           - macos-latest
         go:
+<<<<<<< HEAD
           - ~1.24
           - ~1.25
+=======
+          - ~1.25
+          - ~1.26
+>>>>>>> sagerNet/testing
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout

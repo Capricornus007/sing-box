@@ -10,6 +10,10 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-usbip"
+<<<<<<< HEAD
+=======
+	"github.com/sagernet/sing/common"
+>>>>>>> sagerNet/testing
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/service"
 
@@ -132,6 +136,7 @@ func (s *StartedService) SubscribeUSBIPServerStatus(
 				servers = append(servers, usbipServer{tag: serverService.Tag(), provider: provider})
 			}
 		}
+<<<<<<< HEAD
 		if len(servers) == 0 {
 			sendErr := server.Send(&USBIPServerStatusUpdate{})
 			if sendErr != nil {
@@ -222,6 +227,36 @@ func sendLatestUSBSnapshot(slot chan []usbip.ControlDeviceInfo, devices []usbip.
 	}
 }
 
+=======
+		// sing-usbip invokes the SubscribeDevices listener with the current snapshot
+		// before registration returns, and later invocations happen while the ledger's
+		// broadcast lock is held, so the listener must never block.
+		sources := common.Map(servers, func(serverService usbipServer) taggedStatusSource[[]usbip.ControlDeviceInfo] {
+			return taggedStatusSource[[]usbip.ControlDeviceInfo]{
+				tag: serverService.tag,
+				subscribe: func(subscribeCtx context.Context, listener func([]usbip.ControlDeviceInfo)) {
+					serverService.provider.SubscribeDevices(subscribeCtx, listener)
+				},
+			}
+		})
+		return streamTaggedStatus(ctx, sources, func(deviceStates map[string][]usbip.ControlDeviceInfo) error {
+			protoServers := make([]*USBIPServerStatus, 0, len(servers))
+			for _, serverService := range servers {
+				devices, found := deviceStates[serverService.tag]
+				if !found {
+					continue
+				}
+				protoServers = append(protoServers, &USBIPServerStatus{
+					ServerTag: serverService.tag,
+					Devices:   usbSharedDevicesToProto(devices),
+				})
+			}
+			return server.Send(&USBIPServerStatusUpdate{Servers: protoServers})
+		})
+	})
+}
+
+>>>>>>> sagerNet/testing
 func usbSharedDevicesToProto(devices []usbip.ControlDeviceInfo) []*USBSharedDevice {
 	if len(devices) == 0 {
 		return nil

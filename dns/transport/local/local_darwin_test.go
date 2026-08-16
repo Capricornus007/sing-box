@@ -14,8 +14,12 @@ import (
 	mDNS "github.com/miekg/dns"
 )
 
+<<<<<<< HEAD
 // "localhost" is answered by the mDNSResponder daemon itself, so these tests need
 // no external network.
+=======
+// "localhost" is answered by the mDNSResponder daemon itself.
+>>>>>>> sagerNet/testing
 
 func requireMDNSResponder(t *testing.T) {
 	t.Helper()
@@ -87,8 +91,12 @@ func TestSystemExchangeNoData(t *testing.T) {
 	transport := &Transport{}
 	defer transport.system.close()
 	message := new(mDNS.Msg)
+<<<<<<< HEAD
 	// localhost has no MX record, so the daemon reports NoSuchRecord, which must
 	// surface as an empty NOERROR response rather than an error.
+=======
+	// localhost has no MX record, so the daemon reports NoSuchRecord.
+>>>>>>> sagerNet/testing
 	message.SetQuestion("localhost.", mDNS.TypeMX)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -134,9 +142,13 @@ func TestSystemExchangeConcurrent(t *testing.T) {
 		if i%2 == 1 {
 			qtype = mDNS.TypeAAAA
 		}
+<<<<<<< HEAD
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
+=======
+		waitGroup.Go(func() {
+>>>>>>> sagerNet/testing
 			message := new(mDNS.Msg)
 			message.SetQuestion("localhost.", qtype)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -149,7 +161,11 @@ func TestSystemExchangeConcurrent(t *testing.T) {
 			if len(response.Answer) == 0 {
 				errors <- context.DeadlineExceeded
 			}
+<<<<<<< HEAD
 		}()
+=======
+		})
+>>>>>>> sagerNet/testing
 	}
 	waitGroup.Wait()
 	close(errors)

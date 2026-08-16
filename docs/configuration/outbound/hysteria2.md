@@ -2,6 +2,10 @@
 
     :material-plus: [hop_interval_max](#hop_interval_max)  
     :material-plus: [bbr_profile](#bbr_profile)  
+<<<<<<< HEAD
+=======
+    :material-plus: [disable_chrome_parrot](#disable_chrome_parrot)  
+>>>>>>> sagerNet/testing
     :material-plus: [realm](#realm)  
     :material-alert: [obfs](#obfstype)
 
@@ -38,6 +42,10 @@
 
   "bbr_profile": "",
   "brutal_debug": false,
+<<<<<<< HEAD
+=======
+  "disable_chrome_parrot": false,
+>>>>>>> sagerNet/testing
   "realm": {
     "server_url": "https://realm.example.com",
     "token": "",
@@ -178,6 +186,28 @@ BBR congestion control algorithm profile, one of `conservative` `standard` `aggr
 
 Enable debug information logging for Hysteria Brutal CC.
 
+<<<<<<< HEAD
+=======
+#### disable_chrome_parrot
+
+!!! question "Since sing-box 1.14.0"
+
+Disable Chrome QUIC fingerprint parroting.
+
+If it is not disabled, the client's QUIC handshake is made to parrot Chrome's, so that Hysteria traffic
+is harder to identify by handshake fingerprinting.
+
+To match Chrome, the client uses Chrome's own QUIC parameters, which override some settings:
+`idle_timeout` is fixed at 30 seconds, `max_concurrent_streams` and `initial_packet_size` are replaced by
+Chrome's values, and the receive windows start at Chrome's initial values before growing to the configured
+maximums.
+
+!!! warning ""
+
+    Chrome does not declare support for Ed25519, so a server using an Ed25519 certificate will fail the
+    handshake. Use an ECDSA or RSA certificate instead; certificates issued by ACME are unaffected.
+
+>>>>>>> sagerNet/testing
 #### realm
 
 !!! question "Since sing-box 1.14.0"

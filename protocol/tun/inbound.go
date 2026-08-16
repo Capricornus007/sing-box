@@ -17,7 +17,11 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+<<<<<<< HEAD
 	tun "github.com/sagernet/sing-tun"
+=======
+	"github.com/sagernet/sing-tun"
+>>>>>>> sagerNet/testing
 	"github.com/sagernet/sing-tun/gtcpip/header"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -375,7 +379,10 @@ func (t *Inbound) Start(stage adapter.StartStage) error {
 			}
 		}
 		if t.platformInterface == nil || C.IsWindows {
+<<<<<<< HEAD
 			t.routeAddressSet = common.FlatMap(t.routeRuleSet, adapter.RuleSet.ExtractIPSet)
+=======
+>>>>>>> sagerNet/testing
 			for _, routeRuleSet := range t.routeRuleSet {
 				ipSets := routeRuleSet.ExtractIPSet()
 				if len(ipSets) == 0 {
@@ -512,6 +519,7 @@ func (t *Inbound) InterfaceUpdated() {
 	if tunStack != nil {
 		tunStack.ResetNetwork()
 	}
+<<<<<<< HEAD
 }
 
 func (t *Inbound) Close() error {
@@ -530,8 +538,26 @@ func (t *Inbound) Close() error {
 	if tunIf != nil {
 		if err := tunIf.Close(); err != nil {
 			retErr = err
+=======
+}
+
+func (t *Inbound) Close() error {
+	return common.Close(
+		t.tunStack,
+		t.tunIf,
+		t.autoRedirect,
+	)
+}
+
+func (t *Inbound) JudgeFlow(network uint8, source netip.AddrPort, destination netip.AddrPort, firstPacket []byte) tun.FlowVerdict {
+	if slices.Contains(t.dnsHijackAddress, destination.Addr()) {
+		if network == uint8(header.UDPProtocolNumber) {
+			return tun.FlowVerdict{Action: tun.ActionHijackDNS}
+>>>>>>> sagerNet/testing
 		}
+		return tun.FlowVerdict{Action: tun.ActionAccept}
 	}
+<<<<<<< HEAD
 
 	if stack != nil {
 		forceCloseGVisorStack(stack)
@@ -551,6 +577,8 @@ func (t *Inbound) JudgeFlow(network uint8, source netip.AddrPort, destination ne
 		}
 		return tun.FlowVerdict{Action: tun.ActionAccept}
 	}
+=======
+>>>>>>> sagerNet/testing
 	return adapter.JudgeFlow(t.router, t.tag, C.TypeTun, network, source, destination, firstPacket)
 }
 

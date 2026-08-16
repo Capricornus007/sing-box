@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
+<<<<<<< HEAD
 	"net/url"
 	"reflect"
 	"strconv"
@@ -11,6 +12,12 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/schema"
 	"github.com/sagernet/sing/common"
+=======
+	"reflect"
+
+	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/schema"
+>>>>>>> sagerNet/testing
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badjson"
@@ -38,12 +45,15 @@ const (
 
 type removedLegacyDNSOptions struct {
 	FakeIP json.RawMessage `json:"fakeip,omitempty"`
+<<<<<<< HEAD
 }
 
 type legacyFakeIPOptions struct {
 	Enabled    bool   `json:"enabled"`
 	Inet4Range string `json:"inet4_range,omitempty"`
 	Inet6Range string `json:"inet6_range,omitempty"`
+=======
+>>>>>>> sagerNet/testing
 }
 
 func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) error {
@@ -53,6 +63,7 @@ func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) e
 		return err
 	}
 	if len(legacyOptions.FakeIP) != 0 {
+<<<<<<< HEAD
 		// Legacy DNS fakeip options (sing-box < 1.12): auto-upgrade to the new
 		// fakeip DNS server format so old configs keep working.
 		var fakeIP legacyFakeIPOptions
@@ -163,6 +174,22 @@ func rewriteDNSRcodeAction(rcodeMap map[string]int, ruleAction *DNSRuleAction) {
 	}
 	ruleAction.Action = C.RuleActionTypePredefined
 	ruleAction.PredefinedOptions.Rcode = common.Ptr(DNSRCode(rcode))
+=======
+		return E.New(legacyDNSFakeIPRemovedMessage)
+	}
+	return badjson.UnmarshallExcludedContext(ctx, content, legacyOptions, &o.RawDNSOptions)
+}
+
+func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	return builder.Define("DNS", func() (*schema.Node, error) {
+		node := schema.StrictObject()
+		err := builder.FlattenStruct(node, reflect.TypeFor[RawDNSOptions]())
+		if err != nil {
+			return nil, err
+		}
+		return node, nil
+	})
+>>>>>>> sagerNet/testing
 }
 
 func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {

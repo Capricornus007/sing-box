@@ -11,6 +11,10 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
+<<<<<<< HEAD
+=======
+	"github.com/sagernet/sing-box/dns/transport/local/systemconfig"
+>>>>>>> sagerNet/testing
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
@@ -60,6 +64,10 @@ func RegisterTransport(registry *dns.TransportRegistry) {
 var (
 	_ adapter.DNSTransport                    = (*Transport)(nil)
 	_ adapter.DNSTransportWithPreferredDomain = (*Transport)(nil)
+<<<<<<< HEAD
+=======
+	_ adapter.DNSTransportWithEnvironment     = (*Transport)(nil)
+>>>>>>> sagerNet/testing
 )
 
 type Transport struct {
@@ -68,6 +76,10 @@ type Transport struct {
 	logger         logger.ContextLogger
 	networkManager adapter.NetworkManager
 	interfaceNames badoption.Listable[string]
+<<<<<<< HEAD
+=======
+	configSource   *systemconfig.Source
+>>>>>>> sagerNet/testing
 }
 
 func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, options option.MDNSDNSServerOptions) (adapter.DNSTransport, error) {
@@ -77,6 +89,10 @@ func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, opt
 		logger:           logger,
 		networkManager:   service.FromContext[adapter.NetworkManager](ctx),
 		interfaceNames:   options.Interface,
+<<<<<<< HEAD
+=======
+		configSource:     systemconfig.NewSource(ctx),
+>>>>>>> sagerNet/testing
 	}, nil
 }
 
@@ -94,16 +110,38 @@ func (t *Transport) Start(stage adapter.StartStage) error {
 }
 
 func (t *Transport) Close() error {
+<<<<<<< HEAD
+=======
+	if t.configSource != nil {
+		return t.configSource.Close()
+	}
+>>>>>>> sagerNet/testing
 	return nil
 }
 
 func (t *Transport) Reset() {
+<<<<<<< HEAD
+=======
+	if t.configSource != nil {
+		t.configSource.Reset()
+	}
+>>>>>>> sagerNet/testing
 }
 
 func (t *Transport) PreferredDomain(domain string) bool {
 	return IsLocalDomain(domain)
 }
 
+<<<<<<< HEAD
+=======
+func (t *Transport) Environment() []string {
+	if t.configSource == nil {
+		return nil
+	}
+	return t.configSource.Configuration().Signature()
+}
+
+>>>>>>> sagerNet/testing
 func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	targets, err := t.queryTargets()
 	if err != nil {

@@ -61,12 +61,16 @@ func HasHeadlessRule(rules []option.HeadlessRule, cond func(rule option.DefaultH
 }
 
 func isProcessHeadlessRule(rule option.DefaultHeadlessRule) bool {
+<<<<<<< HEAD
 	return len(rule.ProcessName) > 0 ||
 		len(rule.ProcessPath) > 0 ||
 		len(rule.ProcessPathRegex) > 0 ||
 		len(rule.PackageName) > 0 ||
 		len(rule.PackageNameExclude) > 0 ||
 		len(rule.PackageNameRegex) > 0
+=======
+	return len(rule.ProcessName) > 0 || len(rule.ProcessPath) > 0 || len(rule.ProcessPathRegex) > 0 || len(rule.PackageName) > 0 || len(rule.PackageNameRegex) > 0
+>>>>>>> sagerNet/testing
 }
 
 func isWIFIHeadlessRule(rule option.DefaultHeadlessRule) bool {

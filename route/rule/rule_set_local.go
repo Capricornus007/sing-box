@@ -55,6 +55,7 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 			return nil, err
 		}
 	} else {
+<<<<<<< HEAD
 		if strings.HasPrefix(options.LocalOptions.Path, "geoip:") {
 			rules, err := nekoutils.GetGeoIPHeadlessRules(strings.TrimPrefix(options.LocalOptions.Path, "geoip:"))
 			if err != nil {
@@ -77,6 +78,8 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 			}
 			return ruleSet, nil
 		}
+=======
+>>>>>>> sagerNet/testing
 		filePath := filemanager.BasePath(ctx, strings.ReplaceAll(options.LocalOptions.Path, C.RuleSetTagPlaceholder, tag))
 		filePath, _ = filepath.Abs(filePath)
 		err := ruleSet.reloadFile(filePath)

@@ -326,7 +326,15 @@ func (r *Router) matchDNS(ctx context.Context, rules []adapter.DNSRule, allowFak
 				}
 				if action.ClientSubnet.IsValid() {
 					options.ClientSubnet = action.ClientSubnet
+					options.RemoveClientSubnet = false
 				}
+<<<<<<< HEAD
+=======
+				if action.RemoveClientSubnet {
+					options.ClientSubnet = netip.Prefix{}
+					options.RemoveClientSubnet = true
+				}
+>>>>>>> sagerNet/testing
 				return transport, currentRule, currentRuleIndex
 			case *R.RuleActionDNSRouteOptions:
 				if action.Strategy != C.DomainStrategyAsIS {
@@ -343,6 +351,11 @@ func (r *Router) matchDNS(ctx context.Context, rules []adapter.DNSRule, allowFak
 				}
 				if action.ClientSubnet.IsValid() {
 					options.ClientSubnet = action.ClientSubnet
+					options.RemoveClientSubnet = false
+				}
+				if action.RemoveClientSubnet {
+					options.ClientSubnet = netip.Prefix{}
+					options.RemoveClientSubnet = true
 				}
 			case *R.RuleActionReject:
 				return nil, currentRule, currentRuleIndex
@@ -373,6 +386,14 @@ func (r *Router) applyDNSRouteOptions(options *adapter.DNSQueryOptions, routeOpt
 	}
 	if routeOptions.ClientSubnet.IsValid() {
 		options.ClientSubnet = routeOptions.ClientSubnet
+<<<<<<< HEAD
+=======
+		options.RemoveClientSubnet = false
+	}
+	if routeOptions.RemoveClientSubnet {
+		options.ClientSubnet = netip.Prefix{}
+		options.RemoveClientSubnet = true
+>>>>>>> sagerNet/testing
 	}
 }
 
@@ -945,6 +966,11 @@ func (r *Router) resolveLookupStrategy(options adapter.DNSQueryOptions) C.Domain
 func withLookupQueryMetadata(ctx context.Context, qType uint16) context.Context {
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.QueryType = qType
+<<<<<<< HEAD
+=======
+	metadata.QueryClientSubnet = netip.Prefix{}
+	metadata.QueryDNSSEC = false
+>>>>>>> sagerNet/testing
 	metadata.IPVersion = 0
 	switch qType {
 	case mDNS.TypeA:
@@ -1069,6 +1095,12 @@ func (r *Router) prepareExchange(ctx context.Context, message *mDNS.Msg) (*dnsEx
 		metadata.IPVersion = 6
 	}
 	metadata.Domain = FqdnToDomain(message.Question[0].Name)
+<<<<<<< HEAD
+=======
+	metadata.QueryClientSubnet = clientSubnetFromMessage(message)
+	edns0Option := message.IsEdns0()
+	metadata.QueryDNSSEC = edns0Option != nil && edns0Option.Do()
+>>>>>>> sagerNet/testing
 	return &dnsExchangeContext{
 		ctx:           ctx,
 		rules:         rules,

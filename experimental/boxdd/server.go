@@ -36,11 +36,18 @@ type Daemon struct {
 	closed                  bool
 	peerAccess              sync.Mutex
 	peerConnections         map[peerConnection]peerIdentity
+<<<<<<< HEAD
 	dataProtectionAccess    sync.Mutex
+=======
+>>>>>>> sagerNet/testing
 	platform                daemonPlatform
 }
 
 func newDaemon() (*Daemon, error) {
+<<<<<<< HEAD
+=======
+	restoreLocale()
+>>>>>>> sagerNet/testing
 	ctx := include.Context(context.Background())
 	d := &Daemon{
 		ctx:                     ctx,

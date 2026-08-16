@@ -19,6 +19,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/service/resolved"
 	"github.com/sagernet/sing-tun"
+	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/control"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
@@ -61,7 +62,8 @@ type DBusResolvedResolver struct {
 }
 
 type resolvedServerSet struct {
-	servers []resolvedServer
+	servers   []resolvedServer
+	signature []string
 }
 
 type resolvedServer struct {
@@ -147,6 +149,17 @@ func (t *DBusResolvedResolver) Reset() {
 	}
 }
 
+<<<<<<< HEAD
+=======
+func (t *DBusResolvedResolver) Environment() []string {
+	serverSet := t.savedServerSet.Load()
+	if serverSet == nil {
+		return nil
+	}
+	return serverSet.signature
+}
+
+>>>>>>> sagerNet/testing
 func (t *DBusResolvedResolver) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {
@@ -359,6 +372,9 @@ func (t *DBusResolvedResolver) checkResolved(ctx context.Context) (*resolvedServ
 	}
 	serverSet := &resolvedServerSet{
 		servers: make([]resolvedServer, 0, len(serverSpecifications)),
+		signature: common.Map(serverSpecifications, func(it resolvedServerSpecification) string {
+			return M.SocksaddrFrom(it.address, it.port).String()
+		}),
 	}
 	for _, serverSpecification := range serverSpecifications {
 		server, createErr := t.createResolvedServer(serverDialer, dnsOverTLSMode, serverSpecification)
