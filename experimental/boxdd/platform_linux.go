@@ -137,11 +137,23 @@ func (p *linuxPlatformInterface) UsePlatformWIFIMonitor() bool {
 }
 
 func (p *linuxPlatformInterface) UsePlatformNotification() bool {
+<<<<<<< HEAD
 	return false
 }
 
 func (p *linuxPlatformInterface) SendNotification(notification *adapter.Notification) error {
 	return nil
+=======
+	return true
+}
+
+func (p *linuxPlatformInterface) SendNotification(notification *adapter.Notification) error {
+	return p.daemon.startedService.SendNotification(notification)
+}
+
+func (p *linuxPlatformInterface) CancelNotification(identifier string, typeID int32) error {
+	return p.daemon.startedService.CancelNotification(identifier, typeID)
+>>>>>>> sagerNet/testing
 }
 
 func (p *linuxPlatformInterface) MyInterfaceAddress() []netip.Addr {

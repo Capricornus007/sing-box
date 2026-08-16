@@ -2,9 +2,15 @@ package dns
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
+	"hash/fnv"
 	"net"
 	"net/netip"
+<<<<<<< HEAD
+=======
+	"strconv"
+>>>>>>> sagerNet/testing
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -42,6 +48,10 @@ type Client struct {
 	initRDRCFunc      func() adapter.RDRCStore
 	dnsCache          adapter.DNSCacheStore
 	initDNSCacheFunc  func() adapter.DNSCacheStore
+<<<<<<< HEAD
+=======
+	networkManager    adapter.NetworkManager
+>>>>>>> sagerNet/testing
 	logger            logger.ContextLogger
 	cache             *freelru.Cache[dnsCacheKey, *dns.Msg]
 	cacheLock         compatible.Map[dnsCacheKey, chan struct{}]
@@ -88,6 +98,7 @@ type dnsCacheKey struct {
 	dns.Question
 	transportTag string
 	clientSubnet netip.Prefix
+<<<<<<< HEAD
 }
 
 func (k dnsCacheKey) persistentName() string {
@@ -105,9 +116,76 @@ func (c *Client) effectiveClientSubnet(message *dns.Msg, options adapter.DNSQuer
 		return c.clientSubnet
 	}
 	return clientSubnetFromMessage(message)
+=======
+	environment  uint64
+}
+
+func (k dnsCacheKey) persistentName() string {
+	name := k.transportTag
+	if k.clientSubnet.IsValid() {
+		name += "\x00" + k.clientSubnet.String()
+	}
+	if k.environment != 0 {
+		name += "\x01" + strconv.FormatUint(k.environment, 36)
+	}
+	return name
+}
+
+func (c *Client) newCacheKey(transport adapter.DNSTransport, question dns.Question, message *dns.Msg, options adapter.DNSQueryOptions) dnsCacheKey {
+	var clientSubnet netip.Prefix
+	if !options.RemoveClientSubnet {
+		clientSubnet = options.ClientSubnet
+		if !clientSubnet.IsValid() {
+			clientSubnet = c.clientSubnet
+		}
+		if !clientSubnet.IsValid() {
+			clientSubnet = clientSubnetFromMessage(message)
+		}
+	}
+	return dnsCacheKey{
+		Question:     question,
+		transportTag: transport.Tag(),
+		clientSubnet: clientSubnet,
+		environment:  c.environmentHash(transport),
+	}
+}
+
+func (c *Client) finishCacheKey(transport adapter.DNSTransport, key dnsCacheKey) (dnsCacheKey, bool) {
+	environment := c.environmentHash(transport)
+	if environment == key.environment || key.environment == 0 {
+		key.environment = environment
+		return key, true
+	}
+	return key, false
+}
+
+func (c *Client) environmentHash(transport adapter.DNSTransport) uint64 {
+	environmentTransport, withEnvironment := transport.(adapter.DNSTransportWithEnvironment)
+	if !withEnvironment {
+		return 0
+	}
+	var networkEnvironment uint64
+	if c.networkManager != nil {
+		networkEnvironment = c.networkManager.NetworkEnvironment()
+	}
+	environment := environmentTransport.Environment()
+	if len(environment) == 0 {
+		return networkEnvironment
+	}
+	digest := fnv.New64a()
+	for _, entry := range environment {
+		digest.Write([]byte(entry))
+		digest.Write([]byte{0})
+	}
+	var hashBytes [8]byte
+	binary.BigEndian.PutUint64(hashBytes[:], networkEnvironment)
+	digest.Write(hashBytes[:])
+	return digest.Sum64()
+>>>>>>> sagerNet/testing
 }
 
 func (c *Client) Start() {
+	c.networkManager = service.FromContext[adapter.NetworkManager](c.ctx)
 	if c.initRDRCFunc != nil {
 		c.rdrc = c.initRDRCFunc()
 	}
@@ -232,7 +310,11 @@ func (c *Client) beginExchange(ctx context.Context, transport adapter.DNSTranspo
 		disableCache:    disableCache,
 	}
 	if !disableCache {
+<<<<<<< HEAD
 		cacheKey := dnsCacheKey{Question: question, transportTag: transport.Tag(), clientSubnet: c.effectiveClientSubnet(message, options)}
+=======
+		cacheKey := c.newCacheKey(transport, question, message, options)
+>>>>>>> sagerNet/testing
 		operation.cacheKey = cacheKey
 		cond, loaded := c.cacheLock.LoadOrStore(cacheKey, make(chan struct{}))
 		if loaded {
@@ -244,6 +326,11 @@ func (c *Client) beginExchange(ctx context.Context, transport adapter.DNSTranspo
 			case <-ctx.Done():
 				return nil, nil, exchangeDone, ctx.Err()
 			}
+<<<<<<< HEAD
+=======
+			cacheKey = c.newCacheKey(transport, question, message, options)
+			operation.cacheKey = cacheKey
+>>>>>>> sagerNet/testing
 		} else {
 			operation.releaseCond = func() {
 				c.cacheLock.Delete(cacheKey)
@@ -253,18 +340,24 @@ func (c *Client) beginExchange(ctx context.Context, transport adapter.DNSTranspo
 		response, ttl, isStale := c.loadResponse(cacheKey)
 		if response != nil {
 			if isStale && !options.DisableOptimisticCache {
+<<<<<<< HEAD
 				if adblockService := service.FromContext[adapter.AdblockService](ctx); adblockService != nil {
 					adblockService.CheckDNSResponse(ctx, message, response)
 				}
+=======
+>>>>>>> sagerNet/testing
 				c.backgroundRefreshDNS(transport, cacheKey, message.Copy(), options, responseChecker)
 				logOptimisticResponse(c.logger, ctx, response)
 				response.Id = message.Id
 				operation.release()
 				return nil, response, exchangeDone, nil
 			} else if !isStale {
+<<<<<<< HEAD
 				if adblockService := service.FromContext[adapter.AdblockService](ctx); adblockService != nil {
 					adblockService.CheckDNSResponse(ctx, message, response)
 				}
+=======
+>>>>>>> sagerNet/testing
 				logCachedResponse(c.logger, ctx, response, ttl)
 				response.Id = message.Id
 				operation.release()
@@ -310,7 +403,14 @@ func (c *Client) finishExchange(transport adapter.DNSTransport, operation *excha
 	}
 	timeToLive := applyResponseOptions(question, response, operation.options)
 	if !disableCache {
+<<<<<<< HEAD
 		c.storeCache(operation.cacheKey, response, timeToLive)
+=======
+		cacheKey, storable := c.finishCacheKey(transport, operation.cacheKey)
+		if storable {
+			c.storeCache(cacheKey, response, timeToLive)
+		}
+>>>>>>> sagerNet/testing
 	}
 	response.Id = operation.messageId
 	requestEDNSOpt := operation.message.IsEdns0()
@@ -486,7 +586,11 @@ func (c *Client) lookupToExchange(ctx context.Context, transport adapter.DNSTran
 
 func (c *Client) questionCache(ctx context.Context, transport adapter.DNSTransport, message *dns.Msg, options adapter.DNSQueryOptions, responseChecker func(response *dns.Msg) bool) ([]netip.Addr, error) {
 	question := message.Question[0]
+<<<<<<< HEAD
 	cacheKey := dnsCacheKey{Question: question, transportTag: transport.Tag(), clientSubnet: c.effectiveClientSubnet(message, options)}
+=======
+	cacheKey := c.newCacheKey(transport, question, message, options)
+>>>>>>> sagerNet/testing
 	response, _, isStale := c.loadResponse(cacheKey)
 	if response == nil {
 		return nil, ErrNotCached
@@ -623,6 +727,7 @@ func (c *Client) backgroundRefreshDNS(transport adapter.DNSTransport, key dnsCac
 		} else if response.Rcode != dns.RcodeSuccess && response.Rcode != dns.RcodeNameError {
 			return
 		}
+<<<<<<< HEAD
 		timeToLive := applyResponseOptions(key.Question, response, options)
 		c.storeCache(key, response, timeToLive)
 		logRefreshedResponse(c.logger, ctx, response, timeToLive)
@@ -646,6 +751,38 @@ func stripDNSPadding(response *dns.Msg) {
 		if !isOpt {
 			continue
 		}
+=======
+		storeKey, storable := c.finishCacheKey(transport, key)
+		if !storable {
+			return
+		}
+		timeToLive := applyResponseOptions(key.Question, response, options)
+		c.storeCache(storeKey, response, timeToLive)
+		logRefreshedResponse(c.logger, ctx, response, timeToLive)
+	}()
+}
+
+func (c *Client) prepareExchangeMessage(message *dns.Msg, options adapter.DNSQueryOptions) *dns.Msg {
+	if options.RemoveClientSubnet {
+		return removeClientSubnet(message)
+	}
+	clientSubnet := options.ClientSubnet
+	if !clientSubnet.IsValid() {
+		clientSubnet = c.clientSubnet
+	}
+	if clientSubnet.IsValid() {
+		message = SetClientSubnet(message, clientSubnet)
+	}
+	return message
+}
+
+func stripDNSPadding(response *dns.Msg) {
+	for _, record := range response.Extra {
+		opt, isOpt := record.(*dns.OPT)
+		if !isOpt {
+			continue
+		}
+>>>>>>> sagerNet/testing
 		opt.Option = common.Filter(opt.Option, func(it dns.EDNS0) bool {
 			return it.Option() != dns.EDNS0PADDING
 		})

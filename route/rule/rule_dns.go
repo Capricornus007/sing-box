@@ -73,6 +73,21 @@ func validateDNSRuleAction(action option.DNSRuleAction) error {
 	if action.Action == C.RuleActionTypeReject && action.RejectOptions.Method == C.RuleActionRejectMethodReply {
 		return E.New("reject method `reply` is not supported for DNS rules")
 	}
+<<<<<<< HEAD
+=======
+	var routeOptions option.AbstractDNSRouteActionOptions
+	switch action.Action {
+	case "", C.RuleActionTypeRoute:
+		routeOptions = action.RouteOptions.AbstractDNSRouteActionOptions
+	case C.RuleActionTypeEvaluate:
+		routeOptions = action.EvaluateOptions.AbstractDNSRouteActionOptions
+	case C.RuleActionTypeRouteOptions:
+		routeOptions = option.AbstractDNSRouteActionOptions(action.RouteOptionsOptions)
+	}
+	if routeOptions.RemoveClientSubnet && routeOptions.ClientSubnet != nil {
+		return E.New("`client_subnet` and `remove_client_subnet` are mutually exclusive")
+	}
+>>>>>>> sagerNet/testing
 	if action.Race {
 		switch action.Action {
 		case "", C.RuleActionTypeRoute, C.RuleActionTypeRespond, C.RuleActionTypeReject, C.RuleActionTypePredefined:
@@ -124,6 +139,16 @@ func NewDefaultDNSRule(ctx context.Context, logger log.ContextLogger, options op
 	}
 	if len(options.QueryType) > 0 {
 		item := NewQueryTypeItem(options.QueryType)
+		rule.items = append(rule.items, item)
+		rule.allItems = append(rule.allItems, item)
+	}
+	if len(options.QueryClientSubnet) > 0 {
+		item := NewQueryClientSubnetItem(options.QueryClientSubnet)
+		rule.items = append(rule.items, item)
+		rule.allItems = append(rule.allItems, item)
+	}
+	if options.QueryDNSSEC {
+		item := NewQueryDNSSECItem()
 		rule.items = append(rule.items, item)
 		rule.allItems = append(rule.allItems, item)
 	}
@@ -272,11 +297,14 @@ func NewDefaultDNSRule(ctx context.Context, logger log.ContextLogger, options op
 		rule.items = append(rule.items, item)
 		rule.allItems = append(rule.allItems, item)
 	}
+<<<<<<< HEAD
 	if len(options.PackageNameExclude) > 0 {
 		item := NewPackageNameExcludeItem(options.PackageNameExclude)
 		rule.items = append(rule.items, item)
 		rule.allItems = append(rule.allItems, item)
 	}
+=======
+>>>>>>> sagerNet/testing
 	if len(options.PackageNameRegex) > 0 {
 		item, err := NewPackageNameRegexItem(options.PackageNameRegex)
 		if err != nil {

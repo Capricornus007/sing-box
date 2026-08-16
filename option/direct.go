@@ -27,8 +27,12 @@ type _DirectOutboundOptions struct {
 	// Deprecated: Use Route Action instead
 	OverridePort uint16 `json:"override_port,omitempty" schema:"omit"`
 	// Deprecated: removed
+<<<<<<< HEAD
 	ProxyProtocol uint8     `json:"proxy_protocol,omitempty" schema:"omit"`
 	Fragment      *Fragment `json:"fragment,omitempty" schema:"omit"`
+=======
+	ProxyProtocol uint8 `json:"proxy_protocol,omitempty" schema:"omit"`
+>>>>>>> sagerNet/testing
 }
 
 type DirectOutboundOptions _DirectOutboundOptions

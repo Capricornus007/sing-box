@@ -1,6 +1,7 @@
 package option
 
 import (
+<<<<<<< HEAD
 	"math/big"
 	"net/http"
 	"strings"
@@ -10,6 +11,10 @@ import (
 	Xbadoption "github.com/sagernet/sing-box/common/xray/json/badoption"
 	"github.com/sagernet/sing-box/common/xray/utils"
 
+=======
+	"reflect"
+
+>>>>>>> sagerNet/testing
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/schema"
 	E "github.com/sagernet/sing/common/exceptions"

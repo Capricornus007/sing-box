@@ -13,10 +13,13 @@ func NewLocalDialer(ctx context.Context, options option.LocalDNSServerOptions) (
 		Context:        ctx,
 		Options:        options.DialerOptions,
 		DirectResolver: true,
+<<<<<<< HEAD
 		// DNS servers frequently detour to a plain "direct" outbound (e.g.
 		// NekoBox's dns-local/dns-direct). In 1.14 the empty-direct detour
 		// check rejects that; keep the pre-1.13 legacy DNS behavior.
 		DisableEmptyDirectCheck: true,
+=======
+>>>>>>> sagerNet/testing
 	})
 }
 
@@ -26,8 +29,11 @@ func NewRemoteDialer(ctx context.Context, options option.RemoteDNSServerOptions)
 		Options:        options.DialerOptions,
 		RemoteIsDomain: options.ServerIsDomain(),
 		DirectResolver: true,
+<<<<<<< HEAD
 		// See NewLocalDialer: DNS servers detouring to an empty direct
 		// outbound is a legitimate, long-standing configuration.
 		DisableEmptyDirectCheck: true,
+=======
+>>>>>>> sagerNet/testing
 	})
 }

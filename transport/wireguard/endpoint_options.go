@@ -32,7 +32,11 @@ type EndpointOptions struct {
 	Address           []netip.Prefix
 	PrivateKey        string
 	ListenPort        uint16
+<<<<<<< HEAD
 	ResolvePeer       func(domain string) (netip.Addr, error)
+=======
+	ResolvePeer       func(domain string) ([]netip.Addr, error)
+>>>>>>> sagerNet/testing
 	Peers             []PeerOptions
 	Workers           int
 }

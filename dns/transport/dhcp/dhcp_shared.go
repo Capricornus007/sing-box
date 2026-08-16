@@ -12,14 +12,22 @@ import (
 	mDNS "github.com/miekg/dns"
 )
 
+<<<<<<< HEAD
 func (t *Transport) exchangeWithTransports(ctx context.Context, message *mDNS.Msg, serverTransports []adapter.DNSTransport, callback func(response *mDNS.Msg, err error)) {
 	question := message.Question[0]
 	domain := dns.FqdnToDomain(question.Name)
 	names := t.nameList(domain)
+=======
+func (t *Transport) exchangeWithTransports(ctx context.Context, message *mDNS.Msg, state *transportState, callback func(response *mDNS.Msg, err error)) {
+	question := message.Question[0]
+	domain := dns.FqdnToDomain(question.Name)
+	names := t.nameList(state.search, domain)
+>>>>>>> sagerNet/testing
 	if len(names) == 0 {
 		callback(nil, E.New("invalid domain: ", domain))
 		return
 	}
+<<<<<<< HEAD
 	nameExchangers := make([]transport.AsyncExchanger, 0, len(names))
 	for _, fqdn := range names {
 		nameExchangers = append(nameExchangers, t.newNameExchanger(message, fqdn, serverTransports))
@@ -29,6 +37,11 @@ func (t *Transport) exchangeWithTransports(ctx context.Context, message *mDNS.Ms
 	} else {
 		transport.ExchangeRace(ctx, nameExchangers, callback)
 	}
+=======
+	transport.ExchangeNames(ctx, names, question, func(fqdn string) transport.AsyncExchanger {
+		return t.newNameExchanger(message, fqdn, state.serverTransports)
+	}, callback)
+>>>>>>> sagerNet/testing
 }
 
 func (t *Transport) newNameExchanger(message *mDNS.Msg, fqdn string, serverTransports []adapter.DNSTransport) transport.AsyncExchanger {
@@ -50,7 +63,11 @@ func (t *Transport) newNameExchanger(message *mDNS.Msg, fqdn string, serverTrans
 	}
 }
 
+<<<<<<< HEAD
 func (t *Transport) nameList(name string) []string {
+=======
+func (t *Transport) nameList(search []string, name string) []string {
+>>>>>>> sagerNet/testing
 	l := len(name)
 	rooted := l > 0 && name[l-1] == '.'
 	if l > 254 || l == 254 && !rooted {
@@ -68,11 +85,11 @@ func (t *Transport) nameList(name string) []string {
 	name += "."
 	// l++
 
-	names := make([]string, 0, 1+len(t.search))
+	names := make([]string, 0, 1+len(search))
 	if hasNdots && !avoidDNS(name) {
 		names = append(names, name)
 	}
-	for _, suffix := range t.search {
+	for _, suffix := range search {
 		fqdn := name + suffix
 		if !avoidDNS(fqdn) && len(fqdn) <= 254 {
 			names = append(names, fqdn)

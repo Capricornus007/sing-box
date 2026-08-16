@@ -139,8 +139,12 @@ func (w *platformInterfaceWrapper) NetworkInterfaces() ([]adapter.NetworkInterfa
 				Addresses: common.Map(iteratorToArray[string](netInterface.Addresses), netip.MustParsePrefix),
 				Flags:     linkFlags(uint32(netInterface.Flags)),
 			},
-			Type:        C.InterfaceType(netInterface.Type),
-			DNSServers:  iteratorToArray[string](netInterface.DNSServer),
+			Type:       C.InterfaceType(netInterface.Type),
+			DNSServers: iteratorToArray[string](netInterface.DNSServer),
+			Gateways: common.Filter(common.Map(iteratorToArray[string](netInterface.Gateway), func(it string) netip.Addr {
+				gateway, _ := netip.ParseAddr(it)
+				return gateway.Unmap().WithZone("")
+			}), netip.Addr.IsValid),
 			Expensive:   netInterface.Metered || isDefault && w.isExpensive,
 			Constrained: isDefault && w.isConstrained,
 		})
@@ -235,6 +239,13 @@ func (w *platformInterfaceWrapper) SendNotification(notification *adapter.Notifi
 	return w.iif.SendNotification((*Notification)(notification))
 }
 
+<<<<<<< HEAD
+=======
+func (w *platformInterfaceWrapper) CancelNotification(identifier string, typeID int32) error {
+	return w.iif.CancelNotification(identifier, typeID)
+}
+
+>>>>>>> sagerNet/testing
 func (w *platformInterfaceWrapper) UsePlatformNeighborResolver() bool {
 	return true
 }

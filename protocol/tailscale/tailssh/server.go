@@ -287,7 +287,11 @@ func (s *Server) authenticate(ctx gliderssh.Context, conn gossh.ConnMetadata) (*
 		s.logger.Warn("SSH auth: unknown peer ", remoteAddrPort)
 		return nil, &gossh.PartialSuccessError{}
 	}
+<<<<<<< HEAD
 	netMap := localBackend.NetMap()
+=======
+	netMap := localBackend.NetMapNoPeers()
+>>>>>>> sagerNet/testing
 	if netMap == nil || netMap.SSHPolicy == nil {
 		s.logger.Warn("SSH auth: no SSH policy")
 		return nil, &gossh.PartialSuccessError{}
@@ -419,7 +423,11 @@ func (s *Server) holdAndDelegate(ctx context.Context, action *tailcfg.SSHAction,
 		srcNodeIP = node.Addresses().At(0).Addr()
 	}
 	var dstNodeID string
+<<<<<<< HEAD
 	netMap := lb.NetMap()
+=======
+	netMap := lb.NetMapNoPeers()
+>>>>>>> sagerNet/testing
 	if netMap != nil && netMap.SelfNode.Valid() {
 		dstNodeID = fmt.Sprint(int64(netMap.SelfNode.ID()))
 	}
@@ -831,7 +839,11 @@ func (s *Server) buildEnvironment(session gliderssh.Session, connInfo *sshConnIn
 	// capability, matching upstream's capability gate.
 	acceptEnv := connInfo.acceptEnv
 	if len(acceptEnv) > 0 {
+<<<<<<< HEAD
 		netMap := s.tsnetServer.ExportLocalBackend().NetMap()
+=======
+		netMap := s.tsnetServer.ExportLocalBackend().NetMapNoPeers()
+>>>>>>> sagerNet/testing
 		if netMap == nil || !netMap.HasCap(tailcfg.NodeAttrSSHEnvironmentVariables) {
 			acceptEnv = nil
 		}
@@ -957,7 +969,11 @@ func (s *Server) allowReverseUnixForward(ctx gliderssh.Context, socketPath strin
 
 func (s *Server) OnReconfig(cfg *wgcfg.Config, routerCfg *router.Config, dnsCfg *tsDNS.Config) {
 	localBackend := s.tsnetServer.ExportLocalBackend()
+<<<<<<< HEAD
 	netMap := localBackend.NetMap()
+=======
+	netMap := localBackend.NetMapNoPeers()
+>>>>>>> sagerNet/testing
 	if netMap == nil || netMap.SSHPolicy == nil {
 		return
 	}

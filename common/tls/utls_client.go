@@ -12,7 +12,11 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+<<<<<<< HEAD
 	tf "github.com/sagernet/sing-box/common/tlsfragment"
+=======
+	"github.com/sagernet/sing-box/common/tlsfragment"
+>>>>>>> sagerNet/testing
 	"github.com/sagernet/sing-box/common/tlsspoof"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"

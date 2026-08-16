@@ -42,6 +42,10 @@ type DNSQueryOptions struct {
 	RewriteTTL             *uint32
 	Timeout                time.Duration
 	ClientSubnet           netip.Prefix
+<<<<<<< HEAD
+=======
+	RemoveClientSubnet     bool
+>>>>>>> sagerNet/testing
 }
 
 func DNSQueryOptionsFrom(ctx context.Context, options *option.DomainResolveOptions) (DNSQueryOptions, error) {

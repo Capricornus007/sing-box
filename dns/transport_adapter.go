@@ -8,8 +8,11 @@ type TransportAdapter struct {
 	transportType string
 	transportTag  string
 	dependencies  []string
+<<<<<<< HEAD
 	outbound      string
 	hasOutbound   bool
+=======
+>>>>>>> sagerNet/testing
 }
 
 func NewTransportAdapter(transportType string, transportTag string, dependencies []string) TransportAdapter {
@@ -29,8 +32,11 @@ func NewTransportAdapterWithLocalOptions(transportType string, transportTag stri
 		transportType: transportType,
 		transportTag:  transportTag,
 		dependencies:  dependencies,
+<<<<<<< HEAD
 		outbound:      localOptions.Detour,
 		hasOutbound:   true,
+=======
+>>>>>>> sagerNet/testing
 	}
 }
 
@@ -43,8 +49,11 @@ func NewTransportAdapterWithRemoteOptions(transportType string, transportTag str
 		transportType: transportType,
 		transportTag:  transportTag,
 		dependencies:  dependencies,
+<<<<<<< HEAD
 		outbound:      remoteOptions.Detour,
 		hasOutbound:   true,
+=======
+>>>>>>> sagerNet/testing
 	}
 }
 

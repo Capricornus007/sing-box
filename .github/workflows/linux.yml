@@ -29,7 +29,11 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
+<<<<<<< HEAD
           go-version: 1.26.5
+=======
+          go-version: 1.26.6
+>>>>>>> sagerNet/testing
       - name: Check input version
         if: github.event_name == 'workflow_dispatch'
         run: |-
@@ -72,7 +76,11 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
+<<<<<<< HEAD
           go-version: 1.26.5
+=======
+          go-version: 1.26.6
+>>>>>>> sagerNet/testing
       - name: Clone cronet-go
         if: matrix.naive
         run: |

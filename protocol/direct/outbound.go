@@ -51,6 +51,7 @@ type Outbound struct {
 	fallbackDelay  time.Duration
 	isEmpty        bool
 	myAddresses    common.TypedValue[[]netip.Prefix]
+<<<<<<< HEAD
 	fragment       *Fragment
 	icmpPort       *ping.Port
 }
@@ -60,6 +61,9 @@ type Fragment struct {
 	MaxInterval int32
 	MinLength   int32
 	MaxLength   int32
+=======
+	icmpPort       *ping.Port
+>>>>>>> sagerNet/testing
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.DirectOutboundOptions) (adapter.Outbound, error) {
@@ -93,6 +97,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if options.ProxyProtocol != 0 {
 		return nil, E.New("Proxy Protocol is deprecated and removed in sing-box 1.6.0")
 	}
+<<<<<<< HEAD
 	if options.Fragment != nil {
 		if len(options.Fragment.Interval) == 0 || len(options.Fragment.Length) == 0 {
 			return nil, E.New("Invalid interval or length")
@@ -146,6 +151,8 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		}
 		outbound.isEmpty = false
 	}
+=======
+>>>>>>> sagerNet/testing
 	if defaultDialer, isDefaultDialer := common.Cast[*dialer.DefaultDialer](outbound.dialer); isDefaultDialer {
 		outbound.icmpPort = ping.NewPort(ctx, logger, func(destination netip.Addr) control.Func {
 			return defaultDialer.DialerForICMPDestination(destination).Control

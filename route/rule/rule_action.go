@@ -139,6 +139,10 @@ func NewDNSRuleAction(logger logger.ContextLogger, action option.DNSRuleAction) 
 				DisableOptimisticCache: action.RouteOptions.DisableOptimisticCache,
 				RewriteTTL:             action.RouteOptions.RewriteTTL,
 				ClientSubnet:           netip.Prefix(common.PtrValueOrDefault(action.RouteOptions.ClientSubnet)),
+<<<<<<< HEAD
+=======
+				RemoveClientSubnet:     action.RouteOptions.RemoveClientSubnet,
+>>>>>>> sagerNet/testing
 			},
 		}
 	case C.RuleActionTypeEvaluate:
@@ -153,6 +157,10 @@ func NewDNSRuleAction(logger logger.ContextLogger, action option.DNSRuleAction) 
 				DisableOptimisticCache: action.EvaluateOptions.DisableOptimisticCache,
 				RewriteTTL:             action.EvaluateOptions.RewriteTTL,
 				ClientSubnet:           netip.Prefix(common.PtrValueOrDefault(action.EvaluateOptions.ClientSubnet)),
+<<<<<<< HEAD
+=======
+				RemoveClientSubnet:     action.EvaluateOptions.RemoveClientSubnet,
+>>>>>>> sagerNet/testing
 			},
 		}
 	case C.RuleActionTypeRespond:
@@ -165,6 +173,10 @@ func NewDNSRuleAction(logger logger.ContextLogger, action option.DNSRuleAction) 
 			DisableOptimisticCache: action.RouteOptionsOptions.DisableOptimisticCache,
 			RewriteTTL:             action.RouteOptionsOptions.RewriteTTL,
 			ClientSubnet:           netip.Prefix(common.PtrValueOrDefault(action.RouteOptionsOptions.ClientSubnet)),
+<<<<<<< HEAD
+=======
+			RemoveClientSubnet:     action.RouteOptionsOptions.RemoveClientSubnet,
+>>>>>>> sagerNet/testing
 		}
 	case C.RuleActionTypeReject:
 		return &RuleActionReject{
@@ -349,6 +361,12 @@ func formatDNSRouteAction(action string, server string, speculative bool, option
 	if options.ClientSubnet.IsValid() {
 		descriptions = append(descriptions, F.ToString("client-subnet=", options.ClientSubnet))
 	}
+<<<<<<< HEAD
+=======
+	if options.RemoveClientSubnet {
+		descriptions = append(descriptions, "remove-client-subnet")
+	}
+>>>>>>> sagerNet/testing
 	return F.ToString(action, "(", strings.Join(descriptions, ","), ")")
 }
 
@@ -359,6 +377,10 @@ type RuleActionDNSRouteOptions struct {
 	DisableOptimisticCache bool
 	RewriteTTL             *uint32
 	ClientSubnet           netip.Prefix
+<<<<<<< HEAD
+=======
+	RemoveClientSubnet     bool
+>>>>>>> sagerNet/testing
 }
 
 func (r *RuleActionDNSRouteOptions) Type() string {
@@ -381,6 +403,9 @@ func (r *RuleActionDNSRouteOptions) String() string {
 	}
 	if r.ClientSubnet.IsValid() {
 		descriptions = append(descriptions, F.ToString("client-subnet=", r.ClientSubnet))
+	}
+	if r.RemoveClientSubnet {
+		descriptions = append(descriptions, "remove-client-subnet")
 	}
 	return F.ToString("route-options(", strings.Join(descriptions, ","), ")")
 }

@@ -1,24 +1,65 @@
 package adapter
 
+<<<<<<< HEAD
 import "context"
+=======
+import (
+	"context"
+	"io"
+)
+>>>>>>> sagerNet/testing
 
 type TailscaleEndpoint interface {
 	SubscribeTailscaleStatus(ctx context.Context, fn func(*TailscaleEndpointStatus)) error
 	StartTailscalePing(ctx context.Context, peerIP string, fn func(*TailscalePingResult)) error
 	SetTailscaleExitNode(ctx context.Context, stableID string) error
 	Logout(ctx context.Context) error
+<<<<<<< HEAD
+=======
+	SubscribeTaildropInbox(ctx context.Context, fn func(*TaildropInbox)) error
+	MarkTaildropInboxRead() error
+	SendTaildropFile(ctx context.Context, peerStableID string, fileName string, size int64, content io.Reader, progress func(sentBytes int64)) error
+	OpenTaildropFile(fileName string) (io.ReadCloser, int64, error)
+	DeleteTaildropFile(fileName string) error
+	CancelTaildropReceiving(senderID string, fileName string) error
+}
+
+type TaildropInbox struct {
+	Files     []*TaildropFile
+	Receiving []*TaildropReceivingFile
+}
+
+type TaildropFile struct {
+	Name       string
+	Size       int64
+	SenderName string
+	ModifiedAt int64
+}
+
+type TaildropReceivingFile struct {
+	Name          string
+	Size          int64
+	ReceivedBytes int64
+	SenderID      string
+	SenderName    string
+>>>>>>> sagerNet/testing
 }
 
 type TailscalePingResult struct {
 	LatencyMs      float64
 	IsDirect       bool
 	Endpoint       string
+<<<<<<< HEAD
+=======
+	PeerRelay      string
+>>>>>>> sagerNet/testing
 	DERPRegionID   int32
 	DERPRegionCode string
 	Error          string
 }
 
 type TailscaleEndpointStatus struct {
+<<<<<<< HEAD
 	BackendState   string
 	AuthURL        string
 	NetworkName    string
@@ -27,6 +68,20 @@ type TailscaleEndpointStatus struct {
 	ExitNode       *TailscalePeer
 	UserGroups     []*TailscaleUserGroup
 	KeyAuth        bool
+=======
+	BackendState       string
+	AuthURL            string
+	NetworkName        string
+	MagicDNSSuffix     string
+	Self               *TailscalePeer
+	ExitNode           *TailscalePeer
+	UserGroups         []*TailscaleUserGroup
+	KeyAuth            bool
+	CanShareFiles      bool
+	WaitingFileCount   int32
+	ReceivingFileCount int32
+	UnreadFileCount    int32
+>>>>>>> sagerNet/testing
 }
 
 type TailscaleUserGroup struct {
@@ -38,6 +93,7 @@ type TailscaleUserGroup struct {
 }
 
 type TailscalePeer struct {
+<<<<<<< HEAD
 	StableID       string
 	HostName       string
 	DNSName        string
@@ -55,6 +111,26 @@ type TailscalePeer struct {
 	UserID         int64
 	KeyExpiry      int64
 	LastSeen       int64
+=======
+	StableID        string
+	HostName        string
+	DNSName         string
+	OS              string
+	TailscaleIPs    []string
+	SSHHostKeys     []string
+	Online          bool
+	ExitNode        bool
+	ExitNodeOption  bool
+	ShareeNode      bool
+	Expired         bool
+	Active          bool
+	CanReceiveFiles bool
+	RxBytes         int64
+	TxBytes         int64
+	UserID          int64
+	KeyExpiry       int64
+	LastSeen        int64
+>>>>>>> sagerNet/testing
 }
 
 type ShellSession interface {

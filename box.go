@@ -165,9 +165,12 @@ func New(options Options) (*Box, error) {
 	if experimentalOptions.V2RayAPI != nil && experimentalOptions.V2RayAPI.Listen != "" {
 		needV2RayAPI = true
 	}
+<<<<<<< HEAD
 	if experimentalOptions.Adblock != nil && experimentalOptions.Adblock.Enabled && experimentalOptions.Adblock.HasFilters() {
 		needAdblock = true
 	}
+=======
+>>>>>>> sagerNet/testing
 	needAPIService := common.Any(options.Services, func(it option.Service) bool {
 		return it.Type == C.TypeAPI
 	})
@@ -228,6 +231,7 @@ func New(options Options) (*Box, error) {
 	service.MustRegister[adapter.DNSTransportManager](ctx, dnsTransportManager)
 	service.MustRegister[adapter.ServiceManager](ctx, serviceManager)
 	service.MustRegister[adapter.CertificateProviderManager](ctx, certificateProviderManager)
+<<<<<<< HEAD
 	if needAdblock {
 		adblockService, err := experimentalAdblock.New(ctx, logFactory.NewLogger("adblock"), common.PtrValueOrDefault(experimentalOptions.Adblock), adblockRegexpr.CalculateLogLevels(logFactory.Level(), options.Log)...)
 		if err != nil {
@@ -238,6 +242,8 @@ func New(options Options) (*Box, error) {
 			internalServices = append(internalServices, adblockService)
 		}
 	}
+=======
+>>>>>>> sagerNet/testing
 	dnsRouter, err := dns.NewRouter(ctx, logFactory, dnsOptions)
 	if err != nil {
 		return nil, E.Cause(err, "initialize DNS router")

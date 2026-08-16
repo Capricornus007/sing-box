@@ -139,9 +139,12 @@ func (s *Selector) SelectOutbound(tag string) bool {
 		}
 	}
 	s.interruptGroup.Interrupt(s.interruptExternalConnections)
+<<<<<<< HEAD
 	if nekoutils.Selector_OnProxySelected != nil {
 		nekoutils.Selector_OnProxySelected(s.Tag(), tag)
 	}
+=======
+>>>>>>> sagerNet/testing
 	if s.history != nil {
 		s.history.NotifyUpdated()
 	}

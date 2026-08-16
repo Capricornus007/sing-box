@@ -138,6 +138,11 @@ type RawDefaultDNSRule struct {
 	Inbound                  badoption.Listable[string]                                                  `json:"inbound,omitempty" reference:"inbound"`
 	IPVersion                int                                                                         `json:"ip_version,omitempty" enum:"4,6"`
 	QueryType                badoption.Listable[DNSQueryType]                                            `json:"query_type,omitempty"`
+<<<<<<< HEAD
+=======
+	QueryClientSubnet        badoption.Listable[*badoption.Prefixable]                                   `json:"query_client_subnet,omitempty"`
+	QueryDNSSEC              bool                                                                        `json:"query_dnssec,omitempty"`
+>>>>>>> sagerNet/testing
 	Network                  badoption.Listable[string]                                                  `json:"network,omitempty" enum:"tcp,udp"`
 	AuthUser                 badoption.Listable[string]                                                  `json:"auth_user,omitempty"`
 	Protocol                 badoption.Listable[string]                                                  `json:"protocol,omitempty" enum:"tls,http,quic,dns,stun,bittorrent,dtls,ssh,rdp,ntp"`
@@ -155,7 +160,10 @@ type RawDefaultDNSRule struct {
 	ProcessPath              badoption.Listable[string]                                                  `json:"process_path,omitempty"`
 	ProcessPathRegex         badoption.Listable[string]                                                  `json:"process_path_regex,omitempty"`
 	PackageName              badoption.Listable[string]                                                  `json:"package_name,omitempty"`
+<<<<<<< HEAD
 	PackageNameExclude       badoption.Listable[string]                                                  `json:"package_name_exclude,omitempty"`
+=======
+>>>>>>> sagerNet/testing
 	PackageNameRegex         badoption.Listable[string]                                                  `json:"package_name_regex,omitempty"`
 	User                     badoption.Listable[string]                                                  `json:"user,omitempty"`
 	UserID                   badoption.Listable[int32]                                                   `json:"user_id,omitempty"`

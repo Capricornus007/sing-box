@@ -122,6 +122,7 @@ func New(ctx context.Context, logger logger.Logger, options option.CacheFileOpti
 		saveAddress6: make(map[string]netip.Addr),
 		saveRDRC:     make(map[saveCacheKey]bool),
 		saveDNSCache: make(map[saveCacheKey]saveDNSCacheEntry),
+<<<<<<< HEAD
 	}
 }
 
@@ -145,6 +146,8 @@ func NewReadOnly(ctx context.Context, path string) *CacheFile {
 		ctx:      ctx,
 		path:     filemanager.BasePath(ctx, path),
 		readOnly: true,
+=======
+>>>>>>> sagerNet/testing
 	}
 }
 
@@ -178,6 +181,7 @@ func (c *CacheFile) Start(stage adapter.StartStage) error {
 		return c.start()
 	case adapter.StartStateStart:
 		c.startCacheCleanup()
+<<<<<<< HEAD
 	}
 	return nil
 }
@@ -218,16 +222,47 @@ func (c *CacheFile) start() error {
 		c.DB = db
 		return nil
 	}
+=======
+	}
+	return nil
+}
+
+func (c *CacheFile) startCacheCleanup() {
+	if c.storeDNS {
+		c.clearRDRC()
+		c.cleanupDNSCache()
+		interval := c.optimisticTimeout / 2
+		if interval <= 0 {
+			interval = time.Hour
+		}
+		go c.loopCacheCleanup(interval, c.cleanupDNSCache)
+	} else if c.storeRDRC {
+		c.cleanupRDRC()
+		interval := c.rdrcTimeout / 2
+		if interval <= 0 {
+			interval = time.Hour
+		}
+		go c.loopCacheCleanup(interval, c.cleanupRDRC)
+	}
+}
+
+func (c *CacheFile) start() error {
+	const fileMode = 0o666
+>>>>>>> sagerNet/testing
 	cacheFile, err := filemanager.OpenFile(c.ctx, c.path, os.O_RDWR|os.O_CREATE, fileMode)
 	if err != nil {
 		return err
 	}
 	cacheFile.Close()
+<<<<<<< HEAD
 	options := bbolt.Options{
 		Timeout:        time.Second,
 		NoFreelistSync: true,
 		FreelistType:   bbolt.FreelistMapType,
 	}
+=======
+	options := bbolt.Options{Timeout: time.Second}
+>>>>>>> sagerNet/testing
 	var db *bbolt.DB
 	for range 10 {
 		db, err = bbolt.Open(c.path, fileMode, &options)
@@ -326,11 +361,15 @@ func (c *CacheFile) resetDB() {
 	defer c.resetAccess.Unlock()
 	c.DB.Close()
 	filemanager.Remove(c.ctx, c.path)
+<<<<<<< HEAD
 	db, err := bbolt.Open(c.path, 0o666, &bbolt.Options{
 		Timeout:        time.Second,
 		NoFreelistSync: true,
 		FreelistType:   bbolt.FreelistMapType,
 	})
+=======
+	db, err := bbolt.Open(c.path, 0o666, &bbolt.Options{Timeout: time.Second})
+>>>>>>> sagerNet/testing
 	if err == nil {
 		_ = filemanager.Chown(c.ctx, c.path)
 		c.DB = db
