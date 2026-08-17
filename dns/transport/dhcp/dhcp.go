@@ -18,7 +18,7 @@ import (
 	"github.com/sagernet/sing-box/dns/transport"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing-tun"
+	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/control"
@@ -43,8 +43,6 @@ var (
 	_ adapter.DNSTransport                = (*Transport)(nil)
 	_ adapter.DNSTransportWithEnvironment = (*Transport)(nil)
 )
-
-var errInterfaceIsCellular = E.New("interface is cellular")
 
 var errInterfaceIsCellular = E.New("interface is cellular")
 

@@ -193,6 +193,10 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 	}
 	var err error
 	if needsEnhancedVision(h.vision, h.decryption != nil, h.transport != nil) {
+		canSplice := h.transport == nil
+		if canSplice && h.decryption != nil && h.decryption.IsFullRandomXorMode() {
+			canSplice = false
+		}
 		err = h.service.NewConnectionWithOptions(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose, canSplice)
 	} else {
 		err = h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)

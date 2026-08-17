@@ -165,6 +165,9 @@ func New(options Options) (*Box, error) {
 	if experimentalOptions.V2RayAPI != nil && experimentalOptions.V2RayAPI.Listen != "" {
 		needV2RayAPI = true
 	}
+	if experimentalOptions.Adblock != nil && experimentalOptions.Adblock.Enabled && experimentalOptions.Adblock.HasFilters() {
+		needAdblock = true
+	}
 	needAPIService := common.Any(options.Services, func(it option.Service) bool {
 		return it.Type == C.TypeAPI
 	})
@@ -225,6 +228,16 @@ func New(options Options) (*Box, error) {
 	service.MustRegister[adapter.DNSTransportManager](ctx, dnsTransportManager)
 	service.MustRegister[adapter.ServiceManager](ctx, serviceManager)
 	service.MustRegister[adapter.CertificateProviderManager](ctx, certificateProviderManager)
+	if needAdblock {
+		adblockService, err := experimentalAdblock.New(ctx, logFactory.NewLogger("adblock"), common.PtrValueOrDefault(experimentalOptions.Adblock), adblockRegexpr.CalculateLogLevels(logFactory.Level(), options.Log)...)
+		if err != nil {
+			return nil, E.Cause(err, "create adblock")
+		}
+		if adblockService != nil {
+			service.MustRegister[adapter.AdblockService](ctx, adblockService)
+			internalServices = append(internalServices, adblockService)
+		}
+	}
 	dnsRouter, err := dns.NewRouter(ctx, logFactory, dnsOptions)
 	if err != nil {
 		return nil, E.Cause(err, "initialize DNS router")

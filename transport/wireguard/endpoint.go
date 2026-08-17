@@ -8,10 +8,11 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/sagernet/sing-box/common/dialer"
-	"github.com/sagernet/sing-tun"
+	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
@@ -187,7 +188,7 @@ func (e *Endpoint) Start(postStart bool) error {
 			e.options.Logger.Error(fmt.Sprintf(strings.ToLower(format), args...))
 		},
 	}
-	wgDevice := device.NewDevice(e.options.Context, e.returnDevice, bind, logger, e.options.Workers)
+	wgDevice := device.NewDevice(wireGuardDeviceContext(e.options.Context), e.returnDevice, bind, logger, e.options.Workers)
 	e.tunDevice.SetDevice(wgDevice)
 	var ipcConf strings.Builder
 	ipcConf.WriteString(e.ipcConf)
@@ -283,6 +284,13 @@ func (e *Endpoint) BindUpdate() error {
 		return nil
 	}
 	return e.device.BindUpdate()
+}
+
+func wireGuardDeviceContext(ctx context.Context) context.Context {
+	deviceContext := service.ExtendContext(ctx)
+	// The endpoint owns pause transitions. Letting wireguard-go observe the same
+	// manager can deadlock DevicePause when Down waits for a paused timer callback.
+	return service.ContextWith[pause.Manager](deviceContext, nil)
 }
 
 func (e *Endpoint) onPauseUpdated(event int) {

@@ -15,7 +15,9 @@ const (
 )
 
 const (
-	DNSTypeLegacy      = "legacy"
+	DNSTypeLegacy = "legacy"
+	// Internal compatibility type used while upgrading pre-1.14 rcode:// DNS servers.
+	DNSTypeLegacyRcode = "legacy_rcode"
 	DNSTypeUDP         = "udp"
 	DNSTypeTCP         = "tcp"
 	DNSTypeTLS         = "tls"

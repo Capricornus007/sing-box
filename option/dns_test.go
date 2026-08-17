@@ -42,7 +42,7 @@ func TestDNSOptionsRejectsLegacyFakeIPOptions(t *testing.T) {
 	require.EqualError(t, err, legacyDNSFakeIPRemovedMessage)
 }
 
-func TestDNSServerOptionsRejectsLegacyFormats(t *testing.T) {
+func TestDNSServerOptionsUpgradesLegacyFormats(t *testing.T) {
 	t.Parallel()
 
 	ctx := service.ContextWith[DNSTransportOptionsRegistry](context.Background(), stubDNSTransportOptionsRegistry{})
@@ -53,6 +53,10 @@ func TestDNSServerOptionsRejectsLegacyFormats(t *testing.T) {
 	for _, content := range testCases {
 		var options DNSServerOptions
 		err := json.UnmarshalContext(ctx, []byte(content), &options)
-		require.EqualError(t, err, legacyDNSServerRemovedMessage)
+		require.NoError(t, err)
+		require.Equal(t, C.DNSTypeUDP, options.Type)
+		remoteOptions, loaded := options.Options.(*RemoteDNSServerOptions)
+		require.True(t, loaded)
+		require.Equal(t, "1.1.1.1", remoteOptions.Server)
 	}
 }

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
+	"net/url"
 	"reflect"
+	"strconv"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/schema"
@@ -47,17 +49,6 @@ func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) e
 		return E.New(legacyDNSFakeIPRemovedMessage)
 	}
 	return badjson.UnmarshallExcludedContext(ctx, content, legacyOptions, &o.RawDNSOptions)
-}
-
-func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
-	return builder.Define("DNS", func() (*schema.Node, error) {
-		node := schema.StrictObject()
-		err := builder.FlattenStruct(node, reflect.TypeFor[RawDNSOptions]())
-		if err != nil {
-			return nil, err
-		}
-		return node, nil
-	})
 }
 
 func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
@@ -118,8 +109,8 @@ type DNSTransportOptionsRegistry interface {
 	CreateOptions(transportType string) (any, bool)
 }
 type _DNSServerOptions struct {
-	Type    string `json:"type,omitempty"`
-	Tag     string `json:"tag,omitempty"`
+	Type string `json:"type,omitempty"`
+	Tag  string `json:"tag,omitempty"`
 	// Legacy address format (sing-box < 1.12), auto-upgraded below.
 	Address string `json:"address,omitempty"`
 	Options any    `json:"-"`
@@ -136,7 +127,7 @@ func (o *DNSServerOptions) UnmarshalJSONContext(ctx context.Context, content []b
 	if err != nil {
 		return err
 	}
-	if o.Type == "" && o.Address != "" {
+	if (o.Type == "" || o.Type == C.DNSTypeLegacy) && o.Address != "" {
 		// Legacy DNS server format (sing-box < 1.12): auto-upgrade to the new
 		// "type" format so old configs (e.g. NekoBox-generated) keep working.
 		serverURL, _ := url.Parse(o.Address)
