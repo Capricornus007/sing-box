@@ -172,14 +172,6 @@ func (h *Inbound) Close() error {
 }
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
-	canSplice := h.transport == nil
-	if canSplice && h.decryption != nil && h.decryption.IsFullRandomXorMode() {
-		canSplice = false
-	}
-	h.newConnectionExInternal(ctx, conn, metadata, onClose, canSplice)
-}
-
-func (h *Inbound) newConnectionExInternal(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc, canSplice bool) {
 	if h.tlsConfig != nil && h.transport == nil {
 		tlsConn, err := tls.ServerHandshake(ctx, conn, h.tlsConfig)
 		if err != nil {
@@ -349,5 +341,5 @@ func (h *inboundTransportHandler) NewConnectionEx(ctx context.Context, conn net.
 	metadata.InboundDetour = h.listener.ListenOptions().Detour
 	//nolint:staticcheck
 	h.logger.InfoContext(ctx, "inbound connection from ", metadata.Source)
-	(*Inbound)(h).newConnectionExInternal(ctx, conn, metadata, onClose, false)
+	(*Inbound)(h).NewConnection(ctx, conn, metadata, onClose)
 }

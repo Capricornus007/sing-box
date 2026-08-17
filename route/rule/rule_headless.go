@@ -149,11 +149,6 @@ func NewDefaultHeadlessRule(ctx context.Context, options option.DefaultHeadlessR
 		rule.items = append(rule.items, item)
 		rule.allItems = append(rule.allItems, item)
 	}
-	if len(options.PackageNameExclude) > 0 {
-		item := NewPackageNameExcludeItem(options.PackageNameExclude)
-		rule.items = append(rule.items, item)
-		rule.allItems = append(rule.allItems, item)
-	}
 	if len(options.PackageNameRegex) > 0 {
 		item, err := NewPackageNameRegexItem(options.PackageNameRegex)
 		if err != nil {

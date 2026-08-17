@@ -55,28 +55,6 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 			return nil, err
 		}
 	} else {
-		if strings.HasPrefix(options.LocalOptions.Path, "geoip:") {
-			rules, err := nekoutils.GetGeoIPHeadlessRules(strings.TrimPrefix(options.LocalOptions.Path, "geoip:"))
-			if err != nil {
-				return nil, err
-			}
-			err = ruleSet.reloadRules(rules)
-			if err != nil {
-				return nil, err
-			}
-			return ruleSet, nil
-		}
-		if strings.HasPrefix(options.LocalOptions.Path, "geosite:") {
-			rules, err := nekoutils.GetGeoSiteHeadlessRules(strings.TrimPrefix(options.LocalOptions.Path, "geosite:"))
-			if err != nil {
-				return nil, err
-			}
-			err = ruleSet.reloadRules(rules)
-			if err != nil {
-				return nil, err
-			}
-			return ruleSet, nil
-		}
 		filePath := filemanager.BasePath(ctx, strings.ReplaceAll(options.LocalOptions.Path, C.RuleSetTagPlaceholder, tag))
 		filePath, _ = filepath.Abs(filePath)
 		err := ruleSet.reloadFile(filePath)

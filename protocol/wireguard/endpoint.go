@@ -113,28 +113,8 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		Address:    options.Address,
 		PrivateKey: options.PrivateKey,
 		ListenPort: options.ListenPort,
-		ResolvePeer: func(domain string) (netip.Addr, error) {
-			queryOptions := outboundDialer.(dialer.ResolveDialer).QueryOptions()
-			if options.Detour != "" {
-				var resolveErr error
-				queryOptions, resolveErr = dialer.PeerDomainQueryOptions(
-					service.FromContext[adapter.DNSTransportManager](ctx),
-					tag,
-					options.Detour,
-					queryOptions,
-				)
-				if resolveErr != nil {
-					return netip.Addr{}, resolveErr
-				}
-			}
-			endpointAddresses, lookupErr := ep.dnsRouter.Lookup(ctx, domain, queryOptions)
-			if lookupErr != nil {
-				return netip.Addr{}, lookupErr
-			}
-			if len(endpointAddresses) == 0 {
-				return netip.Addr{}, E.New("empty DNS response for ", domain)
-			}
-			return endpointAddresses[0], nil
+		ResolvePeer: func(domain string) ([]netip.Addr, error) {
+			return ep.dnsRouter.Lookup(ctx, domain, outboundDialer.(dialer.ResolveDialer).QueryOptions())
 		},
 		Peers: common.Map(options.Peers, func(it option.WireGuardPeer) wireguard.PeerOptions {
 			return wireguard.PeerOptions{
@@ -175,7 +155,7 @@ func (w *Endpoint) Close() error {
 }
 
 func (w *Endpoint) InterfaceUpdated() {
-	if !w.started.Load() || w.detoured {
+	if !w.started.Load() {
 		return
 	}
 	err := w.endpoint.BindUpdate()

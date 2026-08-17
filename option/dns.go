@@ -4,13 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
-	"net/url"
 	"reflect"
-	"strconv"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/schema"
-	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badjson"
@@ -40,12 +37,6 @@ type removedLegacyDNSOptions struct {
 	FakeIP json.RawMessage `json:"fakeip,omitempty"`
 }
 
-type legacyFakeIPOptions struct {
-	Enabled    bool   `json:"enabled"`
-	Inet4Range string `json:"inet4_range,omitempty"`
-	Inet6Range string `json:"inet6_range,omitempty"`
-}
-
 func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) error {
 	var legacyOptions removedLegacyDNSOptions
 	err := json.UnmarshalContext(ctx, content, &legacyOptions)
@@ -53,116 +44,20 @@ func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) e
 		return err
 	}
 	if len(legacyOptions.FakeIP) != 0 {
-		// Legacy DNS fakeip options (sing-box < 1.12): auto-upgrade to the new
-		// fakeip DNS server format so old configs keep working.
-		var fakeIP legacyFakeIPOptions
-		if err = json.UnmarshalContext(ctx, legacyOptions.FakeIP, &fakeIP); err != nil {
-			return E.Cause(err, "decode legacy fakeip options")
-		}
-		if fakeIP.Enabled {
-			// Inject a fakeip server with the legacy ranges. Match servers that
-			// used "address":"fakeip", otherwise add a new one named "fakeip".
-			var raw map[string]any
-			if err = json.UnmarshalContext(ctx, content, &raw); err != nil {
-				return err
-			}
-			delete(raw, "fakeip")
-			servers, _ := raw["servers"].([]any)
-			newServers := make([]any, 0, len(servers)+1)
-			found := false
-			for _, s := range servers {
-				sm, ok := s.(map[string]any)
-				if !ok {
-					newServers = append(newServers, s)
-					continue
-				}
-				if addr, _ := sm["address"].(string); addr == "fakeip" {
-					delete(sm, "address")
-					delete(sm, "strategy")
-					sm["type"] = C.DNSTypeFakeIP
-					if fakeIP.Inet4Range != "" {
-						sm["inet4_range"] = fakeIP.Inet4Range
-					}
-					if fakeIP.Inet6Range != "" {
-						sm["inet6_range"] = fakeIP.Inet6Range
-					}
-					found = true
-				}
-				newServers = append(newServers, sm)
-			}
-			if !found {
-				fs := map[string]any{
-					"type": C.DNSTypeFakeIP,
-					"tag":  "fakeip",
-				}
-				if fakeIP.Inet4Range != "" {
-					fs["inet4_range"] = fakeIP.Inet4Range
-				}
-				if fakeIP.Inet6Range != "" {
-					fs["inet6_range"] = fakeIP.Inet6Range
-				}
-				newServers = append(newServers, fs)
-			}
-			raw["servers"] = newServers
-			content, err = json.MarshalContext(ctx, raw)
-			if err != nil {
-				return err
-			}
-		} else {
-			// Disabled fakeip is a no-op in the legacy format.
-			var raw map[string]any
-			if err = json.UnmarshalContext(ctx, content, &raw); err != nil {
-				return err
-			}
-			delete(raw, "fakeip")
-			content, err = json.MarshalContext(ctx, raw)
-			if err != nil {
-				return err
-			}
-		}
+		return E.New(legacyDNSFakeIPRemovedMessage)
 	}
-	err = badjson.UnmarshallExcludedContext(ctx, content, legacyOptions, &o.RawDNSOptions)
-	if err != nil {
-		return err
-	}
-	// Legacy rcode servers (sing-box < 1.14) are represented as an internal
-	// marker type. Remove them and rewrite rules that referenced them into
-	// "predefined" + rcode actions.
-	rcodeMap := make(map[string]int)
-	o.Servers = common.Filter(o.Servers, func(it DNSServerOptions) bool {
-		if it.Type == C.DNSTypeLegacyRcode {
-			rcodeMap[it.Tag] = it.Options.(int)
-			return false
+	return badjson.UnmarshallExcludedContext(ctx, content, legacyOptions, &o.RawDNSOptions)
+}
+
+func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	return builder.Define("DNS", func() (*schema.Node, error) {
+		node := schema.StrictObject()
+		err := builder.FlattenStruct(node, reflect.TypeFor[RawDNSOptions]())
+		if err != nil {
+			return nil, err
 		}
-		return true
+		return node, nil
 	})
-	if len(rcodeMap) > 0 {
-		for i := 0; i < len(o.Rules); i++ {
-			rewriteDNSRcode(rcodeMap, &o.Rules[i])
-		}
-	}
-	return nil
-}
-
-func rewriteDNSRcode(rcodeMap map[string]int, rule *DNSRule) {
-	switch rule.Type {
-	case C.RuleTypeDefault:
-		rewriteDNSRcodeAction(rcodeMap, &rule.DefaultOptions.DNSRuleAction)
-	case C.RuleTypeLogical:
-		rewriteDNSRcodeAction(rcodeMap, &rule.LogicalOptions.DNSRuleAction)
-	}
-}
-
-func rewriteDNSRcodeAction(rcodeMap map[string]int, ruleAction *DNSRuleAction) {
-	if ruleAction.Action != C.RuleActionTypeRoute {
-		return
-	}
-	rcode, loaded := rcodeMap[ruleAction.RouteOptions.Server]
-	if !loaded {
-		return
-	}
-	ruleAction.Action = C.RuleActionTypePredefined
-	ruleAction.PredefinedOptions.Rcode = common.Ptr(DNSRCode(rcode))
 }
 
 func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {

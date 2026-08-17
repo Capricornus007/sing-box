@@ -6,7 +6,6 @@ const (
 	TypeTProxy             = "tproxy"
 	TypeDirect             = "direct"
 	TypeBridge             = "bridge"
-	TypeFragmentExclave    = "fragment-exclave"
 	TypeBlock              = "block"
 	TypeDNS                = "dns"
 	TypeSOCKS              = "socks"
@@ -18,13 +17,10 @@ const (
 	TypeTrojan             = "trojan"
 	TypeNaive              = "naive"
 	TypeWireGuard          = "wireguard"
-	TypeAmneziaWG = "amneziawg"
-	TypeAwg                = "awg"
 	TypeHysteria           = "hysteria"
 	TypeTor                = "tor"
 	TypeSSH                = "ssh"
 	TypeShadowTLS          = "shadowtls"
-	TypeMieru              = "mieru"
 	TypeAnyTLS             = "anytls"
 	TypeShadowsocksR       = "shadowsocksr"
 	TypeVLESS              = "vless"
@@ -42,7 +38,6 @@ const (
 	TypeCCM                = "ccm"
 	TypeOCM                = "ocm"
 	TypeOOMKiller          = "oom-killer"
-	TypeMASQUE             = "masque"
 	TypeUSBIPServer        = "usbip-server"
 	TypeUSBIPClient        = "usbip-client"
 	TypeHysteriaRealm      = "hysteria-realm"
@@ -65,8 +60,6 @@ func ProxyDisplayName(proxyType string) string {
 		return "TProxy"
 	case TypeDirect:
 		return "Direct"
-	case TypeFragmentExclave:
-		return "Fragment Exclave"
 	case TypeBridge:
 		return "Bridge"
 	case TypeBlock:

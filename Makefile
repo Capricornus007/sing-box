@@ -15,10 +15,6 @@ SING_FFI ?= sing-ffi
 LIBBOX_FFI_CONFIG ?= ./experimental/libbox/ffi.json
 BUILD_MOD =
 
-ifneq ($(findstring with_awg,$(TAGS)),)
-BUILD_MOD = -mod=vendor
-endif
-
 .PHONY: test release docs build schema
 
 build:

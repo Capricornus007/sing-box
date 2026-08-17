@@ -139,9 +139,6 @@ func (s *Selector) SelectOutbound(tag string) bool {
 		}
 	}
 	s.interruptGroup.Interrupt(s.interruptExternalConnections)
-	if nekoutils.Selector_OnProxySelected != nil {
-		nekoutils.Selector_OnProxySelected(s.Tag(), tag)
-	}
 	if s.history != nil {
 		s.history.NotifyUpdated()
 	}

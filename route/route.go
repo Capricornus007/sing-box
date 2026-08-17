@@ -13,9 +13,9 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	R "github.com/sagernet/sing-box/route/rule"
-	mux "github.com/sagernet/sing-mux"
-	tun "github.com/sagernet/sing-tun"
-	vmess "github.com/sagernet/sing-vmess"
+	"github.com/sagernet/sing-mux"
+	"github.com/sagernet/sing-tun"
+	"github.com/sagernet/sing-vmess"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/bufio"
@@ -187,9 +187,6 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	for _, tracker := range r.trackers {
 		conn = tracker.RoutedConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
 	}
-	if r.nekoTracker != nil {
-		conn = r.nekoTracker.RoutedConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
-	}
 	if outboundHandler, isHandler := selectedOutbound.(adapter.ConnectionHandler); isHandler {
 		outboundHandler.NewConnection(ctx, conn, metadata, onClose)
 	} else {
@@ -320,27 +317,12 @@ func (r *Router) routePacketConnection(ctx context.Context, conn N.PacketConn, m
 	if metadata.FakeIP {
 		conn = bufio.NewNATPacketConn(bufio.NewNetPacketConn(conn), metadata.OriginDestination, metadata.Destination)
 	}
-	if adblockService != nil {
-		handled, err := adblockService.HandleUDP(ctx, conn, metadata, selectedOutbound, onClose)
-		if handled {
-			return err
-		}
-	}
 	if outboundHandler, isHandler := selectedOutbound.(adapter.PacketConnectionHandler); isHandler {
 		outboundHandler.NewPacketConnection(ctx, conn, metadata, onClose)
 	} else {
 		r.connection.NewPacketConnection(ctx, selectedOutbound, conn, metadata, onClose)
 	}
 	return nil
-}
-
-func cachePacketBuffers(conn N.PacketConn, packetBuffers []*N.PacketBuffer) N.PacketConn {
-	for i := len(packetBuffers) - 1; i >= 0; i-- {
-		packetBuffer := packetBuffers[i]
-		conn = bufio.NewCachedPacketConn(conn, packetBuffer.Buffer, packetBuffer.Destination)
-		N.PutPacketBuffer(packetBuffer)
-	}
-	return conn
 }
 
 func (r *Router) PreMatch(metadata adapter.InboundContext, firstPacket []byte) adapter.PreMatchResult {

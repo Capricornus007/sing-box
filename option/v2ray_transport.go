@@ -1,14 +1,7 @@
 package option
 
 import (
-	"math/big"
-	"net/http"
-	"strings"
-
 	"reflect"
-
-	Xbadoption "github.com/sagernet/sing-box/common/xray/json/badoption"
-	"github.com/sagernet/sing-box/common/xray/utils"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/schema"

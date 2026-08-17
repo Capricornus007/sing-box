@@ -8,8 +8,6 @@ type TransportAdapter struct {
 	transportType string
 	transportTag  string
 	dependencies  []string
-	outbound      string
-	hasOutbound   bool
 }
 
 func NewTransportAdapter(transportType string, transportTag string, dependencies []string) TransportAdapter {
@@ -29,8 +27,6 @@ func NewTransportAdapterWithLocalOptions(transportType string, transportTag stri
 		transportType: transportType,
 		transportTag:  transportTag,
 		dependencies:  dependencies,
-		outbound:      localOptions.Detour,
-		hasOutbound:   true,
 	}
 }
 
@@ -43,8 +39,6 @@ func NewTransportAdapterWithRemoteOptions(transportType string, transportTag str
 		transportType: transportType,
 		transportTag:  transportTag,
 		dependencies:  dependencies,
-		outbound:      remoteOptions.Detour,
-		hasOutbound:   true,
 	}
 }
 

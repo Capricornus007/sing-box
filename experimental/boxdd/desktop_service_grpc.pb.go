@@ -35,10 +35,9 @@ const (
 	DesktopService_DeleteOOMReport_FullMethodName         = "/desktop.DesktopService/DeleteOOMReport"
 	DesktopService_DeleteAllOOMReports_FullMethodName     = "/desktop.DesktopService/DeleteAllOOMReports"
 	DesktopService_InstallUpdate_FullMethodName           = "/desktop.DesktopService/InstallUpdate"
-	DesktopService_GetDataProtection_FullMethodName       = "/desktop.DesktopService/GetDataProtection"
-	DesktopService_SetDataProtection_FullMethodName       = "/desktop.DesktopService/SetDataProtection"
 	DesktopService_GetSecuritySettings_FullMethodName     = "/desktop.DesktopService/GetSecuritySettings"
 	DesktopService_SetInsecureModeEnabled_FullMethodName  = "/desktop.DesktopService/SetInsecureModeEnabled"
+	DesktopService_SetLocale_FullMethodName               = "/desktop.DesktopService/SetLocale"
 )
 
 // DesktopServiceClient is the client API for DesktopService service.
@@ -64,10 +63,9 @@ type DesktopServiceClient interface {
 	DeleteOOMReport(ctx context.Context, in *OOMReportRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAllOOMReports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	InstallUpdate(ctx context.Context, in *InstallUpdateRequest, opts ...grpc.CallOption) (*InstallUpdateResponse, error)
-	GetDataProtection(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DataProtectionInfo, error)
-	SetDataProtection(ctx context.Context, in *SetDataProtectionRequest, opts ...grpc.CallOption) (*DataProtectionInfo, error)
 	GetSecuritySettings(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SecuritySettings, error)
 	SetInsecureModeEnabled(ctx context.Context, in *SetInsecureModeEnabledRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetLocale(ctx context.Context, in *SetLocaleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type desktopServiceClient struct {
@@ -268,26 +266,6 @@ func (c *desktopServiceClient) InstallUpdate(ctx context.Context, in *InstallUpd
 	return out, nil
 }
 
-func (c *desktopServiceClient) GetDataProtection(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DataProtectionInfo, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DataProtectionInfo)
-	err := c.cc.Invoke(ctx, DesktopService_GetDataProtection_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *desktopServiceClient) SetDataProtection(ctx context.Context, in *SetDataProtectionRequest, opts ...grpc.CallOption) (*DataProtectionInfo, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DataProtectionInfo)
-	err := c.cc.Invoke(ctx, DesktopService_SetDataProtection_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *desktopServiceClient) GetSecuritySettings(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SecuritySettings, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SecuritySettings)
@@ -302,6 +280,16 @@ func (c *desktopServiceClient) SetInsecureModeEnabled(ctx context.Context, in *S
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DesktopService_SetInsecureModeEnabled_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *desktopServiceClient) SetLocale(ctx context.Context, in *SetLocaleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DesktopService_SetLocale_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -331,10 +319,9 @@ type DesktopServiceServer interface {
 	DeleteOOMReport(context.Context, *OOMReportRequest) (*emptypb.Empty, error)
 	DeleteAllOOMReports(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	InstallUpdate(context.Context, *InstallUpdateRequest) (*InstallUpdateResponse, error)
-	GetDataProtection(context.Context, *emptypb.Empty) (*DataProtectionInfo, error)
-	SetDataProtection(context.Context, *SetDataProtectionRequest) (*DataProtectionInfo, error)
 	GetSecuritySettings(context.Context, *emptypb.Empty) (*SecuritySettings, error)
 	SetInsecureModeEnabled(context.Context, *SetInsecureModeEnabledRequest) (*emptypb.Empty, error)
+	SetLocale(context.Context, *SetLocaleRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDesktopServiceServer()
 }
 
@@ -421,20 +408,16 @@ func (UnimplementedDesktopServiceServer) InstallUpdate(context.Context, *Install
 	return nil, status.Error(codes.Unimplemented, "method InstallUpdate not implemented")
 }
 
-func (UnimplementedDesktopServiceServer) GetDataProtection(context.Context, *emptypb.Empty) (*DataProtectionInfo, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetDataProtection not implemented")
-}
-
-func (UnimplementedDesktopServiceServer) SetDataProtection(context.Context, *SetDataProtectionRequest) (*DataProtectionInfo, error) {
-	return nil, status.Error(codes.Unimplemented, "method SetDataProtection not implemented")
-}
-
 func (UnimplementedDesktopServiceServer) GetSecuritySettings(context.Context, *emptypb.Empty) (*SecuritySettings, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSecuritySettings not implemented")
 }
 
 func (UnimplementedDesktopServiceServer) SetInsecureModeEnabled(context.Context, *SetInsecureModeEnabledRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetInsecureModeEnabled not implemented")
+}
+
+func (UnimplementedDesktopServiceServer) SetLocale(context.Context, *SetLocaleRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetLocale not implemented")
 }
 func (UnimplementedDesktopServiceServer) mustEmbedUnimplementedDesktopServiceServer() {}
 func (UnimplementedDesktopServiceServer) testEmbeddedByValue()                        {}
@@ -799,42 +782,6 @@ func _DesktopService_InstallUpdate_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DesktopService_GetDataProtection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DesktopServiceServer).GetDataProtection(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: DesktopService_GetDataProtection_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DesktopServiceServer).GetDataProtection(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _DesktopService_SetDataProtection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetDataProtectionRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DesktopServiceServer).SetDataProtection(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: DesktopService_SetDataProtection_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DesktopServiceServer).SetDataProtection(ctx, req.(*SetDataProtectionRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _DesktopService_GetSecuritySettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -867,6 +814,24 @@ func _DesktopService_SetInsecureModeEnabled_Handler(srv interface{}, ctx context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DesktopServiceServer).SetInsecureModeEnabled(ctx, req.(*SetInsecureModeEnabledRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DesktopService_SetLocale_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetLocaleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DesktopServiceServer).SetLocale(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DesktopService_SetLocale_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DesktopServiceServer).SetLocale(ctx, req.(*SetLocaleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -955,20 +920,16 @@ var DesktopService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _DesktopService_InstallUpdate_Handler,
 		},
 		{
-			MethodName: "GetDataProtection",
-			Handler:    _DesktopService_GetDataProtection_Handler,
-		},
-		{
-			MethodName: "SetDataProtection",
-			Handler:    _DesktopService_SetDataProtection_Handler,
-		},
-		{
 			MethodName: "GetSecuritySettings",
 			Handler:    _DesktopService_GetSecuritySettings_Handler,
 		},
 		{
 			MethodName: "SetInsecureModeEnabled",
 			Handler:    _DesktopService_SetInsecureModeEnabled_Handler,
+		},
+		{
+			MethodName: "SetLocale",
+			Handler:    _DesktopService_SetLocale_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
