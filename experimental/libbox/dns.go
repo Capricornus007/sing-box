@@ -15,6 +15,7 @@ import (
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
+	"github.com/sagernet/sing/common/task"
 	"github.com/sagernet/sing/service"
 
 	mDNS "github.com/miekg/dns"

@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
+	"net/url"
 	"reflect"
+	"strconv"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/schema"
+	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badjson"
@@ -46,18 +49,57 @@ func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) e
 	if len(legacyOptions.FakeIP) != 0 {
 		return E.New(legacyDNSFakeIPRemovedMessage)
 	}
-	return badjson.UnmarshallExcludedContext(ctx, content, legacyOptions, &o.RawDNSOptions)
+	if err = badjson.UnmarshallExcludedContext(ctx, content, legacyOptions, &o.RawDNSOptions); err != nil {
+		return err
+	}
+
+	// sing-box 1.14 removed the synthetic rcode:// DNS transport. Older
+	// NekoBox databases still contain servers such as
+	// {"address":"rcode://name_error"} and rules routing to their tags.
+	// DNSServerOptions keeps those entries as an internal marker while parsing;
+	// remove the marker servers here and express the same behavior using the
+	// 1.14 DNS rule action. This must happen before box.New validates the
+	// transport registry, otherwise startup fails with "unknown transport type:
+	// legacy_rcode" and the VPN service immediately tears down.
+	rcodeMap := make(map[string]int)
+	servers := make([]DNSServerOptions, 0, len(o.Servers))
+	for _, server := range o.Servers {
+		if server.Type == C.DNSTypeLegacyRcode {
+			rcode, ok := server.Options.(int)
+			if !ok {
+				return E.New("invalid legacy rcode options for server ", server.Tag)
+			}
+			rcodeMap[server.Tag] = rcode
+			continue
+		}
+		servers = append(servers, server)
+	}
+	o.Servers = servers
+	for i := range o.Rules {
+		rewriteDNSRcode(rcodeMap, &o.Rules[i])
+	}
+	return nil
 }
 
-func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
-	return builder.Define("DNS", func() (*schema.Node, error) {
-		node := schema.StrictObject()
-		err := builder.FlattenStruct(node, reflect.TypeFor[RawDNSOptions]())
-		if err != nil {
-			return nil, err
-		}
-		return node, nil
-	})
+func rewriteDNSRcode(rcodeMap map[string]int, rule *DNSRule) {
+	switch rule.Type {
+	case C.RuleTypeDefault:
+		rewriteDNSRcodeAction(rcodeMap, &rule.DefaultOptions.DNSRuleAction)
+	case C.RuleTypeLogical:
+		rewriteDNSRcodeAction(rcodeMap, &rule.LogicalOptions.DNSRuleAction)
+	}
+}
+
+func rewriteDNSRcodeAction(rcodeMap map[string]int, ruleAction *DNSRuleAction) {
+	if ruleAction.Action != C.RuleActionTypeRoute {
+		return
+	}
+	rcode, loaded := rcodeMap[ruleAction.RouteOptions.Server]
+	if !loaded {
+		return
+	}
+	ruleAction.Action = C.RuleActionTypePredefined
+	ruleAction.PredefinedOptions.Rcode = common.Ptr(DNSRCode(rcode))
 }
 
 func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
@@ -118,8 +160,8 @@ type DNSTransportOptionsRegistry interface {
 	CreateOptions(transportType string) (any, bool)
 }
 type _DNSServerOptions struct {
-	Type    string `json:"type,omitempty"`
-	Tag     string `json:"tag,omitempty"`
+	Type string `json:"type,omitempty"`
+	Tag  string `json:"tag,omitempty"`
 	// Legacy address format (sing-box < 1.12), auto-upgraded below.
 	Address string `json:"address,omitempty"`
 	Options any    `json:"-"`
@@ -136,7 +178,7 @@ func (o *DNSServerOptions) UnmarshalJSONContext(ctx context.Context, content []b
 	if err != nil {
 		return err
 	}
-	if o.Type == "" && o.Address != "" {
+	if (o.Type == "" || o.Type == C.DNSTypeLegacy) && o.Address != "" {
 		// Legacy DNS server format (sing-box < 1.12): auto-upgrade to the new
 		// "type" format so old configs (e.g. NekoBox-generated) keep working.
 		serverURL, _ := url.Parse(o.Address)

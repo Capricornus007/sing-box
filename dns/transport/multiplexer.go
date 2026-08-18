@@ -11,6 +11,7 @@ import (
 	E "github.com/sagernet/sing/common/exceptions"
 
 	mDNS "github.com/miekg/dns"
+	"golang.org/x/net/http2"
 )
 
 const (
@@ -133,8 +134,12 @@ func (m *queryMultiplexer) ExchangeAsync(ctx context.Context, message *mDNS.Msg,
 
 func (m *queryMultiplexer) dispatch(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error), retryReadError bool) {
 	if m.options.probeReuse && m.reuseState.Load() != reuseStateSupported {
-		m.maybeStartProbe(ctx, message)
-		go m.exchangeSingle(ctx, message, callback)
+		go m.exchangeSingle(ctx, message, func(response *mDNS.Msg, err error) {
+			if err == nil {
+				m.maybeStartProbe(ctx, message)
+			}
+			callback(response, err)
+		})
 		return
 	}
 	m.exchangeAsync(ctx, message, callback, retryReadError)
@@ -375,11 +380,16 @@ func (m *queryMultiplexer) completeConnDone(queryId uint16, connCtx context.Cont
 	}
 	connErr := context.Cause(connCtx)
 	_, readFailed := connErr.(*queryMultiplexerReadError)
-	if pending.retryCtx != nil && readFailed {
+	if pending.retryCtx != nil && readFailed && !isHTTP2StreamError(connErr) {
 		m.dispatch(pending.retryCtx, pending.message, pending.callback, false)
 		return
 	}
 	pending.callback(nil, connErr)
+}
+
+func isHTTP2StreamError(err error) bool {
+	var streamError http2.StreamError
+	return errors.As(err, &streamError)
 }
 
 func (m *queryMultiplexer) take(queryId uint16) *pendingQuery {

@@ -155,7 +155,7 @@ func (w *Endpoint) Close() error {
 }
 
 func (w *Endpoint) InterfaceUpdated() {
-	if !w.started.Load() {
+	if !w.started.Load() || w.detoured {
 		return
 	}
 	err := w.endpoint.BindUpdate()

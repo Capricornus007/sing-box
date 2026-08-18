@@ -1,3 +1,5 @@
+//go:build with_adblock_cronet
+
 package cronetbidistream
 
 import (

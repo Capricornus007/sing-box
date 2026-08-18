@@ -13,9 +13,9 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	R "github.com/sagernet/sing-box/route/rule"
-	"github.com/sagernet/sing-mux"
-	"github.com/sagernet/sing-tun"
-	"github.com/sagernet/sing-vmess"
+	mux "github.com/sagernet/sing-mux"
+	tun "github.com/sagernet/sing-tun"
+	vmess "github.com/sagernet/sing-vmess"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/bufio"
@@ -54,6 +54,15 @@ func (r *Router) RouteConnection(ctx context.Context, conn net.Conn, metadata ad
 	case <-r.ctx.Done():
 	}
 	return nil
+}
+
+func cachePacketBuffers(conn N.PacketConn, packetBuffers []*N.PacketBuffer) N.PacketConn {
+	for i := len(packetBuffers) - 1; i >= 0; i-- {
+		packetBuffer := packetBuffers[i]
+		conn = bufio.NewCachedPacketConn(conn, packetBuffer.Buffer, packetBuffer.Destination)
+		N.PutPacketBuffer(packetBuffer)
+	}
+	return conn
 }
 
 func (r *Router) RouteConnectionEx(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {

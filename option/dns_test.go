@@ -42,7 +42,7 @@ func TestDNSOptionsRejectsLegacyFakeIPOptions(t *testing.T) {
 	require.EqualError(t, err, legacyDNSFakeIPRemovedMessage)
 }
 
-func TestDNSServerOptionsRejectsLegacyFormats(t *testing.T) {
+func TestDNSServerOptionsUpgradesLegacyFormats(t *testing.T) {
 	t.Parallel()
 
 	ctx := service.ContextWith[DNSTransportOptionsRegistry](context.Background(), stubDNSTransportOptionsRegistry{})
@@ -53,6 +53,28 @@ func TestDNSServerOptionsRejectsLegacyFormats(t *testing.T) {
 	for _, content := range testCases {
 		var options DNSServerOptions
 		err := json.UnmarshalContext(ctx, []byte(content), &options)
-		require.EqualError(t, err, legacyDNSServerRemovedMessage)
+		require.NoError(t, err)
+		require.Equal(t, C.DNSTypeUDP, options.Type)
+		remoteOptions, loaded := options.Options.(*RemoteDNSServerOptions)
+		require.True(t, loaded)
+		require.Equal(t, "1.1.1.1", remoteOptions.Server)
 	}
+}
+
+func TestDNSOptionsUpgradesLegacyRcodeServer(t *testing.T) {
+	t.Parallel()
+
+	ctx := service.ContextWith[DNSTransportOptionsRegistry](context.Background(), stubDNSTransportOptionsRegistry{})
+	var options DNSOptions
+	err := json.UnmarshalContext(ctx, []byte(`{
+		"servers": [{"tag":"rcode", "address":"rcode://name_error"}],
+		"rules": [{"domain":["example.com"], "server":"rcode"}]
+	}`), &options)
+	require.NoError(t, err)
+	require.Empty(t, options.Servers)
+	require.Len(t, options.Rules, 1)
+	action := options.Rules[0].DefaultOptions.DNSRuleAction
+	require.Equal(t, C.RuleActionTypePredefined, action.Action)
+	require.NotNil(t, action.PredefinedOptions.Rcode)
+	require.Equal(t, DNSRCode(3), *action.PredefinedOptions.Rcode)
 }
