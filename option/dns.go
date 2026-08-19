@@ -37,7 +37,13 @@ const (
 )
 
 type removedLegacyDNSOptions struct {
-	FakeIP json.RawMessage `json:"fakeip,omitempty"`
+	FakeIP *LegacyDNSFakeIPOptions `json:"fakeip,omitempty"`
+}
+
+type LegacyDNSFakeIPOptions struct {
+	Enabled    bool              `json:"enabled,omitempty"`
+	Inet4Range *badoption.Prefix `json:"inet4_range,omitempty"`
+	Inet6Range *badoption.Prefix `json:"inet6_range,omitempty"`
 }
 
 func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) error {
@@ -46,11 +52,41 @@ func (o *DNSOptions) UnmarshalJSONContext(ctx context.Context, content []byte) e
 	if err != nil {
 		return err
 	}
-	if len(legacyOptions.FakeIP) != 0 {
-		return E.New(legacyDNSFakeIPRemovedMessage)
-	}
 	if err = badjson.UnmarshallExcludedContext(ctx, content, legacyOptions, &o.RawDNSOptions); err != nil {
 		return err
+	}
+
+	// sing-box 1.14 moved the old top-level dns.fakeip ranges into a
+	// type="fakeip" DNS server. Keep accepting pre-1.14 configurations and
+	// attach their ranges to the upgraded legacy address="fakeip" server.
+	if legacyOptions.FakeIP != nil && legacyOptions.FakeIP.Enabled {
+		foundFakeIPServer := false
+		for i := range o.Servers {
+			if o.Servers[i].Type != C.DNSTypeFakeIP {
+				continue
+			}
+			foundFakeIPServer = true
+			fakeIPOptions, loaded := o.Servers[i].Options.(*FakeIPDNSServerOptions)
+			if !loaded {
+				return E.New("invalid fakeip DNS server options for ", o.Servers[i].Tag)
+			}
+			if fakeIPOptions.Inet4Range == nil {
+				fakeIPOptions.Inet4Range = legacyOptions.FakeIP.Inet4Range
+			}
+			if fakeIPOptions.Inet6Range == nil {
+				fakeIPOptions.Inet6Range = legacyOptions.FakeIP.Inet6Range
+			}
+		}
+		if !foundFakeIPServer {
+			o.Servers = append(o.Servers, DNSServerOptions{
+				Type: C.DNSTypeFakeIP,
+				Tag:  "fakeip",
+				Options: &FakeIPDNSServerOptions{
+					Inet4Range: legacyOptions.FakeIP.Inet4Range,
+					Inet6Range: legacyOptions.FakeIP.Inet6Range,
+				},
+			})
+		}
 	}
 
 	// sing-box 1.14 removed the synthetic rcode:// DNS transport. Older

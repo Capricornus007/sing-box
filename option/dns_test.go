@@ -2,6 +2,7 @@ package option
 
 import (
 	"context"
+	"net/netip"
 	"testing"
 
 	C "github.com/sagernet/sing-box/constant"
@@ -28,18 +29,27 @@ func (stubDNSTransportOptionsRegistry) CreateOptions(transportType string) (any,
 	}
 }
 
-func TestDNSOptionsRejectsLegacyFakeIPOptions(t *testing.T) {
+func TestDNSOptionsUpgradesLegacyFakeIPOptions(t *testing.T) {
 	t.Parallel()
 
 	ctx := service.ContextWith[DNSTransportOptionsRegistry](context.Background(), stubDNSTransportOptionsRegistry{})
 	var options DNSOptions
 	err := json.UnmarshalContext(ctx, []byte(`{
+		"servers": [{"tag":"dns-fake", "address":"fakeip"}],
+		"rules": [{"inbound":["tun-in"], "server":"dns-fake"}],
 		"fakeip": {
 			"enabled": true,
-			"inet4_range": "198.18.0.0/15"
+			"inet4_range": "198.18.0.0/15",
+			"inet6_range": "fc00::/18"
 		}
 	}`), &options)
-	require.EqualError(t, err, legacyDNSFakeIPRemovedMessage)
+	require.NoError(t, err)
+	require.Len(t, options.Servers, 1)
+	require.Equal(t, C.DNSTypeFakeIP, options.Servers[0].Type)
+	fakeIPOptions, loaded := options.Servers[0].Options.(*FakeIPDNSServerOptions)
+	require.True(t, loaded)
+	require.Equal(t, "198.18.0.0/15", fakeIPOptions.Inet4Range.Build(netip.Prefix{}).String())
+	require.Equal(t, "fc00::/18", fakeIPOptions.Inet6Range.Build(netip.Prefix{}).String())
 }
 
 func TestDNSServerOptionsUpgradesLegacyFormats(t *testing.T) {
