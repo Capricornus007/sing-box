@@ -2,6 +2,18 @@
 icon: material/alert-decagram
 ---
 
+#### 1.14.0-beta.17
+
+* Fixes and improvements
+
+#### 1.13.19
+
+* Fixes and improvements
+
+#### 1.14.0-beta.16
+
+* Fixes and improvements
+
 #### 1.14.0-beta.15
 
 * Add `api` command **1**
@@ -31,6 +43,7 @@ graphical clients, the Dashboard, or the new `sing-box api` command.
 
 #### 1.13.18
 
+* Update naiveproxy to v150.0.7871.63-1
 * Fixes and improvements
 
 #### 1.14.0-beta.10
