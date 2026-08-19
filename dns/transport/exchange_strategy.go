@@ -2,15 +2,10 @@ package transport
 
 import (
 	"context"
-<<<<<<< HEAD
-	"sync"
-
-=======
 	"strings"
 	"sync"
 
 	"github.com/sagernet/sing/common"
->>>>>>> sagerNet/testing
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
 
@@ -87,62 +82,6 @@ type sequentialCallState struct {
 	continued bool
 }
 
-<<<<<<< HEAD
-// ExchangeRace runs all exchangers concurrently; the first success wins and
-// cancels the rest, and when all fail the errors are aggregated.
-func ExchangeRace(ctx context.Context, exchangers []AsyncExchanger, callback func(response *mDNS.Msg, err error)) {
-	if len(exchangers) == 0 {
-		callback(nil, E.New("missing exchangers"))
-		return
-	}
-	if len(exchangers) == 1 {
-		exchangers[0](ctx, callback)
-		return
-	}
-	raceCtx, raceCancel := context.WithCancel(ctx)
-	state := &raceState{
-		cancel:    raceCancel,
-		remaining: len(exchangers),
-		callback:  callback,
-	}
-	for _, exchanger := range exchangers {
-		exchanger(raceCtx, state.complete)
-	}
-}
-
-type raceState struct {
-	access    sync.Mutex
-	done      bool
-	remaining int
-	errors    []error
-	cancel    context.CancelFunc
-	callback  func(response *mDNS.Msg, err error)
-}
-
-func (s *raceState) complete(response *mDNS.Msg, err error) {
-	s.access.Lock()
-	if s.done {
-		s.access.Unlock()
-		return
-	}
-	if err != nil {
-		s.errors = append(s.errors, err)
-		if len(s.errors) < s.remaining {
-			s.access.Unlock()
-			return
-		}
-		raceErrors := s.errors
-		s.done = true
-		s.access.Unlock()
-		s.cancel()
-		s.callback(nil, E.Errors(raceErrors...))
-		return
-	}
-	s.done = true
-	s.access.Unlock()
-	s.cancel()
-	s.callback(response, nil)
-=======
 func ExchangeNames(ctx context.Context, names []string, question mDNS.Question, exchangerFor func(fqdn string) AsyncExchanger, callback func(response *mDNS.Msg, err error)) {
 	if len(names) == 0 {
 		callback(nil, E.New("missing name candidates"))
@@ -199,7 +138,6 @@ func restoreOriginalQuestion(response *mDNS.Msg, fqdn string, question mDNS.Ques
 			record.Header().Name = question.Name
 		}
 	}
->>>>>>> sagerNet/testing
 }
 
 func NewFanOutRequest(message *mDNS.Msg, fqdn string, authenticatedData bool) *mDNS.Msg {

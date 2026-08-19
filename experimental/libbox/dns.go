@@ -15,11 +15,8 @@ import (
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
-<<<<<<< HEAD
 	"github.com/sagernet/sing/common/task"
-=======
 	"github.com/sagernet/sing/service"
->>>>>>> sagerNet/testing
 
 	mDNS "github.com/miekg/dns"
 )

@@ -168,16 +168,6 @@ func (c *CommandClient) establishConnection() (*grpc.ClientConn, daemon.StartedS
 		return c.dialRemote()
 	}
 	target, contextDialer := dialTarget()
-<<<<<<< HEAD
-	return c.dialWithRetry(target, localDialOptions(contextDialer), true)
-}
-
-// dialWithRetry connects to the local command server. The retry loop exists to
-// wait out the server starting up: WaitForReady keeps the probe redialing and
-// the loop reissues it with a growing delay, so a freshly launched extension is
-// picked up without surfacing a transient "unavailable" to the UI.
-func (c *CommandClient) dialWithRetry(target string, dialOptions []grpc.DialOption, retryDial bool) (*grpc.ClientConn, daemon.StartedServiceClient, error) {
-=======
 	return c.dialWithRetry(target, localDialOptions(contextDialer), !c.standalone)
 }
 
@@ -205,7 +195,6 @@ func (c *CommandClient) dialWithRetry(target string, dialOptions []grpc.DialOpti
 		return connection, client, nil
 	}
 
->>>>>>> sagerNet/testing
 	var connection *grpc.ClientConn
 	var client daemon.StartedServiceClient
 	var lastError error
@@ -216,12 +205,6 @@ func (c *CommandClient) dialWithRetry(target string, dialOptions []grpc.DialOpti
 			connection, err = grpc.NewClient(target, dialOptions...)
 			if err != nil {
 				lastError = err
-<<<<<<< HEAD
-				if !retryDial {
-					return nil, nil, E.Cause(err, "create command client")
-				}
-=======
->>>>>>> sagerNet/testing
 				time.Sleep(commandClientDialDelay(attempt))
 				continue
 			}
@@ -1212,13 +1195,7 @@ func (c *CommandClient) StartTailscaleSSHSession(opts *TailscaleSSHOptions, hand
 		closeDone: make(chan struct{}),
 	}
 
-<<<<<<< HEAD
-	session.wg.Add(1)
-	go func() {
-		defer session.wg.Done()
-=======
 	session.wg.Go(func() {
->>>>>>> sagerNet/testing
 		for {
 			select {
 			case <-streamCtx.Done():
@@ -1246,17 +1223,9 @@ func (c *CommandClient) StartTailscaleSSHSession(opts *TailscaleSSHOptions, hand
 				}
 			}
 		}
-<<<<<<< HEAD
-	}()
-
-	session.wg.Add(1)
-	go func() {
-		defer session.wg.Done()
-=======
 	})
 
 	session.wg.Go(func() {
->>>>>>> sagerNet/testing
 		for {
 			msg, recvErr := stream.Recv()
 			if recvErr == io.EOF {
@@ -1283,11 +1252,7 @@ func (c *CommandClient) StartTailscaleSSHSession(opts *TailscaleSSHOptions, hand
 				handler.OnError(payload.Error.Message)
 			}
 		}
-<<<<<<< HEAD
-	}()
-=======
 	})
->>>>>>> sagerNet/testing
 
 	standalone := c.standalone
 	go func() {
@@ -1355,8 +1320,6 @@ func (c *CommandClient) ProvideUSBDevices(handler USBProviderHandler) (*USBProvi
 	}()
 
 	return session, nil
-<<<<<<< HEAD
-=======
 }
 
 func (c *CommandClient) SubscribeTaildropInbox(endpointTag string, handler TaildropInboxHandler) (*TaildropInboxSubscription, error) {
@@ -1585,5 +1548,4 @@ func (c *CommandClient) MarkTaildropInboxRead(endpointTag string) error {
 		return E.Cause(err, "mark taildrop inbox read")
 	}
 	return nil
->>>>>>> sagerNet/testing
 }

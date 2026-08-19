@@ -212,17 +212,10 @@ type Hysteria2OutboundOptions struct {
 	Network        NetworkList                `json:"network,omitempty"`
 	OutboundTLSOptionsContainer
 	QUICOptions
-<<<<<<< HEAD
-BBRProfile           string          `json:"bbr_profile,omitempty" enum:"standard,conservative,aggressive"`
-	BrutalDebug          bool            `json:"brutal_debug,omitempty"`
-	DisableChromeParrot  bool            `json:"disable_chrome_parrot,omitempty"`
-	Realm                *Hysteria2Realm `json:"realm,omitempty"`
-=======
 	BBRProfile          string          `json:"bbr_profile,omitempty" enum:"standard,conservative,aggressive"`
 	BrutalDebug         bool            `json:"brutal_debug,omitempty"`
 	DisableChromeParrot bool            `json:"disable_chrome_parrot,omitempty"`
 	Realm               *Hysteria2Realm `json:"realm,omitempty"`
->>>>>>> sagerNet/testing
 }
 
 type HysteriaRealmUser struct {

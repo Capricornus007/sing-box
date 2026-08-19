@@ -163,10 +163,6 @@ type RawDefaultRule struct {
 	ProcessPath              badoption.Listable[string]                                                  `json:"process_path,omitempty"`
 	ProcessPathRegex         badoption.Listable[string]                                                  `json:"process_path_regex,omitempty"`
 	PackageName              badoption.Listable[string]                                                  `json:"package_name,omitempty"`
-<<<<<<< HEAD
-	PackageNameExclude       badoption.Listable[string]                                                  `json:"package_name_exclude,omitempty"`
-=======
->>>>>>> sagerNet/testing
 	PackageNameRegex         badoption.Listable[string]                                                  `json:"package_name_regex,omitempty"`
 	User                     badoption.Listable[string]                                                  `json:"user,omitempty"`
 	UserID                   badoption.Listable[int32]                                                   `json:"user_id,omitempty"`

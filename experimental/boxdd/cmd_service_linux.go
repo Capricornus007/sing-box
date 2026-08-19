@@ -64,13 +64,9 @@ func serviceSetInsecureMode(value string) error {
 	if err != nil {
 		return E.Cause(err, "validate working directory")
 	}
-<<<<<<< HEAD
-	return saveSecuritySettings(directory, securitySettings{InsecureModeEnabled: enabled})
-=======
 	return updateDaemonSettings(directory, func(settings *daemonSettings) {
 		settings.InsecureModeEnabled = enabled
 	})
->>>>>>> sagerNet/testing
 }
 
 func validateProtectedLinuxDirectory(directory string) error {

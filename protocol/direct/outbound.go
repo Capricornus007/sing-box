@@ -18,7 +18,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing-tun"
+	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing-tun/ping"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/control"
@@ -51,7 +51,6 @@ type Outbound struct {
 	fallbackDelay  time.Duration
 	isEmpty        bool
 	myAddresses    common.TypedValue[[]netip.Prefix]
-<<<<<<< HEAD
 	fragment       *Fragment
 	icmpPort       *ping.Port
 }
@@ -61,9 +60,6 @@ type Fragment struct {
 	MaxInterval int32
 	MinLength   int32
 	MaxLength   int32
-=======
-	icmpPort       *ping.Port
->>>>>>> sagerNet/testing
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.DirectOutboundOptions) (adapter.Outbound, error) {
@@ -97,52 +93,47 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if options.ProxyProtocol != 0 {
 		return nil, E.New("Proxy Protocol is deprecated and removed in sing-box 1.6.0")
 	}
-<<<<<<< HEAD
 	if options.Fragment != nil {
 		if len(options.Fragment.Interval) == 0 || len(options.Fragment.Length) == 0 {
-			return nil, E.New("Invalid interval or length")
+			return nil, E.New("invalid fragment interval or length")
 		}
 		intervalMinMax := strings.Split(options.Fragment.Interval, "-")
 		var minInterval, maxInterval int64
-		var err, err2 error
+		var parseErr, parseMaxErr error
 		if len(intervalMinMax) == 2 {
-			minInterval, err = strconv.ParseInt(intervalMinMax[0], 10, 64)
-			maxInterval, err2 = strconv.ParseInt(intervalMinMax[1], 10, 64)
+			minInterval, parseErr = strconv.ParseInt(intervalMinMax[0], 10, 64)
+			maxInterval, parseMaxErr = strconv.ParseInt(intervalMinMax[1], 10, 64)
 		} else {
-			minInterval, err = strconv.ParseInt(intervalMinMax[0], 10, 64)
+			minInterval, parseErr = strconv.ParseInt(intervalMinMax[0], 10, 64)
 			maxInterval = minInterval
 		}
-		if err != nil {
-			return nil, E.Cause(err, "Invalid minimum interval: ")
+		if parseErr != nil {
+			return nil, E.Cause(parseErr, "invalid minimum fragment interval")
 		}
-		if err2 != nil {
-			return nil, E.Cause(err2, "Invalid maximum interval: ")
+		if parseMaxErr != nil {
+			return nil, E.Cause(parseMaxErr, "invalid maximum fragment interval")
 		}
-
 		lengthMinMax := strings.Split(options.Fragment.Length, "-")
 		var minLength, maxLength int64
 		if len(lengthMinMax) == 2 {
-			minLength, err = strconv.ParseInt(lengthMinMax[0], 10, 64)
-			maxLength, err2 = strconv.ParseInt(lengthMinMax[1], 10, 64)
-
+			minLength, parseErr = strconv.ParseInt(lengthMinMax[0], 10, 64)
+			maxLength, parseMaxErr = strconv.ParseInt(lengthMinMax[1], 10, 64)
 		} else {
-			minLength, err = strconv.ParseInt(lengthMinMax[0], 10, 64)
+			minLength, parseErr = strconv.ParseInt(lengthMinMax[0], 10, 64)
 			maxLength = minLength
 		}
-		if err != nil {
-			return nil, E.Cause(err, "Invalid minimum length: ")
+		if parseErr != nil {
+			return nil, E.Cause(parseErr, "invalid minimum fragment length")
 		}
-		if err2 != nil {
-			return nil, E.Cause(err2, "Invalid maximum length: ")
+		if parseMaxErr != nil {
+			return nil, E.Cause(parseMaxErr, "invalid maximum fragment length")
 		}
-
 		if minInterval > maxInterval {
 			minInterval, maxInterval = maxInterval, minInterval
 		}
 		if minLength > maxLength {
 			minLength, maxLength = maxLength, minLength
 		}
-
 		outbound.fragment = &Fragment{
 			MinInterval: int32(minInterval),
 			MaxInterval: int32(maxInterval),
@@ -151,8 +142,6 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		}
 		outbound.isEmpty = false
 	}
-=======
->>>>>>> sagerNet/testing
 	if defaultDialer, isDefaultDialer := common.Cast[*dialer.DefaultDialer](outbound.dialer); isDefaultDialer {
 		outbound.icmpPort = ping.NewPort(ctx, logger, func(destination netip.Addr) control.Func {
 			return defaultDialer.DialerForICMPDestination(destination).Control

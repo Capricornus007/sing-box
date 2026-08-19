@@ -14,10 +14,6 @@ import (
 	"github.com/sagernet/quic-go/http3"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/option"
-<<<<<<< HEAD
-	"github.com/sagernet/sing/common/bufio"
-=======
->>>>>>> sagerNet/testing
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -89,22 +85,15 @@ func newHTTP3RoundTripper(
 			if err != nil {
 				return nil, err
 			}
-<<<<<<< HEAD
-			quicConn, err := quic.DialEarly(ctx, bufio.NewUnbindPacketConn(conn), conn.RemoteAddr(), tlsConfig, quicConfig)
-=======
 			quicConn, err := quic.DialEarlyConn(ctx, conn, tlsConfig, quicConfig)
->>>>>>> sagerNet/testing
 			if err != nil {
 				conn.Close()
 				return nil, err
 			}
-<<<<<<< HEAD
-=======
 			go func() {
 				<-quicConn.Context().Done()
 				conn.Close()
 			}()
->>>>>>> sagerNet/testing
 			return quicConn, nil
 		},
 	}

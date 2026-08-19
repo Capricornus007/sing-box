@@ -149,8 +149,6 @@ func (t *DBusResolvedResolver) Reset() {
 	}
 }
 
-<<<<<<< HEAD
-=======
 func (t *DBusResolvedResolver) Environment() []string {
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {
@@ -159,7 +157,6 @@ func (t *DBusResolvedResolver) Environment() []string {
 	return serverSet.signature
 }
 
->>>>>>> sagerNet/testing
 func (t *DBusResolvedResolver) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {

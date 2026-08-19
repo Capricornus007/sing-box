@@ -2,10 +2,7 @@
 
     :material-plus: [hop_interval_max](#hop_interval_max)  
     :material-plus: [bbr_profile](#bbr_profile)  
-<<<<<<< HEAD
-=======
     :material-plus: [disable_chrome_parrot](#disable_chrome_parrot)  
->>>>>>> sagerNet/testing
     :material-plus: [realm](#realm)  
     :material-alert: [obfs](#obfstype)
 
@@ -42,10 +39,7 @@
 
   "bbr_profile": "",
   "brutal_debug": false,
-<<<<<<< HEAD
-=======
   "disable_chrome_parrot": false,
->>>>>>> sagerNet/testing
   "realm": {
     "server_url": "https://realm.example.com",
     "token": "",
@@ -184,8 +178,6 @@ BBR 拥塞控制算法配置，可选 `conservative` `standard` `aggressive`。
 
 启用 Hysteria Brutal CC 的调试信息日志记录。
 
-<<<<<<< HEAD
-=======
 #### disable_chrome_parrot
 
 !!! question "自 sing-box 1.14.0 起"
@@ -203,7 +195,6 @@ BBR 拥塞控制算法配置，可选 `conservative` `standard` `aggressive`。
     Chrome 不声明支持 Ed25519，因此使用 Ed25519 证书的服务端将无法完成握手。
     请改用 ECDSA 或 RSA 证书；由 ACME 签发的证书不受影响。
 
->>>>>>> sagerNet/testing
 #### realm
 
 !!! question "自 sing-box 1.14.0 起"

@@ -2,9 +2,6 @@
 icon: material/alert-decagram
 ---
 
-<<<<<<< HEAD
-#### 1.14.0-beta.4
-=======
 #### 1.14.0-beta.15
 
 * Add `api` command **1**
@@ -33,12 +30,9 @@ graphical clients, the Dashboard, or the new `sing-box api` command.
 * Fixes and improvements
 
 #### 1.13.18
->>>>>>> sagerNet/testing
 
 * Fixes and improvements
 
-<<<<<<< HEAD
-=======
 #### 1.14.0-beta.10
 
 * Fixes and improvements
@@ -90,7 +84,6 @@ and allow you to customize it, see
 
 * Fixes and improvements
 
->>>>>>> sagerNet/testing
 #### 1.13.15
 
 * Fixes and improvements

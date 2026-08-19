@@ -39,12 +39,9 @@ type Locale struct {
 	TailscaleStopped        string
 	TailscaleStarting       string
 	TailscaleRunning        string
-<<<<<<< HEAD
-=======
 	TaildropReceiving       string
 	TaildropReceived        string
 	TaildropSendCanceled    string
->>>>>>> sagerNet/testing
 	VPNConnecting           string
 	VPNAuthentication       string
 	VPNConnected            string
@@ -65,12 +62,9 @@ var defaultLocale = &Locale{
 	TailscaleStopped:        "Stopped",
 	TailscaleStarting:       "Starting",
 	TailscaleRunning:        "Running",
-<<<<<<< HEAD
-=======
 	TaildropReceiving:       "Receiving %s from %s",
 	TaildropReceived:        "%s received from %s",
 	TaildropSendCanceled:    "Sending %s canceled by receiver",
->>>>>>> sagerNet/testing
 	VPNConnecting:           "Connecting",
 	VPNAuthentication:       "Authentication required",
 	VPNConnected:            "Connected",

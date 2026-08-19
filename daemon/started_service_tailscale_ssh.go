@@ -211,13 +211,7 @@ func (s *StartedService) StartTailscaleSSHSession(
 		Message: &TailscaleSSHServerMessage_Ready{Ready: &TailscaleSSHReady{}},
 	})
 
-<<<<<<< HEAD
-	workersWg.Add(1)
-	go func() {
-		defer workersWg.Done()
-=======
 	workersWg.Go(func() {
->>>>>>> sagerNet/testing
 		for {
 			msg, recvErr := server.Recv()
 			if recvErr == io.EOF {
@@ -247,16 +241,9 @@ func (s *StartedService) StartTailscaleSSHSession(
 				}))
 			}
 		}
-<<<<<<< HEAD
-	}()
-
-	pumpReader := func(reader io.Reader) {
-		defer workersWg.Done()
-=======
 	})
 
 	pumpReader := func(reader io.Reader) {
->>>>>>> sagerNet/testing
 		buffer := buf.Get(buf.BufferSize)
 		defer buf.Put(buffer)
 		for {
@@ -271,21 +258,10 @@ func (s *StartedService) StartTailscaleSSHSession(
 			}
 		}
 	}
-<<<<<<< HEAD
-	workersWg.Add(1)
-	go pumpReader(stdout)
-	workersWg.Add(1)
-	go pumpReader(stderr)
-
-	workersWg.Add(1)
-	go func() {
-		defer workersWg.Done()
-=======
 	workersWg.Go(func() { pumpReader(stdout) })
 	workersWg.Go(func() { pumpReader(stderr) })
 
 	workersWg.Go(func() {
->>>>>>> sagerNet/testing
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 		for {
@@ -300,17 +276,9 @@ func (s *StartedService) StartTailscaleSSHSession(
 				}
 			}
 		}
-<<<<<<< HEAD
-	}()
-
-	workersWg.Add(1)
-	go func() {
-		defer workersWg.Done()
-=======
 	})
 
 	workersWg.Go(func() {
->>>>>>> sagerNet/testing
 		waitErr := sshSession.Wait()
 		exitMessage := &TailscaleSSHExit{}
 		switch waitErrTyped := waitErr.(type) {
@@ -325,11 +293,7 @@ func (s *StartedService) StartTailscaleSSHSession(
 			Message: &TailscaleSSHServerMessage_Exit{Exit: exitMessage},
 		})
 		cancel()
-<<<<<<< HEAD
-	}()
-=======
 	})
->>>>>>> sagerNet/testing
 
 	go func() {
 		<-sessionCtx.Done()

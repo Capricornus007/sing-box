@@ -36,15 +36,12 @@ service StartedService {
   rpc SetTailscaleExitNode(SetTailscaleExitNodeRequest) returns (google.protobuf.Empty) {}
   rpc TailscaleLogout(TailscaleLogoutRequest) returns (google.protobuf.Empty) {}
   rpc StartTailscaleSSHSession(stream TailscaleSSHClientMessage) returns (stream TailscaleSSHServerMessage) {}
-<<<<<<< HEAD
-=======
   rpc SubscribeTaildropInbox(SubscribeTaildropInboxRequest) returns (stream TaildropInbox) {}
   rpc MarkTaildropInboxRead(MarkTaildropInboxReadRequest) returns (google.protobuf.Empty) {}
   rpc SendTaildropFiles(stream TaildropSendClientMessage) returns (stream TaildropSendServerMessage) {}
   rpc DownloadTaildropFile(DownloadTaildropFileRequest) returns (stream DownloadTaildropFileChunk) {}
   rpc DeleteTaildropFile(DeleteTaildropFileRequest) returns (google.protobuf.Empty) {}
   rpc CancelTaildropReceiving(CancelTaildropReceivingRequest) returns (google.protobuf.Empty) {}
->>>>>>> sagerNet/testing
   rpc ProvideUSBDevices(stream USBProviderMessage) returns (stream USBServerMessage) {}
   rpc SubscribeUSBIPServerStatus(google.protobuf.Empty) returns (stream USBIPServerStatusUpdate) {}
   rpc SubscribeOpenConnectStatus(google.protobuf.Empty) returns (stream OpenConnectStatusUpdate) {}
@@ -53,10 +50,7 @@ service StartedService {
   rpc SubscribeOpenVPNStatus(google.protobuf.Empty) returns (stream OpenVPNStatusUpdate) {}
   rpc SubmitOpenVPNChallengeResponse(OpenVPNChallengeSubmission) returns (google.protobuf.Empty) {}
   rpc CancelOpenVPNChallenge(OpenVPNChallengeCancel) returns (google.protobuf.Empty) {}
-<<<<<<< HEAD
-=======
   rpc SubscribeNotifications(google.protobuf.Empty) returns (stream NotificationEvent) {}
->>>>>>> sagerNet/testing
 }
 
 message Version {
@@ -295,13 +289,10 @@ message TailscaleEndpointStatus {
   repeated TailscaleUserGroup userGroups = 8;
   TailscalePeer exitNode = 9;
   bool keyAuth = 10;
-<<<<<<< HEAD
-=======
   bool canShareFiles = 11;
   int32 waitingFileCount = 12;
   int32 receivingFileCount = 13;
   int32 unreadFileCount = 14;
->>>>>>> sagerNet/testing
 }
 
 message TailscaleUserGroup {
@@ -329,10 +320,7 @@ message TailscalePeer {
   repeated string sshHostKeys = 14;
   bool shareeNode = 15;
   int64 lastSeen = 16;
-<<<<<<< HEAD
-=======
   bool canReceiveFiles = 17;
->>>>>>> sagerNet/testing
 }
 
 message TailscalePingRequest {
@@ -347,10 +335,7 @@ message TailscalePingResponse {
   int32 derpRegionID = 4;
   string derpRegionCode = 5;
   string error = 6;
-<<<<<<< HEAD
-=======
   string peerRelay = 7;
->>>>>>> sagerNet/testing
 }
 
 message SetTailscaleExitNodeRequest {
@@ -425,8 +410,6 @@ message TailscaleSSHError {
   string message = 1;
 }
 
-<<<<<<< HEAD
-=======
 message SubscribeTaildropInboxRequest {
   string endpointTag = 1;
 }
@@ -515,7 +498,6 @@ message CancelTaildropReceivingRequest {
   string name = 3;
 }
 
->>>>>>> sagerNet/testing
 message USBProviderMessage {
   oneof message {
     USBDeviceAttach attach = 1;
@@ -789,8 +771,6 @@ message OpenVPNChallengeCancel {
   string endpointTag = 1;
   string challengeID = 2;
 }
-<<<<<<< HEAD
-=======
 
 message NotificationEvent {
   oneof event {
@@ -813,4 +793,3 @@ message NotificationCancel {
   string identifier = 1;
   int32 typeID = 2;
 }
->>>>>>> sagerNet/testing

@@ -2,11 +2,7 @@
 
 set -euo pipefail
 
-<<<<<<< HEAD
-VERSION="1.26.5"
-=======
 VERSION="1.26.6"
->>>>>>> sagerNet/testing
 PATCH_COMMITS=(
   "f080b0c6346eb690c0dc82497b35925f385b35ac"
   "2d9c12887c342fb9051d231aa5388743cb7e9cb6"

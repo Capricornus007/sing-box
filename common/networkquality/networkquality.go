@@ -407,17 +407,9 @@ func (r *directionRunner) addConnection(ctx context.Context) error {
 	r.connMu.Lock()
 	r.connections = append(r.connections, conn)
 	r.connMu.Unlock()
-<<<<<<< HEAD
-	r.wg.Add(1)
-	go func() {
-		defer r.wg.Done()
-		conn.run(ctx, r.onConnectionFailed)
-	}()
-=======
 	r.wg.Go(func() {
 		conn.run(ctx, r.onConnectionFailed)
 	})
->>>>>>> sagerNet/testing
 	return nil
 }
 
@@ -443,13 +435,7 @@ func (r *directionRunner) pickReadyConnection() *loadConnection {
 }
 
 func (r *directionRunner) startProber(ctx context.Context) {
-<<<<<<< HEAD
-	r.wg.Add(1)
-	go func() {
-		defer r.wg.Done()
-=======
 	r.wg.Go(func() {
->>>>>>> sagerNet/testing
 		ticker := time.NewTicker(r.probeInterval())
 		defer ticker.Stop()
 		for {
@@ -465,11 +451,7 @@ func (r *directionRunner) startProber(ctx context.Context) {
 			r.runProbeRound(ctx, conn.client)
 			ticker.Reset(r.probeInterval())
 		}
-<<<<<<< HEAD
-	}()
-=======
 	})
->>>>>>> sagerNet/testing
 }
 
 func (r *directionRunner) runProbeRound(ctx context.Context, selfClient *http.Client) {

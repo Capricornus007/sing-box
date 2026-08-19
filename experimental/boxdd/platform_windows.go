@@ -152,13 +152,6 @@ func (p *windowsPlatformInterface) UsePlatformWIFIMonitor() bool {
 }
 
 func (p *windowsPlatformInterface) UsePlatformNotification() bool {
-<<<<<<< HEAD
-	return false
-}
-
-func (p *windowsPlatformInterface) SendNotification(notification *adapter.Notification) error {
-	return nil
-=======
 	return true
 }
 
@@ -168,7 +161,6 @@ func (p *windowsPlatformInterface) SendNotification(notification *adapter.Notifi
 
 func (p *windowsPlatformInterface) CancelNotification(identifier string, typeID int32) error {
 	return p.daemon.startedService.CancelNotification(identifier, typeID)
->>>>>>> sagerNet/testing
 }
 
 func (p *windowsPlatformInterface) MyInterfaceAddress() []netip.Addr {

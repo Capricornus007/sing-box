@@ -24,11 +24,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"golang.org/x/net/http2"
-<<<<<<< HEAD
-	"golang.org/x/net/http2/h2c"
-=======
 	"golang.org/x/net/http2/h2c" //nolint:staticcheck
->>>>>>> sagerNet/testing
 )
 
 func RegisterRealmService(registry *boxService.Registry) {
@@ -102,10 +98,7 @@ func NewRealmService(ctx context.Context, logger log.ContextLogger, tag string, 
 			Listen:  options.ListenOptions,
 		}),
 		httpServer: &http.Server{
-<<<<<<< HEAD
-=======
 			//nolint:staticcheck
->>>>>>> sagerNet/testing
 			Handler: h2c.NewHandler(chiRouter, &http2.Server{
 				IdleTimeout:                  time.Duration(options.IdleTimeout),
 				ReadIdleTimeout:              time.Duration(options.KeepAlivePeriod),

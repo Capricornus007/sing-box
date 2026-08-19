@@ -34,18 +34,12 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-<<<<<<< HEAD
-const APIVersion = 3
-
-const urlTestPushMinInterval = 250 * time.Millisecond
-=======
 const APIVersion = 4
 
 const (
 	urlTestPushMinInterval = 250 * time.Millisecond
 	notificationQueueSize  = 16
 )
->>>>>>> sagerNet/testing
 
 var _ StartedServiceServer = (*StartedService)(nil)
 
@@ -77,11 +71,8 @@ type StartedService struct {
 	urlTestObserver         *observable.Observer[struct{}]
 	clashModeSubscriber     *observable.Subscriber[struct{}]
 	clashModeObserver       *observable.Observer[struct{}]
-<<<<<<< HEAD
-=======
 	notificationSubscriber  *observable.Subscriber[*NotificationEvent]
 	notificationObserver    *observable.Observer[*NotificationEvent]
->>>>>>> sagerNet/testing
 }
 
 type ServiceOptions struct {
@@ -120,19 +111,13 @@ func NewStartedService(options ServiceOptions) *StartedService {
 		logSubscriber:           observable.NewSubscriber[*log.Entry](128),
 		urlTestSubscriber:       observable.NewSubscriber[struct{}](1),
 		clashModeSubscriber:     observable.NewSubscriber[struct{}](1),
-<<<<<<< HEAD
-=======
 		notificationSubscriber:  observable.NewSubscriber[*NotificationEvent](notificationQueueSize),
->>>>>>> sagerNet/testing
 	}
 	s.serviceStatusObserver = observable.NewObserver(s.serviceStatusSubscriber, 2)
 	s.logObserver = observable.NewObserver(s.logSubscriber, 64)
 	s.urlTestObserver = observable.NewObserver(s.urlTestSubscriber, 1)
 	s.clashModeObserver = observable.NewObserver(s.clashModeSubscriber, 1)
-<<<<<<< HEAD
-=======
 	s.notificationObserver = observable.NewObserver(s.notificationSubscriber, notificationQueueSize)
->>>>>>> sagerNet/testing
 	return s
 }
 
@@ -305,10 +290,7 @@ func (s *StartedService) Close() {
 	s.logSubscriber.Close()
 	s.urlTestSubscriber.Close()
 	s.clashModeSubscriber.Close()
-<<<<<<< HEAD
-=======
 	s.notificationSubscriber.Close()
->>>>>>> sagerNet/testing
 }
 
 func (s *StartedService) CloseService() error {
@@ -1398,8 +1380,6 @@ func subscribeEndpointStatus[T endpointStatusProvider](ctx context.Context, star
 	})
 }
 
-<<<<<<< HEAD
-=======
 type taggedStatusSource[T any] struct {
 	tag       string
 	subscribe func(ctx context.Context, listener func(T))
@@ -1501,7 +1481,6 @@ func storeLatestStatus[T any](slot chan T, status T) {
 	}
 }
 
->>>>>>> sagerNet/testing
 func (s *StartedService) StartNetworkQualityTest(
 	request *NetworkQualityTestRequest,
 	server grpc.ServerStreamingServer[NetworkQualityTestProgress],
@@ -1614,62 +1593,6 @@ func (s *StartedService) SubscribeTailscaleStatus(
 				})
 			}
 		}
-<<<<<<< HEAD
-		if len(endpoints) == 0 {
-			sendErr := server.Send(&TailscaleStatusUpdate{})
-			if sendErr != nil {
-				return sendErr
-			}
-			<-ctx.Done()
-			return nil
-		}
-
-		type taggedStatus struct {
-			tag    string
-			status *adapter.TailscaleEndpointStatus
-		}
-		updates := make(chan taggedStatus, len(endpoints))
-
-		var waitGroup sync.WaitGroup
-		for _, endpoint := range endpoints {
-			waitGroup.Add(1)
-			go func(tag string, provider adapter.TailscaleEndpoint) {
-				defer waitGroup.Done()
-				_ = provider.SubscribeTailscaleStatus(ctx, func(endpointStatus *adapter.TailscaleEndpointStatus) {
-					select {
-					case updates <- taggedStatus{tag: tag, status: endpointStatus}:
-					case <-ctx.Done():
-					}
-				})
-			}(endpoint.tag, endpoint.provider)
-		}
-
-		go func() {
-			waitGroup.Wait()
-			close(updates)
-		}()
-
-		var tags []string
-		statuses := make(map[string]*adapter.TailscaleEndpointStatus, len(endpoints))
-		for update := range updates {
-			if _, exists := statuses[update.tag]; !exists {
-				tags = append(tags, update.tag)
-			}
-			statuses[update.tag] = update.status
-			protoEndpoints := make([]*TailscaleEndpointStatus, 0, len(statuses))
-			for _, tag := range tags {
-				protoEndpoints = append(protoEndpoints, tailscaleEndpointStatusToProto(tag, statuses[tag], selectedLocale))
-			}
-			sendErr := server.Send(&TailscaleStatusUpdate{
-				Endpoints: protoEndpoints,
-			})
-			if sendErr != nil {
-				return sendErr
-			}
-		}
-		<-ctx.Done()
-		return nil
-=======
 		sources := common.Map(endpoints, func(endpoint tailscaleEndpoint) taggedStatusSource[*adapter.TailscaleEndpointStatus] {
 			return taggedStatusSource[*adapter.TailscaleEndpointStatus]{
 				tag: endpoint.tag,
@@ -1691,7 +1614,6 @@ func (s *StartedService) SubscribeTailscaleStatus(
 				Endpoints: protoEndpoints,
 			})
 		})
->>>>>>> sagerNet/testing
 	})
 }
 
@@ -1711,16 +1633,6 @@ func tailscaleEndpointStatusToProto(tag string, s *adapter.TailscaleEndpointStat
 		}
 	}
 	result := &TailscaleEndpointStatus{
-<<<<<<< HEAD
-		EndpointTag:    tag,
-		BackendState:   s.BackendState,
-		StateText:      selectedLocale.TailscaleStateText(s.BackendState),
-		AuthURL:        s.AuthURL,
-		NetworkName:    s.NetworkName,
-		MagicDNSSuffix: s.MagicDNSSuffix,
-		UserGroups:     userGroups,
-		KeyAuth:        s.KeyAuth,
-=======
 		EndpointTag:        tag,
 		BackendState:       s.BackendState,
 		StateText:          selectedLocale.TailscaleStateText(s.BackendState),
@@ -1733,7 +1645,6 @@ func tailscaleEndpointStatusToProto(tag string, s *adapter.TailscaleEndpointStat
 		WaitingFileCount:   s.WaitingFileCount,
 		ReceivingFileCount: s.ReceivingFileCount,
 		UnreadFileCount:    s.UnreadFileCount,
->>>>>>> sagerNet/testing
 	}
 	if s.Self != nil {
 		result.Self = tailscalePeerToProto(s.Self)
@@ -1746,24 +1657,6 @@ func tailscaleEndpointStatusToProto(tag string, s *adapter.TailscaleEndpointStat
 
 func tailscalePeerToProto(peer *adapter.TailscalePeer) *TailscalePeer {
 	return &TailscalePeer{
-<<<<<<< HEAD
-		StableID:       peer.StableID,
-		HostName:       peer.HostName,
-		DnsName:        peer.DNSName,
-		Os:             peer.OS,
-		TailscaleIPs:   peer.TailscaleIPs,
-		SshHostKeys:    peer.SSHHostKeys,
-		Online:         peer.Online,
-		ExitNode:       peer.ExitNode,
-		ExitNodeOption: peer.ExitNodeOption,
-		ShareeNode:     peer.ShareeNode,
-		Expired:        peer.Expired,
-		Active:         peer.Active,
-		RxBytes:        peer.RxBytes,
-		TxBytes:        peer.TxBytes,
-		KeyExpiry:      peer.KeyExpiry,
-		LastSeen:       peer.LastSeen,
-=======
 		StableID:        peer.StableID,
 		HostName:        peer.HostName,
 		DnsName:         peer.DNSName,
@@ -1781,7 +1674,6 @@ func tailscalePeerToProto(peer *adapter.TailscalePeer) *TailscalePeer {
 		TxBytes:         peer.TxBytes,
 		KeyExpiry:       peer.KeyExpiry,
 		LastSeen:        peer.LastSeen,
->>>>>>> sagerNet/testing
 	}
 }
 
@@ -1797,41 +1689,9 @@ func (s *StartedService) StartTailscalePing(
 	boxService := s.instance
 	s.serviceAccess.RUnlock()
 
-<<<<<<< HEAD
-	var provider adapter.TailscaleEndpoint
-	if request.EndpointTag != "" {
-		endpoint, err := resolveTailscaleEndpoint(boxService, request.EndpointTag)
-		if err != nil {
-			return err
-		}
-		pingProvider, loaded := endpoint.(adapter.TailscaleEndpoint)
-		if !loaded {
-			return status.Error(codes.FailedPrecondition, "endpoint does not support ping")
-		}
-		provider = pingProvider
-	} else {
-		endpointManager := service.FromContext[adapter.EndpointManager](boxService.ctx)
-		if endpointManager == nil {
-			return status.Error(codes.FailedPrecondition, "endpoint manager not available")
-		}
-		for _, endpoint := range endpointManager.Endpoints() {
-			if endpoint.Type() != C.TypeTailscale {
-				continue
-			}
-			pingProvider, loaded := endpoint.(adapter.TailscaleEndpoint)
-			if loaded {
-				provider = pingProvider
-				break
-			}
-		}
-		if provider == nil {
-			return status.Error(codes.NotFound, "no Tailscale endpoint found")
-		}
-=======
 	provider, _, err := resolveTailscaleProvider(boxService, request.EndpointTag)
 	if err != nil {
 		return err
->>>>>>> sagerNet/testing
 	}
 
 	return provider.StartTailscalePing(server.Context(), request.PeerIP, func(result *adapter.TailscalePingResult) {
@@ -1839,10 +1699,7 @@ func (s *StartedService) StartTailscalePing(
 			LatencyMs:      result.LatencyMs,
 			IsDirect:       result.IsDirect,
 			Endpoint:       result.Endpoint,
-<<<<<<< HEAD
-=======
 			PeerRelay:      result.PeerRelay,
->>>>>>> sagerNet/testing
 			DerpRegionID:   result.DERPRegionID,
 			DerpRegionCode: result.DERPRegionCode,
 			Error:          result.Error,
@@ -2150,8 +2007,6 @@ func (s *StartedService) CancelOpenVPNChallenge(ctx context.Context, request *Op
 	return &emptypb.Empty{}, nil
 }
 
-<<<<<<< HEAD
-=======
 func (s *StartedService) SendNotification(notification *adapter.Notification) error {
 	s.notificationSubscriber.Emit(&NotificationEvent{
 		Event: &NotificationEvent_Send{
@@ -2204,7 +2059,6 @@ func (s *StartedService) SubscribeNotifications(empty *emptypb.Empty, server grp
 	}
 }
 
->>>>>>> sagerNet/testing
 func (s *StartedService) mustEmbedUnimplementedStartedServiceServer() {
 }
 

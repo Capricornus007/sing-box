@@ -14,12 +14,9 @@ func init() {
 		TailscaleStopped:        "Остановлено",
 		TailscaleStarting:       "Запуск",
 		TailscaleRunning:        "Работает",
-<<<<<<< HEAD
-=======
 		TaildropReceiving:       "Получение %[1]s от %[2]s",
 		TaildropReceived:        "%[1]s получен от %[2]s",
 		TaildropSendCanceled:    "Отправка %s отменена получателем",
->>>>>>> sagerNet/testing
 		VPNConnecting:           "Подключение",
 		VPNAuthentication:       "Требуется аутентификация",
 		VPNConnected:            "Подключено",

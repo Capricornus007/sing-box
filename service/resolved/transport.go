@@ -304,28 +304,11 @@ func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callba
 	if servers == nil || len(servers.Servers) == 0 {
 		callback(dns.FixedResponseStatus(message, mDNS.RcodeNameError), nil)
 		return
-<<<<<<< HEAD
 	}
 	names := servers.Link.nameList(t.ndots, question.Name)
 	if len(names) == 0 {
 		callback(nil, E.New("invalid domain: ", question.Name))
 		return
-	}
-	nameExchangers := make([]transport.AsyncExchanger, 0, len(names))
-	for _, fqdn := range names {
-		nameExchangers = append(nameExchangers, t.newNameExchanger(servers, message, fqdn))
-	}
-	if question.Qtype == mDNS.TypeA || question.Qtype == mDNS.TypeAAAA {
-		transport.ExchangeRace(ctx, nameExchangers, callback)
-	} else {
-		transport.ExchangeSequential(ctx, nameExchangers, nil, callback)
-=======
-	}
-	names := servers.Link.nameList(t.ndots, question.Name)
-	if len(names) == 0 {
-		callback(nil, E.New("invalid domain: ", question.Name))
-		return
->>>>>>> sagerNet/testing
 	}
 	transport.ExchangeNames(ctx, names, question, func(fqdn string) transport.AsyncExchanger {
 		return t.newNameExchanger(servers, message, fqdn)

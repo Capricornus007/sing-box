@@ -8,17 +8,11 @@ import (
 	"net"
 	"net/netip"
 	"os"
-<<<<<<< HEAD
-	"reflect"
 	"strconv"
 	"strings"
-	"unsafe"
-=======
-	"strings"
->>>>>>> sagerNet/testing
 
 	"github.com/sagernet/sing-box/common/dialer"
-	"github.com/sagernet/sing-tun"
+	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
@@ -194,11 +188,7 @@ func (e *Endpoint) Start(postStart bool) error {
 			e.options.Logger.Error(fmt.Sprintf(strings.ToLower(format), args...))
 		},
 	}
-<<<<<<< HEAD
 	wgDevice := device.NewDevice(wireGuardDeviceContext(e.options.Context), e.returnDevice, bind, logger, e.options.Workers)
-=======
-	wgDevice := device.NewDevice(e.options.Context, e.returnDevice, bind, logger, e.options.Workers)
->>>>>>> sagerNet/testing
 	e.tunDevice.SetDevice(wgDevice)
 	var ipcConf strings.Builder
 	ipcConf.WriteString(e.ipcConf)
@@ -294,7 +284,6 @@ func (e *Endpoint) BindUpdate() error {
 		return nil
 	}
 	return e.device.BindUpdate()
-<<<<<<< HEAD
 }
 
 func wireGuardDeviceContext(ctx context.Context) context.Context {
@@ -302,8 +291,6 @@ func wireGuardDeviceContext(ctx context.Context) context.Context {
 	// The endpoint owns pause transitions. Letting wireguard-go observe the same
 	// manager can deadlock DevicePause when Down waits for a paused timer callback.
 	return service.ContextWith[pause.Manager](deviceContext, nil)
-=======
->>>>>>> sagerNet/testing
 }
 
 func (e *Endpoint) onPauseUpdated(event int) {

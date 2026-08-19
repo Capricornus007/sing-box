@@ -15,13 +15,9 @@ const (
 )
 
 const (
-	DNSTypeLegacy      = "legacy"
-<<<<<<< HEAD
-	// Internal: legacy rcode DNS server (sing-box < 1.14). Kept so old configs
-	// that use "address":"rcode://..." can be upgraded to DNS rule actions.
+	DNSTypeLegacy = "legacy"
+	// Internal compatibility type used while upgrading pre-1.14 rcode:// DNS servers.
 	DNSTypeLegacyRcode = "legacy_rcode"
-=======
->>>>>>> sagerNet/testing
 	DNSTypeUDP         = "udp"
 	DNSTypeTCP         = "tcp"
 	DNSTypeTLS         = "tls"

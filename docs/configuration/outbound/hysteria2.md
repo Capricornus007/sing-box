@@ -2,10 +2,7 @@
 
     :material-plus: [hop_interval_max](#hop_interval_max)  
     :material-plus: [bbr_profile](#bbr_profile)  
-<<<<<<< HEAD
-=======
     :material-plus: [disable_chrome_parrot](#disable_chrome_parrot)  
->>>>>>> sagerNet/testing
     :material-plus: [realm](#realm)  
     :material-alert: [obfs](#obfstype)
 
@@ -42,10 +39,7 @@
 
   "bbr_profile": "",
   "brutal_debug": false,
-<<<<<<< HEAD
-=======
   "disable_chrome_parrot": false,
->>>>>>> sagerNet/testing
   "realm": {
     "server_url": "https://realm.example.com",
     "token": "",
@@ -186,8 +180,6 @@ BBR congestion control algorithm profile, one of `conservative` `standard` `aggr
 
 Enable debug information logging for Hysteria Brutal CC.
 
-<<<<<<< HEAD
-=======
 #### disable_chrome_parrot
 
 !!! question "Since sing-box 1.14.0"
@@ -207,7 +199,6 @@ maximums.
     Chrome does not declare support for Ed25519, so a server using an Ed25519 certificate will fail the
     handshake. Use an ECDSA or RSA certificate instead; certificates issued by ACME are unaffected.
 
->>>>>>> sagerNet/testing
 #### realm
 
 !!! question "Since sing-box 1.14.0"

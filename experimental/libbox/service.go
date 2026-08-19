@@ -239,13 +239,10 @@ func (w *platformInterfaceWrapper) SendNotification(notification *adapter.Notifi
 	return w.iif.SendNotification((*Notification)(notification))
 }
 
-<<<<<<< HEAD
-=======
 func (w *platformInterfaceWrapper) CancelNotification(identifier string, typeID int32) error {
 	return w.iif.CancelNotification(identifier, typeID)
 }
 
->>>>>>> sagerNet/testing
 func (w *platformInterfaceWrapper) UsePlatformNeighborResolver() bool {
 	return true
 }

@@ -19,8 +19,8 @@ import (
 	"github.com/sagernet/sing-box/dns/transport/mdns"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing-box/protocol/anytls"
 	"github.com/sagernet/sing-box/protocol/amneziawg"
+	"github.com/sagernet/sing-box/protocol/anytls"
 	"github.com/sagernet/sing-box/protocol/block"
 	"github.com/sagernet/sing-box/protocol/bridge"
 	"github.com/sagernet/sing-box/protocol/direct"
@@ -35,11 +35,7 @@ import (
 	"github.com/sagernet/sing-box/protocol/shadowsocks"
 	"github.com/sagernet/sing-box/protocol/shadowsocksr"
 	"github.com/sagernet/sing-box/protocol/shadowtls"
-<<<<<<< HEAD
-	snell "github.com/sagernet/sing-box/protocol/snell"
-=======
 	"github.com/sagernet/sing-box/protocol/snell"
->>>>>>> sagerNet/testing
 	"github.com/sagernet/sing-box/protocol/socks"
 	"github.com/sagernet/sing-box/protocol/ssh"
 	"github.com/sagernet/sing-box/protocol/tor"
@@ -91,10 +87,7 @@ func OutboundRegistry() *outbound.Registry {
 	registry := outbound.NewRegistry()
 
 	direct.RegisterOutbound(registry)
-<<<<<<< HEAD
 	fragmentexclave.RegisterOutbound(registry)
-=======
->>>>>>> sagerNet/testing
 	bridge.RegisterOutbound(registry)
 
 	block.RegisterOutbound(registry)
@@ -128,10 +121,7 @@ func EndpointRegistry() *endpoint.Registry {
 	registry := endpoint.NewRegistry()
 
 	registerWireGuardEndpoint(registry)
-<<<<<<< HEAD
 	registerAwgEndpoint(registry)
-=======
->>>>>>> sagerNet/testing
 	registerOpenConnectEndpoint(registry)
 	registerOpenVPNEndpoints(registry)
 	registerTailscaleEndpoint(registry)

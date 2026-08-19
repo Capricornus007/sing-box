@@ -122,14 +122,6 @@ WireGuard outbound is deprecated and can be replaced by endpoint,
 check [Migration](../migration/#migrate-wireguard-outbound-to-endpoint).
 
 Old outbound was removed in sing-box 1.13.0.
-<<<<<<< HEAD
-
-#### AmneziaWG outbound
-
-AmneziaWG outbound has been removed. Use an AmneziaWG endpoint instead,
-see [Migration](../migration/#migrate-amneziawg-outbound-to-endpoint).
-=======
->>>>>>> sagerNet/testing
 
 #### GSO option in TUN
 

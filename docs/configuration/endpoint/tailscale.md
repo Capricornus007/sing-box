@@ -4,13 +4,9 @@ icon: material/new-box
 
 !!! quote "Changes in sing-box 1.14.0"
 
-<<<<<<< HEAD
-    :material-plus: [ssh_server](#ssh_server)
-=======
     :material-plus: [listen_port](#listen_port)  
     :material-plus: [ssh_server](#ssh_server)  
     :material-plus: [taildrop_directory](#taildrop_directory)
->>>>>>> sagerNet/testing
 
 !!! quote "Changes in sing-box 1.13.0"
 
@@ -48,10 +44,7 @@ icon: material/new-box
   "system_interface_mtu": 0,
   "udp_timeout": "5m",
   "ssh_server": false,
-<<<<<<< HEAD
-=======
   "taildrop_directory": "",
->>>>>>> sagerNet/testing
 
   ... // Dial Fields
 }
@@ -187,11 +180,7 @@ Access is controlled by the SSH ACL in the Tailscale admin console, which maps e
 - **Linux** and **macOS**: the user is resolved from the system user database. Switching to a user other than the one sing-box runs as requires running as root; without root, sessions are limited to the current user.
 - **Windows**: in the command line client, sessions run as the sing-box process identity; the mapped user is not impersonated, so a session mapped to a different local account is refused. In the graphical client, there is no such restriction.
 - **Android**: the user is resolved by the app rather than the system user database. `root` is the superuser (UID 0) and `shell` is the ADB shell user (UID 2000); every other name is resolved as the package name of an installed application, running as that application's UID with its data directory as the home directory, so the target application must be installed. `termux` is a shortcut for `com.termux`, and `sing-box` for the app's own package name; when Termux is installed, the `root` and `termux` users load the Termux environment. Running as the sing-box application itself requires no root, while any other user requires granted root access; without root, sessions are limited to the sing-box user.
-<<<<<<< HEAD
-- **macOS**: the SSH server is only available in the standalone version and requires the Root Helper; the App Store version is not supported.
-=======
 - **macOS**: the SSH server is only available in the standalone version and requires the Helper Service; the App Store version is not supported.
->>>>>>> sagerNet/testing
 - **iOS**: the SSH server is only available in the jailbreak build; the App Store and TestFlight versions are not supported.
 - **tvOS**: not yet supported.
 
@@ -224,8 +213,6 @@ Refuse the SFTP subsystem.
 
 Refuse local and remote TCP and Unix-socket forwarding, including SSH agent forwarding.
 
-<<<<<<< HEAD
-=======
 #### taildrop_directory
 
 !!! question "Since sing-box 1.14.0"
@@ -243,7 +230,6 @@ sharing is enabled for the tailnet. Peers of another user may send files to this
 tailnet policy file grants them `https://tailscale.com/cap/file-send`, and may be sent files when
 the policy file grants this node `https://tailscale.com/cap/file-sharing-target` for them.
 
->>>>>>> sagerNet/testing
 ### Dial Fields
 
 !!! note

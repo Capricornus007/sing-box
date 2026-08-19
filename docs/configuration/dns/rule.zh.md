@@ -14,11 +14,8 @@ icon: material/alert-decagram
     :material-plus: [response_ns](#response_ns)  
     :material-plus: [response_extra](#response_extra)  
     :material-plus: [package_name_regex](#package_name_regex)  
-<<<<<<< HEAD
-=======
     :material-plus: [query_client_subnet](#query_client_subnet)  
     :material-plus: [query_dnssec](#query_dnssec)  
->>>>>>> sagerNet/testing
     :material-alert: [ip_version](#ip_version)  
     :material-alert: [query_type](#query_type)
 

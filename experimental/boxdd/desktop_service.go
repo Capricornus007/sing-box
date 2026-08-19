@@ -7,10 +7,7 @@ import (
 	"path/filepath"
 
 	C "github.com/sagernet/sing-box/constant"
-<<<<<<< HEAD
-=======
 	"github.com/sagernet/sing-box/experimental/locale"
->>>>>>> sagerNet/testing
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/tailscale/atomicfile"
 
@@ -262,13 +259,9 @@ func (s *desktopService) SetInsecureModeEnabled(ctx context.Context, request *Se
 		return nil, err
 	}
 	wasEnabled := s.daemon.insecureModeEnabled()
-<<<<<<< HEAD
-	err = saveSecuritySettings(workingDirectory, securitySettings{InsecureModeEnabled: false})
-=======
 	err = updateDaemonSettings(workingDirectory, func(settings *daemonSettings) {
 		settings.InsecureModeEnabled = false
 	})
->>>>>>> sagerNet/testing
 	if err != nil {
 		return nil, err
 	}
@@ -286,8 +279,6 @@ func (s *desktopService) SetInsecureModeEnabled(ctx context.Context, request *Se
 	return &emptypb.Empty{}, nil
 }
 
-<<<<<<< HEAD
-=======
 func (s *desktopService) SetLocale(ctx context.Context, request *SetLocaleRequest) (*emptypb.Empty, error) {
 	_, err := peerIdentityFromContext(ctx)
 	if err != nil {
@@ -305,7 +296,6 @@ func (s *desktopService) SetLocale(ctx context.Context, request *SetLocaleReques
 	return &emptypb.Empty{}, nil
 }
 
->>>>>>> sagerNet/testing
 func (d *Daemon) cleanFailedStartLocked(ownerUserID string, options startOptions, startError error) error {
 	var platformError error
 	if d.platform != nil {

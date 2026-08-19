@@ -6,10 +6,7 @@ const (
 	TypeTProxy             = "tproxy"
 	TypeDirect             = "direct"
 	TypeBridge             = "bridge"
-<<<<<<< HEAD
 	TypeFragmentExclave    = "fragment-exclave"
-=======
->>>>>>> sagerNet/testing
 	TypeBlock              = "block"
 	TypeDNS                = "dns"
 	TypeSOCKS              = "socks"
@@ -21,19 +18,13 @@ const (
 	TypeTrojan             = "trojan"
 	TypeNaive              = "naive"
 	TypeWireGuard          = "wireguard"
-<<<<<<< HEAD
-	TypeAmneziaWG = "amneziawg"
+	TypeAmneziaWG          = "amneziawg"
 	TypeAwg                = "awg"
-=======
->>>>>>> sagerNet/testing
 	TypeHysteria           = "hysteria"
 	TypeTor                = "tor"
 	TypeSSH                = "ssh"
 	TypeShadowTLS          = "shadowtls"
-<<<<<<< HEAD
 	TypeMieru              = "mieru"
-=======
->>>>>>> sagerNet/testing
 	TypeAnyTLS             = "anytls"
 	TypeShadowsocksR       = "shadowsocksr"
 	TypeVLESS              = "vless"
@@ -51,10 +42,7 @@ const (
 	TypeCCM                = "ccm"
 	TypeOCM                = "ocm"
 	TypeOOMKiller          = "oom-killer"
-<<<<<<< HEAD
 	TypeMASQUE             = "masque"
-=======
->>>>>>> sagerNet/testing
 	TypeUSBIPServer        = "usbip-server"
 	TypeUSBIPClient        = "usbip-client"
 	TypeHysteriaRealm      = "hysteria-realm"
@@ -77,13 +65,10 @@ func ProxyDisplayName(proxyType string) string {
 		return "TProxy"
 	case TypeDirect:
 		return "Direct"
-<<<<<<< HEAD
-	case TypeFragmentExclave:
-		return "Fragment Exclave"
-=======
->>>>>>> sagerNet/testing
 	case TypeBridge:
 		return "Bridge"
+	case TypeFragmentExclave:
+		return "Fragment Exclave"
 	case TypeBlock:
 		return "Block"
 	case TypeDNS:

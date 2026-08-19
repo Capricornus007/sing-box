@@ -172,17 +172,6 @@ func (h *Inbound) Close() error {
 }
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
-<<<<<<< HEAD
-	canSplice := h.transport == nil
-	if canSplice && h.decryption != nil && h.decryption.IsFullRandomXorMode() {
-		canSplice = false
-	}
-	h.newConnectionExInternal(ctx, conn, metadata, onClose, canSplice)
-}
-
-func (h *Inbound) newConnectionExInternal(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc, canSplice bool) {
-=======
->>>>>>> sagerNet/testing
 	if h.tlsConfig != nil && h.transport == nil {
 		tlsConn, err := tls.ServerHandshake(ctx, conn, h.tlsConfig)
 		if err != nil {
@@ -204,6 +193,10 @@ func (h *Inbound) newConnectionExInternal(ctx context.Context, conn net.Conn, me
 	}
 	var err error
 	if needsEnhancedVision(h.vision, h.decryption != nil, h.transport != nil) {
+		canSplice := h.transport == nil
+		if canSplice && h.decryption != nil && h.decryption.IsFullRandomXorMode() {
+			canSplice = false
+		}
 		err = h.service.NewConnectionWithOptions(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose, canSplice)
 	} else {
 		err = h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
@@ -352,9 +345,5 @@ func (h *inboundTransportHandler) NewConnectionEx(ctx context.Context, conn net.
 	metadata.InboundDetour = h.listener.ListenOptions().Detour
 	//nolint:staticcheck
 	h.logger.InfoContext(ctx, "inbound connection from ", metadata.Source)
-<<<<<<< HEAD
-	(*Inbound)(h).newConnectionExInternal(ctx, conn, metadata, onClose, false)
-=======
 	(*Inbound)(h).NewConnection(ctx, conn, metadata, onClose)
->>>>>>> sagerNet/testing
 }

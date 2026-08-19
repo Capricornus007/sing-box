@@ -17,10 +17,7 @@ type PlatformInterface interface {
 	ReadWIFIState() *WIFIState
 	ClearDNSCache()
 	SendNotification(notification *Notification) error
-<<<<<<< HEAD
-=======
 	CancelNotification(identifier string, typeID int32) error
->>>>>>> sagerNet/testing
 	StartNeighborMonitor(listener NeighborUpdateListener) error
 	CloseNeighborMonitor(listener NeighborUpdateListener) error
 	RegisterMyInterface(name string)

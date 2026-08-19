@@ -26,16 +26,11 @@ service DesktopService {
   rpc DeleteOOMReport(OOMReportRequest) returns (google.protobuf.Empty) {}
   rpc DeleteAllOOMReports(google.protobuf.Empty) returns (google.protobuf.Empty) {}
   rpc InstallUpdate(InstallUpdateRequest) returns (InstallUpdateResponse) {}
-<<<<<<< HEAD
   rpc GetDataProtection(google.protobuf.Empty) returns (DataProtectionInfo) {}
   rpc SetDataProtection(SetDataProtectionRequest) returns (DataProtectionInfo) {}
   rpc GetSecuritySettings(google.protobuf.Empty) returns (SecuritySettings) {}
   rpc SetInsecureModeEnabled(SetInsecureModeEnabledRequest) returns (google.protobuf.Empty) {}
-=======
-  rpc GetSecuritySettings(google.protobuf.Empty) returns (SecuritySettings) {}
-  rpc SetInsecureModeEnabled(SetInsecureModeEnabledRequest) returns (google.protobuf.Empty) {}
   rpc SetLocale(SetLocaleRequest) returns (google.protobuf.Empty) {}
->>>>>>> sagerNet/testing
 }
 
 service ApplicationService {
@@ -184,7 +179,6 @@ message OOMReportFile {
   bool is_profile = 3;
 }
 
-<<<<<<< HEAD
 message DataProtectionInfo {
   bool enabled = 1;
   bytes key = 2;
@@ -194,8 +188,6 @@ message SetDataProtectionRequest {
   bool enabled = 1;
 }
 
-=======
->>>>>>> sagerNet/testing
 message SecuritySettings {
   bool available = 1;
   bool insecure_mode_enabled = 2;
@@ -205,13 +197,10 @@ message SetInsecureModeEnabledRequest {
   bool enabled = 1;
 }
 
-<<<<<<< HEAD
-=======
 message SetLocaleRequest {
   string locale = 1;
 }
 
->>>>>>> sagerNet/testing
 message InstallUpdateRequest {
   string installer_path = 1;
 }

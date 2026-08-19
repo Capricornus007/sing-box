@@ -18,7 +18,7 @@ import (
 	"github.com/sagernet/sing-box/dns/transport"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing-tun"
+	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/control"
@@ -46,8 +46,6 @@ var (
 
 var errInterfaceIsCellular = E.New("interface is cellular")
 
-var errInterfaceIsCellular = E.New("interface is cellular")
-
 type Transport struct {
 	dns.TransportAdapter
 	ctx               context.Context
@@ -57,18 +55,6 @@ type Transport struct {
 	platformInterface adapter.PlatformInterface
 	interfaceName     string
 	interfaceCallback *list.Element[tun.DefaultInterfaceUpdateCallback]
-<<<<<<< HEAD
-	transportLock     sync.RWMutex
-	updatedAt         time.Time
-	lastError         error
-	servers           []M.Socksaddr
-	serverTransports  []adapter.DNSTransport
-	refreshing        atomic.Bool
-	search            []string
-	ndots             int
-	attempts          int
-	optional          bool
-=======
 	refreshAccess     sync.Mutex
 	savedState        atomic.Pointer[transportState]
 	ndots             int
@@ -82,7 +68,6 @@ type transportState struct {
 	search           []string
 	servers          []M.Socksaddr
 	serverTransports []adapter.DNSTransport
->>>>>>> sagerNet/testing
 }
 
 func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, options option.DHCPDNSServerOptions) (adapter.DNSTransport, error) {
@@ -141,72 +126,16 @@ func (t *Transport) Close() error {
 	if t.interfaceCallback != nil {
 		t.networkManager.InterfaceMonitor().UnregisterCallback(t.interfaceCallback)
 	}
-<<<<<<< HEAD
-	t.transportLock.Lock()
-	defer t.transportLock.Unlock()
-	t.closeServerTransports()
-=======
 	t.refreshAccess.Lock()
 	defer t.refreshAccess.Unlock()
 	state := t.savedState.Swap(nil)
 	if state != nil {
 		closeServerTransports(state.serverTransports)
 	}
->>>>>>> sagerNet/testing
 	return nil
 }
 
 func (t *Transport) Reset() {
-<<<<<<< HEAD
-	t.transportLock.Lock()
-	t.updatedAt = time.Time{}
-	t.lastError = nil
-	t.servers = nil
-	t.closeServerTransports()
-	t.transportLock.Unlock()
-}
-
-func (t *Transport) closeServerTransports() {
-	for _, serverTransport := range t.serverTransports {
-		serverTransport.Close()
-	}
-	t.serverTransports = nil
-}
-
-func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
-	done := make(chan struct{})
-	var (
-		response *mDNS.Msg
-		err      error
-	)
-	t.ExchangeAsync(ctx, message, func(callbackResponse *mDNS.Msg, callbackErr error) {
-		response = callbackResponse
-		err = callbackErr
-		close(done)
-	})
-	<-done
-	return response, err
-}
-
-func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
-	t.transportLock.RLock()
-	updatedAt := t.updatedAt
-	lastError := t.lastError
-	serverTransports := t.serverTransports
-	t.transportLock.RUnlock()
-	if lastError != nil {
-		callback(nil, E.Cause(lastError, "dhcp: fetch DNS servers"))
-		return
-	}
-	if len(serverTransports) == 0 {
-		go t.exchangeCold(ctx, message, callback)
-		return
-	}
-	if time.Since(updatedAt) >= C.DHCPTTL {
-		t.startRefresh()
-	}
-	t.exchangeWithTransports(ctx, message, serverTransports, callback)
-=======
 	t.refreshAccess.Lock()
 	defer t.refreshAccess.Unlock()
 	state := t.savedState.Swap(nil)
@@ -266,7 +195,6 @@ func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callba
 		t.startRefresh()
 	}
 	t.exchangeWithTransports(ctx, message, state, callback)
->>>>>>> sagerNet/testing
 }
 
 func (t *Transport) exchangeCold(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
@@ -275,64 +203,6 @@ func (t *Transport) exchangeCold(ctx context.Context, message *mDNS.Msg, callbac
 		callback(nil, E.Cause(err, "dhcp: fetch DNS servers"))
 		return
 	}
-<<<<<<< HEAD
-	t.transportLock.RLock()
-	serverTransports := t.serverTransports
-	t.transportLock.RUnlock()
-	if len(serverTransports) == 0 {
-		callback(nil, E.New("dhcp: empty DNS servers from response"))
-		return
-	}
-	t.exchangeWithTransports(ctx, message, serverTransports, callback)
-}
-
-func (t *Transport) Fetch() []M.Socksaddr {
-	t.transportLock.RLock()
-	updatedAt := t.updatedAt
-	lastError := t.lastError
-	servers := t.servers
-	t.transportLock.RUnlock()
-	if lastError != nil {
-		return nil
-	}
-	if len(servers) > 0 && time.Since(updatedAt) >= C.DHCPTTL {
-		t.startRefresh()
-	}
-	return servers
-}
-
-func (t *Transport) fetch() error {
-	t.transportLock.RLock()
-	updatedAt := t.updatedAt
-	lastError := t.lastError
-	t.transportLock.RUnlock()
-	if lastError != nil {
-		return lastError
-	}
-	if time.Since(updatedAt) < C.DHCPTTL {
-		return nil
-	}
-	t.transportLock.Lock()
-	defer t.transportLock.Unlock()
-	if time.Since(t.updatedAt) < C.DHCPTTL {
-		return nil
-	}
-	return t.updateServers()
-}
-
-func (t *Transport) startRefresh() {
-	if !t.refreshing.CompareAndSwap(false, true) {
-		return
-	}
-	go func() {
-		defer t.refreshing.Store(false)
-		t.transportLock.Lock()
-		defer t.transportLock.Unlock()
-		if time.Since(t.updatedAt) < C.DHCPTTL {
-			return
-		}
-		err := t.updateServers()
-=======
 	state := t.savedState.Load()
 	if state == nil || len(state.serverTransports) == 0 {
 		callback(nil, E.New("dhcp: empty DNS servers from response"))
@@ -387,7 +257,6 @@ func (t *Transport) startRefresh() {
 			return
 		}
 		err := t.updateServersLocked()
->>>>>>> sagerNet/testing
 		if err != nil {
 			if errors.Is(err, errInterfaceIsCellular) && t.optional {
 				t.logger.Debug(E.Cause(err, "dhcp: refresh DNS servers"))
@@ -427,12 +296,7 @@ func (t *Transport) fetchInterface() (*control.Interface, error) {
 func (t *Transport) updateServersLocked() error {
 	iface, err := t.fetchInterface()
 	if err != nil {
-<<<<<<< HEAD
-		t.lastError = err
-		t.updatedAt = time.Now()
-=======
 		t.storeFailureLocked(err)
->>>>>>> sagerNet/testing
 		return E.Cause(err, "prepare interface")
 	}
 	t.logger.Info("dhcp: query DNS servers on ", iface.Name)
@@ -467,15 +331,9 @@ func (t *Transport) storeFailureLocked(err error) {
 }
 
 func (t *Transport) interfaceUpdated(defaultInterface *control.Interface, flags int) {
-<<<<<<< HEAD
-	t.transportLock.Lock()
-	err := t.updateServers()
-	t.transportLock.Unlock()
-=======
 	t.refreshAccess.Lock()
 	err := t.updateServersLocked()
 	t.refreshAccess.Unlock()
->>>>>>> sagerNet/testing
 	if err != nil {
 		if errors.Is(err, errInterfaceIsCellular) && t.optional {
 			t.logger.Debug(E.Cause(errInterfaceIsCellular, "dhcp: update DNS servers"))
@@ -613,25 +471,5 @@ func (t *Transport) recreateServersLocked(iface *control.Interface, dhcpPacket *
 	if previousState != nil {
 		closeServerTransports(previousState.serverTransports)
 	}
-<<<<<<< HEAD
-	if !slices.Equal(t.servers, serverAddrs) || t.serverTransports == nil {
-		t.closeServerTransports()
-		serverTransports := make([]adapter.DNSTransport, 0, len(serverAddrs))
-		for _, serverAddr := range serverAddrs {
-			serverTransport := transport.NewUDPRaw(t.logger, dns.NewTransportAdapter(C.DNSTypeUDP, "", nil), t.dialer, serverAddr)
-			err := serverTransport.Start(adapter.StartStateStart)
-			if err != nil {
-				for _, startedTransport := range serverTransports {
-					startedTransport.Close()
-				}
-				return E.Cause(err, "initialize transport for ", serverAddr)
-			}
-			serverTransports = append(serverTransports, serverTransport)
-		}
-		t.serverTransports = serverTransports
-	}
-	t.servers = serverAddrs
-=======
->>>>>>> sagerNet/testing
 	return nil
 }

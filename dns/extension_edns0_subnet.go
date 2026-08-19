@@ -28,18 +28,12 @@ func clientSubnetFromMessage(message *dns.Msg) netip.Prefix {
 			if !addressLoaded {
 				return netip.Prefix{}
 			}
-<<<<<<< HEAD
-			return netip.PrefixFrom(address, int(subnetOption.SourceNetmask))
-=======
 			return netip.PrefixFrom(address.Unmap(), int(subnetOption.SourceNetmask))
->>>>>>> sagerNet/testing
 		}
 	}
 	return netip.Prefix{}
 }
 
-<<<<<<< HEAD
-=======
 func removeClientSubnet(message *dns.Msg) *dns.Msg {
 	if !slices.ContainsFunc(message.Extra, func(record dns.RR) bool {
 		optRecord, isOPTRecord := record.(*dns.OPT)
@@ -65,7 +59,6 @@ func removeClientSubnet(message *dns.Msg) *dns.Msg {
 	return message
 }
 
->>>>>>> sagerNet/testing
 func setClientSubnet(message *dns.Msg, clientSubnet netip.Prefix, clone bool) *dns.Msg {
 	var (
 		optRecord    *dns.OPT

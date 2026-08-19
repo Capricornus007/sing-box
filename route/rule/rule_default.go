@@ -205,14 +205,6 @@ func NewDefaultRule(ctx context.Context, logger log.ContextLogger, options optio
 		rule.items = append(rule.items, item)
 		rule.allItems = append(rule.allItems, item)
 	}
-<<<<<<< HEAD
-	if len(options.PackageNameExclude) > 0 {
-		item := NewPackageNameExcludeItem(options.PackageNameExclude)
-		rule.items = append(rule.items, item)
-		rule.allItems = append(rule.allItems, item)
-	}
-=======
->>>>>>> sagerNet/testing
 	if len(options.PackageNameRegex) > 0 {
 		item, err := NewPackageNameRegexItem(options.PackageNameRegex)
 		if err != nil {

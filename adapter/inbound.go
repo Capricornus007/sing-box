@@ -94,11 +94,8 @@ type InboundContext struct {
 	SourceMACAddress                    net.HardwareAddr
 	SourceHostname                      string
 	QueryType                           uint16
-<<<<<<< HEAD
-=======
 	QueryClientSubnet                   netip.Prefix
 	QueryDNSSEC                         bool
->>>>>>> sagerNet/testing
 	FakeIP                              bool
 	PreMatch                            bool
 

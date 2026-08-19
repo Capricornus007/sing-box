@@ -4,16 +4,8 @@ package main
 
 import (
 	"context"
-<<<<<<< HEAD
-	"os"
-	"path/filepath"
 
 	"github.com/sagernet/sing-box/adapter"
-	"github.com/sagernet/sing/common/json"
-=======
-
-	"github.com/sagernet/sing-box/adapter"
->>>>>>> sagerNet/testing
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/filemanager"
 )
@@ -31,25 +23,8 @@ func insecureModePlatformName() string {
 	return "Linux"
 }
 
-<<<<<<< HEAD
-func loadSecuritySettings(directory string) (securitySettings, error) {
-	content, err := os.ReadFile(filepath.Join(directory, securitySettingsFileName))
-	if err != nil {
-		return securitySettings{}, err
-	}
-	settings, err := json.UnmarshalExtended[securitySettings](content)
-	if err != nil {
-		return securitySettings{}, err
-	}
-	return settings, nil
-}
-
-func (d *Daemon) insecureModeEnabled() bool {
-	settings, err := loadSecuritySettings(workingDirectory)
-=======
 func (d *Daemon) insecureModeEnabled() bool {
 	settings, err := loadDaemonSettings(workingDirectory)
->>>>>>> sagerNet/testing
 	if err != nil {
 		return false
 	}

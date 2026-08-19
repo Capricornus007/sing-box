@@ -1082,8 +1082,6 @@
                     }
                   ]
                 },
-<<<<<<< HEAD
-=======
                 "query_client_subnet": {
                   "anyOf": [
                     {
@@ -1100,7 +1098,6 @@
                 "query_dnssec": {
                   "type": "boolean"
                 },
->>>>>>> sagerNet/testing
                 "network": {
                   "anyOf": [
                     {
@@ -1699,12 +1696,9 @@
             },
             "client_subnet": {
               "type": "string"
-<<<<<<< HEAD
-=======
             },
             "remove_client_subnet": {
               "type": "boolean"
->>>>>>> sagerNet/testing
             }
           }
         },
@@ -1743,12 +1737,9 @@
             },
             "client_subnet": {
               "type": "string"
-<<<<<<< HEAD
-=======
             },
             "remove_client_subnet": {
               "type": "boolean"
->>>>>>> sagerNet/testing
             }
           },
           "required": [
@@ -1794,12 +1785,9 @@
             },
             "client_subnet": {
               "type": "string"
-<<<<<<< HEAD
-=======
             },
             "remove_client_subnet": {
               "type": "boolean"
->>>>>>> sagerNet/testing
             }
           },
           "required": [
@@ -4546,14 +4534,11 @@
                 }
               ]
             },
-<<<<<<< HEAD
-=======
             "listen_port": {
               "type": "integer",
               "minimum": 0,
               "maximum": 65535
             },
->>>>>>> sagerNet/testing
             "relay_server_port": {
               "type": "integer",
               "minimum": 0,
@@ -4603,12 +4588,9 @@
                   "additionalProperties": false
                 }
               ]
-<<<<<<< HEAD
-=======
             },
             "taildrop_directory": {
               "type": "string"
->>>>>>> sagerNet/testing
             }
           },
           "required": [
@@ -8743,8 +8725,6 @@
                 }
               ]
             },
-<<<<<<< HEAD
-=======
             "query_client_subnet": {
               "anyOf": [
                 {
@@ -8761,7 +8741,6 @@
             "query_dnssec": {
               "type": "boolean"
             },
->>>>>>> sagerNet/testing
             "network": {
               "anyOf": [
                 {
@@ -11682,12 +11661,9 @@
             "brutal_debug": {
               "type": "boolean"
             },
-<<<<<<< HEAD
-=======
             "disable_chrome_parrot": {
               "type": "boolean"
             },
->>>>>>> sagerNet/testing
             "realm": {
               "$ref": "#/$defs/Hysteria2Realm"
             }

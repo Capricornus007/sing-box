@@ -122,32 +122,17 @@ func New(ctx context.Context, logger logger.Logger, options option.CacheFileOpti
 		saveAddress6: make(map[string]netip.Addr),
 		saveRDRC:     make(map[saveCacheKey]bool),
 		saveDNSCache: make(map[saveCacheKey]saveDNSCacheEntry),
-<<<<<<< HEAD
 	}
 }
 
-// NewReadOnly opens an existing cache database in read-only mode.
-//
-// Unlike New, a read-only cache file never writes to the database: Start opens
-// the file with bbolt's ReadOnly option and skips the bucket housekeeping
-// transaction that a read-write cache file performs. This makes it safe to read
-// from a cache file that is concurrently owned by another read-write CacheFile
-// in the same process (for example a running sing-box instance).
-//
-// This matters on Android, where bbolt serializes writers with POSIX (fcntl)
-// file locks. Such locks are associated with a process rather than a file
-// descriptor, so two read-write CacheFile instances opened by the same process
-// do not block each other; committing transactions from both diverges their
-// in-memory freelists and corrupts the database (panic: "page N already
-// freed"). A read-only handle never commits, so it cannot trigger that
-// corruption.
+// NewReadOnly opens an existing cache database without acquiring a write
+// handle. This is required when inspecting the cache of a running instance:
+// opening a second writer in the same process can corrupt bbolt's freelist.
 func NewReadOnly(ctx context.Context, path string) *CacheFile {
 	return &CacheFile{
 		ctx:      ctx,
 		path:     filemanager.BasePath(ctx, path),
 		readOnly: true,
-=======
->>>>>>> sagerNet/testing
 	}
 }
 
@@ -181,7 +166,6 @@ func (c *CacheFile) Start(stage adapter.StartStage) error {
 		return c.start()
 	case adapter.StartStateStart:
 		c.startCacheCleanup()
-<<<<<<< HEAD
 	}
 	return nil
 }
@@ -208,10 +192,6 @@ func (c *CacheFile) startCacheCleanup() {
 func (c *CacheFile) start() error {
 	const fileMode = 0o666
 	if c.readOnly {
-		// A read-only cache only ever reads; it must not run the bucket
-		// housekeeping transaction, chown the file, recreate it on corruption
-		// or retry with backoff. Missing file means there is simply nothing
-		// cached yet.
 		if _, err := os.Stat(c.path); err != nil {
 			return err
 		}
@@ -222,47 +202,16 @@ func (c *CacheFile) start() error {
 		c.DB = db
 		return nil
 	}
-=======
-	}
-	return nil
-}
-
-func (c *CacheFile) startCacheCleanup() {
-	if c.storeDNS {
-		c.clearRDRC()
-		c.cleanupDNSCache()
-		interval := c.optimisticTimeout / 2
-		if interval <= 0 {
-			interval = time.Hour
-		}
-		go c.loopCacheCleanup(interval, c.cleanupDNSCache)
-	} else if c.storeRDRC {
-		c.cleanupRDRC()
-		interval := c.rdrcTimeout / 2
-		if interval <= 0 {
-			interval = time.Hour
-		}
-		go c.loopCacheCleanup(interval, c.cleanupRDRC)
-	}
-}
-
-func (c *CacheFile) start() error {
-	const fileMode = 0o666
->>>>>>> sagerNet/testing
 	cacheFile, err := filemanager.OpenFile(c.ctx, c.path, os.O_RDWR|os.O_CREATE, fileMode)
 	if err != nil {
 		return err
 	}
 	cacheFile.Close()
-<<<<<<< HEAD
 	options := bbolt.Options{
 		Timeout:        time.Second,
 		NoFreelistSync: true,
 		FreelistType:   bbolt.FreelistMapType,
 	}
-=======
-	options := bbolt.Options{Timeout: time.Second}
->>>>>>> sagerNet/testing
 	var db *bbolt.DB
 	for range 10 {
 		db, err = bbolt.Open(c.path, fileMode, &options)
@@ -361,15 +310,11 @@ func (c *CacheFile) resetDB() {
 	defer c.resetAccess.Unlock()
 	c.DB.Close()
 	filemanager.Remove(c.ctx, c.path)
-<<<<<<< HEAD
 	db, err := bbolt.Open(c.path, 0o666, &bbolt.Options{
 		Timeout:        time.Second,
 		NoFreelistSync: true,
 		FreelistType:   bbolt.FreelistMapType,
 	})
-=======
-	db, err := bbolt.Open(c.path, 0o666, &bbolt.Options{Timeout: time.Second})
->>>>>>> sagerNet/testing
 	if err == nil {
 		_ = filemanager.Chown(c.ctx, c.path)
 		c.DB = db

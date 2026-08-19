@@ -31,11 +31,7 @@
 | `hysteria2`   | [Hysteria2](./hysteria2/)     | :material-close: |
 | `vless`       | [VLESS](./vless/)             | TCP              |
 | `anytls`      | [AnyTLS](./anytls/)           | TCP              |
-<<<<<<< HEAD
-| `snell`       | [Snell](./snell/)             | TCP / UDP (v5)   |
-=======
 | `snell`       | [Snell](./snell/)             | TCP              |
->>>>>>> sagerNet/testing
 | `tun`         | [Tun](./tun/)                 | :material-close: |
 | `redirect`    | [Redirect](./redirect/)       | :material-close: |
 | `tproxy`      | [TProxy](./tproxy/)           | :material-close: |

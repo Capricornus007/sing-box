@@ -33,21 +33,15 @@ type Daemon struct {
 	server                  *grpc.Server
 	runtimeWorkingDirectory string
 	lifecycleAccess         sync.Mutex
+	dataProtectionAccess    sync.Mutex
 	closed                  bool
 	peerAccess              sync.Mutex
 	peerConnections         map[peerConnection]peerIdentity
-<<<<<<< HEAD
-	dataProtectionAccess    sync.Mutex
-=======
->>>>>>> sagerNet/testing
 	platform                daemonPlatform
 }
 
 func newDaemon() (*Daemon, error) {
-<<<<<<< HEAD
-=======
 	restoreLocale()
->>>>>>> sagerNet/testing
 	ctx := include.Context(context.Background())
 	d := &Daemon{
 		ctx:                     ctx,

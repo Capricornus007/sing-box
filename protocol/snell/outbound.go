@@ -2,21 +2,16 @@ package snell
 
 import (
 	"context"
-<<<<<<< HEAD
 	"fmt"
 	"net"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
-=======
-	"net"
->>>>>>> sagerNet/testing
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
-<<<<<<< HEAD
 	"github.com/sagernet/sing-box/common/expiringmap"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
@@ -27,23 +22,11 @@ import (
 	"github.com/sagernet/sing-snell/snellv4"
 	"github.com/sagernet/sing-snell/snellv6"
 	"github.com/sagernet/sing/common/buf"
-=======
-	C "github.com/sagernet/sing-box/constant"
-	"github.com/sagernet/sing-box/log"
-	"github.com/sagernet/sing-box/option"
-	snellprotocol "github.com/sagernet/sing-snell"
-	"github.com/sagernet/sing-snell/snellv4"
-	"github.com/sagernet/sing-snell/snellv6"
-	"github.com/sagernet/sing/common/bufio"
->>>>>>> sagerNet/testing
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
-<<<<<<< HEAD
 	"github.com/sagernet/sing/common/pipe"
-=======
->>>>>>> sagerNet/testing
 )
 
 func RegisterOutbound(registry *outbound.Registry) {
@@ -52,7 +35,6 @@ func RegisterOutbound(registry *outbound.Registry) {
 
 type Outbound struct {
 	outbound.Adapter
-<<<<<<< HEAD
 	logger        logger.ContextLogger
 	dialer        N.Dialer
 	tcpDialer     N.Dialer
@@ -69,36 +51,18 @@ type Outbound struct {
 type snellClient interface {
 	snellprotocol.Method
 	DialContext(ctx context.Context, destination M.Socksaddr) (net.Conn, error)
-=======
-	logger     logger.ContextLogger
-	dialer     N.Dialer
-	client     snellClient
-	serverAddr M.Socksaddr
-}
-
-var _ adapter.InterfaceUpdateListener = (*Outbound)(nil)
-
-type snellClient interface {
-	snellprotocol.Method
-	DialContext(ctx context.Context, destination M.Socksaddr) (net.Conn, error)
-	Reset()
->>>>>>> sagerNet/testing
 	Close() error
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.SnellOutboundOptions) (adapter.Outbound, error) {
-<<<<<<< HEAD
 	if options.PSK == "" {
 		return nil, E.New("snell: psk is required")
 	}
-=======
->>>>>>> sagerNet/testing
 	outboundDialer, err := dialer.New(ctx, options.DialerOptions, options.ServerIsDomain())
 	if err != nil {
 		return nil, err
 	}
 	serverAddr := options.ServerOptions.Build()
-<<<<<<< HEAD
 	version := options.Version
 	if version == 0 {
 		version = 4
@@ -138,24 +102,6 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			Reuse:   options.Reuse,
 			Dialer:  tcpDialer,
 			Server:  serverAddr,
-=======
-	var client snellClient
-	switch options.Version {
-	case 4:
-		var obfsMode snellprotocol.ObfsMode
-		obfsMode, err = snellprotocol.ParseObfsMode(options.ObfsOptions.ObfsMode)
-		if err != nil {
-			return nil, err
-		}
-		client, err = snellv4.NewClient(snellv4.ClientOptions{
-			PSK:      []byte(options.PSK),
-			UserKey:  []byte(options.UserKey),
-			Reuse:    options.Reuse,
-			ObfsMode: obfsMode,
-			ObfsHost: options.ObfsOptions.ObfsHost,
-			Dialer:   outboundDialer,
-			Server:   serverAddr,
->>>>>>> sagerNet/testing
 		})
 	case 6:
 		var mode snellv6.Mode
@@ -168,27 +114,16 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			UserKey: []byte(options.UserKey),
 			Mode:    mode,
 			Reuse:   options.Reuse,
-<<<<<<< HEAD
 			Dialer:  tcpDialer,
 			Server:  serverAddr,
 		})
 	default:
 		return nil, E.New("snell: unsupported version: ", version)
-=======
-			Dialer:  outboundDialer,
-			Server:  serverAddr,
-		})
-	case 0:
-		return nil, E.New("snell: missing version")
-	default:
-		return nil, E.New("snell: unsupported version: ", options.Version)
->>>>>>> sagerNet/testing
 	}
 	if err != nil {
 		return nil, err
 	}
 	outbound := &Outbound{
-<<<<<<< HEAD
 		Adapter:    outbound.NewAdapterWithDialerOptions(C.TypeSnell, tag, networks, options.DialerOptions),
 		logger:     logger,
 		dialer:     outboundDialer,
@@ -202,18 +137,10 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	if version == 5 {
 		outbound.quicDestCache = expiringmap.New[quicDestCacheKey, uint64](quicDestCacheTTL)
-=======
-		Adapter:    outbound.NewAdapterWithDialerOptions(C.TypeSnell, tag, options.Network.Build(), options.DialerOptions),
-		logger:     logger,
-		dialer:     outboundDialer,
-		client:     client,
-		serverAddr: serverAddr,
->>>>>>> sagerNet/testing
 	}
 	return outbound, nil
 }
 
-<<<<<<< HEAD
 func validateSnellOutboundVersionOptions(version int, reuse bool) error {
 	if reuse && version <= 3 {
 		return E.New("snell: reuse requires version 4 or above")
@@ -249,8 +176,6 @@ func buildSnellNetworks(version int, networkList option.NetworkList) ([]string, 
 	return networks, nil
 }
 
-=======
->>>>>>> sagerNet/testing
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
@@ -259,7 +184,6 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 	switch networkName {
 	case N.NetworkTCP:
 		h.logger.InfoContext(ctx, "outbound connection to ", destination)
-<<<<<<< HEAD
 		if h.legacy != nil {
 			conn, err := h.tcpDialer.DialContext(ctx, N.NetworkTCP, h.serverAddr)
 			if err != nil {
@@ -279,21 +203,6 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 			return nil, err
 		}
 		return &packetConnWrapper{PacketConn: packetConn, destination: destination}, nil
-=======
-		return h.client.DialContext(ctx, destination)
-	case N.NetworkUDP:
-		h.logger.InfoContext(ctx, "outbound packet connection to ", destination)
-		conn, err := h.dialer.DialContext(ctx, N.NetworkTCP, h.serverAddr)
-		if err != nil {
-			return nil, err
-		}
-		packetConn, err := h.client.DialPacketConn(conn)
-		if err != nil {
-			conn.Close()
-			return nil, err
-		}
-		return bufio.NewBindPacketConn(packetConn, destination), nil
->>>>>>> sagerNet/testing
 	default:
 		return nil, E.Extend(N.ErrUnknownNetwork, network)
 	}
@@ -304,7 +213,6 @@ func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination
 	h.logger.InfoContext(ctx, "outbound packet connection to ", destination)
-<<<<<<< HEAD
 	if h.version == 5 {
 		return newV5LazyPacketConn(ctx, h, metadata.Source, destination, metadata.Protocol == C.ProtocolQUIC || h.isRecentQUICDest(metadata.Source, destination)), nil
 	}
@@ -764,24 +672,3 @@ func (c *packetConnWrapper) Write(p []byte) (int, error) {
 }
 
 func (c *packetConnWrapper) RemoteAddr() net.Addr { return c.destination }
-=======
-	conn, err := h.dialer.DialContext(ctx, N.NetworkTCP, h.serverAddr)
-	if err != nil {
-		return nil, err
-	}
-	packetConn, err := h.client.DialPacketConn(conn)
-	if err != nil {
-		conn.Close()
-		return nil, err
-	}
-	return packetConn, nil
-}
-
-func (h *Outbound) InterfaceUpdated() {
-	h.client.Reset()
-}
-
-func (h *Outbound) Close() error {
-	return h.client.Close()
-}
->>>>>>> sagerNet/testing

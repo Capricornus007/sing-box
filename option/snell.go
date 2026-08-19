@@ -18,14 +18,9 @@ type _SnellInboundOptions struct {
 
 type AbstractSnellInboundOptions struct {
 	ListenOptions
-<<<<<<< HEAD
 	PSK                     string      `json:"psk,omitempty"`
 	Users                   []SnellUser `json:"users,omitempty"`
 	MultiUserAuthentication string      `json:"multi_user_authentication,omitempty"`
-=======
-	PSK   string      `json:"psk"`
-	Users []SnellUser `json:"users,omitempty"`
->>>>>>> sagerNet/testing
 }
 
 type SnellInboundOptions _SnellInboundOptions
@@ -46,7 +41,6 @@ func (o *SnellInboundOptions) UnmarshalJSON(content []byte) error {
 	default:
 		return E.New("snell: unsupported version: ", o.Version)
 	}
-<<<<<<< HEAD
 	err = badjson.UnmarshallExcluded(content, (*_SnellInboundOptions)(o), versionOptions)
 	if err != nil {
 		return err
@@ -99,9 +93,6 @@ func (o *SnellInboundOptions) UnmarshalJSON(content []byte) error {
 		return E.New("snell: unknown multi_user_authentication: ", o.MultiUserAuthentication)
 	}
 	return nil
-=======
-	return badjson.UnmarshallExcluded(content, (*_SnellInboundOptions)(o), versionOptions)
->>>>>>> sagerNet/testing
 }
 
 func (o SnellInboundOptions) MarshalJSON() ([]byte, error) {
@@ -116,11 +107,7 @@ func (o SnellInboundOptions) MarshalJSON() ([]byte, error) {
 	default:
 		return nil, E.New("snell: unsupported version: ", o.Version)
 	}
-<<<<<<< HEAD
-	return badjson.MarshallObjects(_SnellInboundOptions(o), versionOptions)
-=======
 	return badjson.MarshallObjects((_SnellInboundOptions)(o), versionOptions)
->>>>>>> sagerNet/testing
 }
 
 func (o SnellInboundOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
@@ -157,19 +144,10 @@ func (o *SnellOutboundOptions) UnmarshalJSON(content []byte) error {
 	}
 	var versionOptions any
 	switch o.Version {
-<<<<<<< HEAD
 	case 0, 1, 2, 3, 4, 5:
 		versionOptions = &o.ObfsOptions
 	case 6:
 		versionOptions = &o.V6Options
-=======
-	case 4:
-		versionOptions = &o.ObfsOptions
-	case 6:
-		versionOptions = &o.V6Options
-	case 0:
-		return E.New("snell: missing version")
->>>>>>> sagerNet/testing
 	default:
 		return E.New("snell: unsupported version: ", o.Version)
 	}
@@ -179,7 +157,6 @@ func (o *SnellOutboundOptions) UnmarshalJSON(content []byte) error {
 func (o SnellOutboundOptions) MarshalJSON() ([]byte, error) {
 	var versionOptions any
 	switch o.Version {
-<<<<<<< HEAD
 	case 0, 1, 2, 3, 4, 5:
 		versionOptions = o.ObfsOptions
 	case 6:
@@ -187,19 +164,7 @@ func (o SnellOutboundOptions) MarshalJSON() ([]byte, error) {
 	default:
 		return nil, E.New("snell: unsupported version: ", o.Version)
 	}
-	return badjson.MarshallObjects(_SnellOutboundOptions(o), versionOptions)
-=======
-	case 4:
-		versionOptions = o.ObfsOptions
-	case 6:
-		versionOptions = o.V6Options
-	case 0:
-		return nil, E.New("snell: missing version")
-	default:
-		return nil, E.New("snell: unsupported version: ", o.Version)
-	}
 	return badjson.MarshallObjects((_SnellOutboundOptions)(o), versionOptions)
->>>>>>> sagerNet/testing
 }
 
 func (o SnellOutboundOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
@@ -217,7 +182,6 @@ type SnellObfsServerOptions struct {
 
 type SnellUser struct {
 	Name    string `json:"name,omitempty"`
-<<<<<<< HEAD
 	UserKey string `json:"userkey,omitempty"`
 	PSK     string `json:"psk,omitempty"`
 
@@ -249,9 +213,6 @@ func (u *SnellUser) UnmarshalJSON(content []byte) error {
 		u.PSK = *raw.PSK
 	}
 	return nil
-=======
-	UserKey string `json:"userkey"`
->>>>>>> sagerNet/testing
 }
 
 type SnellObfsClientOptions struct {

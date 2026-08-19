@@ -118,11 +118,8 @@ type Endpoint struct {
 
 	sshServerInstance *tailssh.Server
 	sshServerOptions  *option.TailscaleSSHServerOptions
-<<<<<<< HEAD
-=======
 	taildrop          *taildropManager
 	localBackend      *ipnlocal.LocalBackend
->>>>>>> sagerNet/testing
 
 	systemInterface     bool
 	systemInterfaceName string
@@ -187,15 +184,12 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	dialerQueryOptions := outboundDialer.(dialer.ResolveDialer).QueryOptions()
 	dnsRouter := service.FromContext[adapter.DNSRouter](ctx)
-<<<<<<< HEAD
-=======
 	taildropDirectory := options.TaildropDirectory
 	if taildropDirectory == "" {
 		taildropDirectory = "Taildrop"
 	}
 	taildropDirectory = filemanager.BasePath(ctx, os.ExpandEnv(taildropDirectory))
 	taildropDirectory, _ = filepath.Abs(taildropDirectory)
->>>>>>> sagerNet/testing
 	return &Endpoint{
 		Adapter:           endpoint.NewAdapter(C.TypeTailscale, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
 		ctx:               ctx,
@@ -217,10 +211,7 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 			Ephemeral:     options.Ephemeral,
 			AuthKey:       options.AuthKey,
 			ControlURL:    options.ControlURL,
-<<<<<<< HEAD
-=======
 			Port:          options.ListenPort,
->>>>>>> sagerNet/testing
 			AdvertiseTags: options.AdvertiseTags,
 			Dialer:        &endpointDialer{Dialer: outboundDialer, logger: logger},
 			LookupHook: func(ctx context.Context, host string) ([]netip.Addr, error) {
@@ -249,10 +240,7 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		relayServerPort:            options.RelayServerPort,
 		relayServerStaticEndpoints: options.RelayServerStaticEndpoints,
 		sshServerOptions:           options.SSHServer,
-<<<<<<< HEAD
-=======
 		taildrop:                   newTaildropManager(ctx, logger, tag, taildropDirectory, platformInterface),
->>>>>>> sagerNet/testing
 		udpTimeout:                 udpTimeout,
 		icmpTimeout:                C.ICMPTimeout,
 		systemInterface:            options.SystemInterface,
@@ -269,15 +257,12 @@ func (t *Endpoint) Start(stage adapter.StartStage) error {
 		if mkdirErr != nil {
 			return E.Cause(mkdirErr, "create state directory")
 		}
-<<<<<<< HEAD
-=======
 		if !version.IsAppleTV() {
 			mkdirErr = filemanager.MkdirAll(t.ctx, t.taildrop.directory, 0o700)
 			if mkdirErr != nil {
 				return E.Cause(mkdirErr, "create taildrop directory")
 			}
 		}
->>>>>>> sagerNet/testing
 		t.server.PeerDNSQueryHandler = (*peerDNSQueryHandler)(t)
 	case adapter.StartStateStart:
 		return t.start()
@@ -431,9 +416,6 @@ func (t *Endpoint) postStart() error {
 			}, true
 		})
 	}
-<<<<<<< HEAD
-	wgEngine := t.server.ExportLocalBackend().ExportEngine().(wgengine.ExportedUserspaceEngine)
-=======
 	localBackend := t.server.ExportLocalBackend()
 	t.localBackend = localBackend
 	if !version.IsAppleTV() {
@@ -441,7 +423,6 @@ func (t *Endpoint) postStart() error {
 		go t.taildrop.start()
 	}
 	wgEngine := localBackend.ExportEngine().(wgengine.ExportedUserspaceEngine)
->>>>>>> sagerNet/testing
 	wgEngine.SetOnReconfigListener(t.onReconfig)
 	t.wgEngine = wgEngine
 
@@ -730,14 +711,11 @@ func (t *Endpoint) Logout(ctx context.Context) error {
 func (t *Endpoint) Close() error {
 	var err error
 	t.started.Store(false)
-<<<<<<< HEAD
-=======
 	if t.localBackend != nil {
 		unregisterTaildropEndpoint(t.localBackend)
 		t.localBackend = nil
 	}
 	t.taildrop.close()
->>>>>>> sagerNet/testing
 	if t.icmpForwarder != nil {
 		t.icmpForwarder.Close()
 		t.icmpForwarder = nil

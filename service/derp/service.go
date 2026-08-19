@@ -5,10 +5,7 @@ package derp
 import (
 	"bufio"
 	"context"
-<<<<<<< HEAD
-=======
 	"encoding/json"
->>>>>>> sagerNet/testing
 	"fmt"
 	"io"
 	"net"
@@ -21,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goccy/go-json"
 	"github.com/sagernet/sing-box/adapter"
 	boxService "github.com/sagernet/sing-box/adapter/service"
 	"github.com/sagernet/sing-box/common/dialer"

@@ -12,18 +12,12 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
-<<<<<<< HEAD
 	obfs "github.com/sagernet/sing-box/transport/simple-obfs"
-=======
->>>>>>> sagerNet/testing
 	snellprotocol "github.com/sagernet/sing-snell"
 	"github.com/sagernet/sing-snell/snellv5"
 	"github.com/sagernet/sing-snell/snellv6"
 	"github.com/sagernet/sing/common/auth"
-<<<<<<< HEAD
 	"github.com/sagernet/sing/common/buf"
-=======
->>>>>>> sagerNet/testing
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
 	"github.com/sagernet/sing/common/logger"
@@ -39,27 +33,20 @@ var _ adapter.TCPInjectableInbound = (*Inbound)(nil)
 
 type Inbound struct {
 	inbound.Adapter
-<<<<<<< HEAD
 	ctx      context.Context
-=======
->>>>>>> sagerNet/testing
 	router   adapter.ConnectionRouterEx
 	logger   logger.ContextLogger
 	listener *listener.Listener
 	service  snellprotocol.Service
 	users    []option.SnellUser
-<<<<<<< HEAD
 	version  int
 	obfsMode string
 	udpNat   *quicProxyNATService
 	quicAuth *quicProxyAuthenticationService
-=======
->>>>>>> sagerNet/testing
 }
 
 func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.SnellInboundOptions) (adapter.Inbound, error) {
 	inbound := &Inbound{
-<<<<<<< HEAD
 		Adapter:  inbound.NewAdapter(C.TypeSnell, tag),
 		ctx:      ctx,
 		router:   uot.NewRouter(router, logger),
@@ -74,12 +61,6 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	authentication := snellprotocol.MultiUserAuthenticationUserKey
 	if options.MultiUserAuthentication == "psk" {
 		authentication = snellprotocol.MultiUserAuthenticationPSK
-=======
-		Adapter: inbound.NewAdapter(C.TypeSnell, tag),
-		router:  uot.NewRouter(router, logger),
-		logger:  logger,
-		users:   options.Users,
->>>>>>> sagerNet/testing
 	}
 	var userList []int
 	var keyList [][]byte
@@ -88,36 +69,20 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		keyList = make([][]byte, len(options.Users))
 		for index, user := range options.Users {
 			userList[index] = index
-<<<<<<< HEAD
 			if authentication == snellprotocol.MultiUserAuthenticationPSK {
 				keyList[index] = []byte(user.PSK)
 			} else {
 				keyList[index] = []byte(user.UserKey)
 			}
-=======
-			keyList[index] = []byte(user.UserKey)
->>>>>>> sagerNet/testing
 		}
 	}
 	var err error
 	switch options.Version {
 	case 5:
-<<<<<<< HEAD
 		serviceOptions := snellv5.ServiceOptions{
 			PSK:                     []byte(options.PSK),
 			Handler:                 (*inboundHandler)(inbound),
 			MultiUserAuthentication: authentication,
-=======
-		var obfsMode snellprotocol.ObfsMode
-		obfsMode, err = snellprotocol.ParseObfsMode(options.ObfsOptions.ObfsMode)
-		if err != nil {
-			return nil, err
-		}
-		serviceOptions := snellv5.ServiceOptions{
-			PSK:      []byte(options.PSK),
-			ObfsMode: obfsMode,
-			Handler:  inbound,
->>>>>>> sagerNet/testing
 		}
 		if len(options.Users) > 0 {
 			var service *snellv5.MultiService[int]
@@ -137,16 +102,10 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 			return nil, err
 		}
 		serviceOptions := snellv6.ServerOptions{
-<<<<<<< HEAD
 			PSK:                     []byte(options.PSK),
 			Mode:                    mode,
 			Handler:                 (*inboundHandler)(inbound),
 			MultiUserAuthentication: authentication,
-=======
-			PSK:     []byte(options.PSK),
-			Mode:    mode,
-			Handler: inbound,
->>>>>>> sagerNet/testing
 		}
 		if len(options.Users) > 0 {
 			var service *snellv6.MultiService[int]
@@ -167,7 +126,6 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	if err != nil {
 		return nil, err
 	}
-<<<<<<< HEAD
 	networks := []string{N.NetworkTCP}
 	listenerOptions := listener.Options{
 		Context:           ctx,
@@ -189,15 +147,6 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		inbound.quicAuth = newQUICProxyAuthenticationService(parser, inbound.udpNat, logger)
 	}
 	inbound.listener = listener.New(listenerOptions)
-=======
-	inbound.listener = listener.New(listener.Options{
-		Context:           ctx,
-		Logger:            logger,
-		Network:           []string{N.NetworkTCP},
-		Listen:            options.ListenOptions,
-		ConnectionHandler: inbound,
-	})
->>>>>>> sagerNet/testing
 	return inbound, nil
 }
 
@@ -209,7 +158,6 @@ func (h *Inbound) Start(stage adapter.StartStage) error {
 }
 
 func (h *Inbound) Close() error {
-<<<<<<< HEAD
 	listenerErr := h.listener.Close()
 	if h.quicAuth != nil {
 		h.quicAuth.Close()
@@ -224,12 +172,6 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 	if h.obfsMode == "http" {
 		conn = obfs.NewHTTPObfsServer(conn)
 	}
-=======
-	return h.listener.Close()
-}
-
-func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
->>>>>>> sagerNet/testing
 	err := h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
 	if err != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, err)
@@ -241,13 +183,9 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 	}
 }
 
-<<<<<<< HEAD
 type inboundHandler Inbound
 
 func (h *inboundHandler) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
-=======
-func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
->>>>>>> sagerNet/testing
 	_, metadata := adapter.ExtendContext(ctx)
 	if source.IsValid() {
 		metadata.Source = source
@@ -255,15 +193,11 @@ func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.S
 	if destination.IsValid() {
 		metadata.Destination = destination
 	}
-<<<<<<< HEAD
 	(*Inbound)(h).newConnection(ctx, conn, *metadata, onClose)
 }
 
 func (h *inboundHandler) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
 	(*Inbound)(h).NewPacketConnectionEx(ctx, conn, source, destination, onClose)
-=======
-	h.newConnection(ctx, conn, *metadata, onClose)
->>>>>>> sagerNet/testing
 }
 
 func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
@@ -282,11 +216,7 @@ func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata ada
 	metadata.InboundType = h.Type()
 	if len(h.users) > 0 {
 		userIndex, loaded := auth.UserFromContext[int](ctx)
-<<<<<<< HEAD
 		if !loaded || userIndex < 0 || userIndex >= len(h.users) {
-=======
-		if !loaded {
->>>>>>> sagerNet/testing
 			N.CloseOnHandshakeFailure(conn, onClose, os.ErrInvalid)
 			return
 		}
@@ -308,11 +238,7 @@ func (h *Inbound) newPacketConnection(ctx context.Context, conn N.PacketConn, me
 	metadata.InboundType = h.Type()
 	if len(h.users) > 0 {
 		userIndex, loaded := auth.UserFromContext[int](ctx)
-<<<<<<< HEAD
 		if !loaded || userIndex < 0 || userIndex >= len(h.users) {
-=======
-		if !loaded {
->>>>>>> sagerNet/testing
 			N.CloseOnHandshakeFailure(conn, onClose, os.ErrInvalid)
 			return
 		}
@@ -328,7 +254,6 @@ func (h *Inbound) newPacketConnection(ctx context.Context, conn N.PacketConn, me
 	}
 	h.router.RoutePacketConnectionEx(ctx, conn, metadata, onClose)
 }
-<<<<<<< HEAD
 
 func validateSnellInboundObfs(version int, obfsMode string) error {
 	if version != 5 || obfsMode == "" || obfsMode == "none" || obfsMode == "http" {
@@ -417,5 +342,3 @@ func (h *inboundPacketHandler) processSessionPacket(source M.Socksaddr, data []b
 	h.udpNat.NewPacket(entry, payload)
 	return true
 }
-=======
->>>>>>> sagerNet/testing
