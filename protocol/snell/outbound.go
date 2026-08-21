@@ -276,6 +276,10 @@ type quicDestCacheKey struct {
 	destination M.Socksaddr
 }
 
+func (h *Outbound) InterfaceUpdated(ctx context.Context) {
+	h.client.Reset()
+}
+
 func (h *Outbound) isRecentQUICDest(source M.Socksaddr, destination M.Socksaddr) bool {
 	if h.quicDestCache == nil {
 		return false

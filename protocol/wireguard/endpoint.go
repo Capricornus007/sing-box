@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/netip"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -43,6 +44,7 @@ type Endpoint struct {
 	localAddresses []netip.Prefix
 	endpoint       *wireguard.Endpoint
 	resolveOnStart bool
+	bindAccess     sync.Mutex
 	started        atomic.Bool
 	detoured       bool
 }
@@ -154,8 +156,17 @@ func (w *Endpoint) Close() error {
 	return w.endpoint.Close()
 }
 
-func (w *Endpoint) InterfaceUpdated() {
+func (w *Endpoint) InterfaceUpdated(ctx context.Context) {
 	if !w.started.Load() || w.detoured {
+		return
+	}
+	go w.updateBind(ctx)
+}
+
+func (w *Endpoint) updateBind(ctx context.Context) {
+	w.bindAccess.Lock()
+	defer w.bindAccess.Unlock()
+	if ctx.Err() != nil || !w.started.Load() {
 		return
 	}
 	err := w.endpoint.BindUpdate()
