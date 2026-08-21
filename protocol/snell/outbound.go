@@ -277,7 +277,10 @@ type quicDestCacheKey struct {
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
-	h.client.Reset()
+	_ = ctx
+	if resetter, ok := h.client.(interface{ Reset() }); ok {
+		resetter.Reset()
+	}
 }
 
 func (h *Outbound) isRecentQUICDest(source M.Socksaddr, destination M.Socksaddr) bool {
