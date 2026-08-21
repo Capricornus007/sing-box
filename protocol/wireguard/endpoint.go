@@ -152,7 +152,9 @@ func (w *Endpoint) Start(stage adapter.StartStage) error {
 }
 
 func (w *Endpoint) Close() error {
+	w.bindAccess.Lock()
 	w.started.Store(false)
+	w.bindAccess.Unlock()
 	return w.endpoint.Close()
 }
 
