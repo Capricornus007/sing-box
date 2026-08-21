@@ -140,6 +140,10 @@ func (s *URLTest) InterfaceUpdated(ctx context.Context) {
 	}()
 }
 
+func (s *URLTest) PerformUpdateCheck() {
+	s.group.performUpdateCheck()
+}
+
 func (s *URLTest) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	s.group.Touch()
 	var outbound adapter.Outbound
