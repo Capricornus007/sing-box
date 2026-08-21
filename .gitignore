@@ -23,6 +23,7 @@
 CLAUDE.md
 AGENTS.md
 /.claude/
+/.vscode/
 /.gocache/
 
 # Adblock
