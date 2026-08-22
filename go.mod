@@ -96,6 +96,12 @@ require (
 	lukechampine.com/blake3 v1.3.0
 )
 
+replace github.com/sagernet/sing-snell => github.com/reF1nd/sing-snell v0.0.0-20260808134633-c120d40d0d5b
+
+replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.2.8-mod.1-nb4a
+
+replace gvisor.dev/gvisor => github.com/Capricornus007/gvisor-awg v0.0.0-20260817092404-335e131adb08
+
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	filippo.io/hpke v0.4.0 // indirect
@@ -218,9 +224,3 @@ require (
 	gvisor.dev/gvisor v0.0.0-20250606233247-e3c4c4cad86f // indirect
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )
-
-replace github.com/sagernet/sing-snell => github.com/reF1nd/sing-snell v0.0.0-20260808134633-c120d40d0d5b
-
-replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.2.8-mod.1-nb4a
-
-replace gvisor.dev/gvisor => github.com/Capricornus007/gvisor-awg v0.0.0-20260817092404-335e131adb08

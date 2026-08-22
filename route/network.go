@@ -354,12 +354,7 @@ func (r *NetworkManager) DefaultNetworkInterface() *adapter.NetworkInterface {
 			return &it
 		}
 	}
-	for _, it := range r.networkInterfaces.Load() {
-		if it.Interface.Name == iif.Name {
-			return &it
-		}
-	}
-	return nil
+	return &adapter.NetworkInterface{Interface: *iif}
 }
 
 func (r *NetworkManager) NetworkInterfaces() []adapter.NetworkInterface {
@@ -529,7 +524,10 @@ func (r *NetworkManager) notifyInterfaceUpdate(defaultInterface *control.Interfa
 	if previousCancel != nil {
 		previousCancel()
 	}
-	go r.updateInterface(updateContext, defaultInterface)
+	go func() {
+		defer updateCancel()
+		r.updateInterface(updateContext, defaultInterface)
+	}()
 }
 
 func (r *NetworkManager) updateInterface(ctx context.Context, defaultInterface *control.Interface) {
@@ -600,7 +598,10 @@ func (r *NetworkManager) notifyWindowsPowerEvent(event int) {
 		if previousCancel != nil {
 			previousCancel()
 		}
-		go r.ResetNetwork(updateContext)
+		go func() {
+			defer updateCancel()
+			r.ResetNetwork(updateContext)
+		}()
 	}
 }
 

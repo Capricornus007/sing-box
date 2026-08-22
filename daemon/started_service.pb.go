@@ -7972,11 +7972,11 @@ var (
 	file_daemon_started_service_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 	file_daemon_started_service_proto_msgTypes  = make([]protoimpl.MessageInfo, 102)
 	file_daemon_started_service_proto_goTypes   = []any{
-		(LogLevel)(0),                             // 0: daemon.LogLevel
-		(ConnectionEventType)(0),                  // 1: daemon.ConnectionEventType
-		(USBDeviceState)(0),                       // 2: daemon.USBDeviceState
-		(USBBackend)(0),                           // 3: daemon.USBBackend
-		(ServiceStatus_Type)(0),                   // 4: daemon.ServiceStatus.Type
+		LogLevel(0),                               // 0: daemon.LogLevel
+		ConnectionEventType(0),                    // 1: daemon.ConnectionEventType
+		USBDeviceState(0),                         // 2: daemon.USBDeviceState
+		USBBackend(0),                             // 3: daemon.USBBackend
+		ServiceStatus_Type(0),                     // 4: daemon.ServiceStatus.Type
 		(*Version)(nil),                           // 5: daemon.Version
 		(*ServiceStatus)(nil),                     // 6: daemon.ServiceStatus
 		(*SubscribeStatusRequest)(nil),            // 7: daemon.SubscribeStatusRequest
@@ -8082,6 +8082,7 @@ var (
 		(*emptypb.Empty)(nil),                     // 107: google.protobuf.Empty
 	}
 )
+
 var file_daemon_started_service_proto_depIdxs = []int32{
 	4,   // 0: daemon.ServiceStatus.status:type_name -> daemon.ServiceStatus.Type
 	105, // 1: daemon.Log.messages:type_name -> daemon.Log.Message

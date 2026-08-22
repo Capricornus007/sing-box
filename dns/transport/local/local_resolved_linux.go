@@ -61,6 +61,7 @@ type DBusResolvedResolver struct {
 	updateAccess      sync.Mutex
 	updateCancel      context.CancelFunc
 	updateRunAccess   sync.Mutex
+	closed            bool
 	closeOnce         sync.Once
 }
 
@@ -132,7 +133,10 @@ func (t *DBusResolvedResolver) Close() error {
 		if updateCancel != nil {
 			updateCancel()
 		}
+		t.updateRunAccess.Lock()
+		t.closed = true
 		serverSet := t.savedServerSet.Swap(nil)
+		t.updateRunAccess.Unlock()
 		if serverSet != nil {
 			closeErr = serverSet.Close()
 		}
@@ -184,7 +188,7 @@ func (t *DBusResolvedResolver) Exchange(ctx context.Context, message *mDNS.Msg) 
 	if err == nil {
 		return response, nil
 	}
-	t.updateStatus(ctx)
+	t.updateStatus(t.ctx)
 	refreshedServerSet := t.savedServerSet.Load()
 	if refreshedServerSet == nil || refreshedServerSet == serverSet {
 		return nil, err
@@ -206,7 +210,7 @@ func (t *DBusResolvedResolver) ExchangeAsync(ctx context.Context, message *mDNS.
 			return
 		}
 		go func() {
-			t.updateStatus(ctx)
+			t.updateStatus(t.ctx)
 			refreshedServerSet := t.savedServerSet.Load()
 			if refreshedServerSet == nil || refreshedServerSet == serverSet {
 				callback(nil, err)
@@ -278,11 +282,11 @@ func (t *DBusResolvedResolver) postUpdateStatus() {
 func (t *DBusResolvedResolver) updateStatus(ctx context.Context) {
 	t.updateRunAccess.Lock()
 	defer t.updateRunAccess.Unlock()
-	if ctx.Err() != nil {
+	if t.closed || ctx.Err() != nil {
 		return
 	}
 	serverSet, err := t.checkResolved(ctx)
-	if ctx.Err() != nil {
+	if t.closed || ctx.Err() != nil {
 		if serverSet != nil {
 			_ = serverSet.Close()
 		}

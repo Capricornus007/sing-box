@@ -4,11 +4,9 @@ package netns
 
 import (
 	"bufio"
-	"errors"
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -43,9 +41,6 @@ func TestUnshareNamespace(t *testing.T) {
 	}
 	err = manager.Start(adapter.StartStateInitialize)
 	if err != nil {
-		if errors.Is(err, syscall.EPERM) {
-			t.Skip("network namespace creation is not permitted in this environment")
-		}
 		t.Fatal(err)
 	}
 	defer manager.Close()

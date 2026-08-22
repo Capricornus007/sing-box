@@ -103,6 +103,8 @@ func ProxyDisplayName(proxyType string) string {
 		return "ShadowTLS"
 	case TypeMieru:
 		return "Mieru"
+	case TypeMASQUE:
+		return "MASQUE"
 	case TypeShadowsocksR:
 		return "ShadowsocksR"
 	case TypeVLESS:
