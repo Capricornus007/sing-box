@@ -2,7 +2,9 @@ package main
 
 import (
 	context "context"
+
 	daemon "github.com/sagernet/sing-box/daemon"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -33,9 +35,13 @@ const (
 	DesktopService_ExportOOMReport_FullMethodName         = "/desktop.DesktopService/ExportOOMReport"
 	DesktopService_DeleteOOMReport_FullMethodName         = "/desktop.DesktopService/DeleteOOMReport"
 	DesktopService_DeleteAllOOMReports_FullMethodName     = "/desktop.DesktopService/DeleteAllOOMReports"
+	DesktopService_ListPowerReports_FullMethodName        = "/desktop.DesktopService/ListPowerReports"
+	DesktopService_ReadPowerReport_FullMethodName         = "/desktop.DesktopService/ReadPowerReport"
+	DesktopService_MarkPowerReportRead_FullMethodName     = "/desktop.DesktopService/MarkPowerReportRead"
+	DesktopService_ExportPowerReport_FullMethodName       = "/desktop.DesktopService/ExportPowerReport"
+	DesktopService_DeletePowerReport_FullMethodName       = "/desktop.DesktopService/DeletePowerReport"
+	DesktopService_DeleteAllPowerReports_FullMethodName   = "/desktop.DesktopService/DeleteAllPowerReports"
 	DesktopService_InstallUpdate_FullMethodName           = "/desktop.DesktopService/InstallUpdate"
-	DesktopService_GetDataProtection_FullMethodName       = "/desktop.DesktopService/GetDataProtection"
-	DesktopService_SetDataProtection_FullMethodName       = "/desktop.DesktopService/SetDataProtection"
 	DesktopService_GetSecuritySettings_FullMethodName     = "/desktop.DesktopService/GetSecuritySettings"
 	DesktopService_SetInsecureModeEnabled_FullMethodName  = "/desktop.DesktopService/SetInsecureModeEnabled"
 	DesktopService_SetLocale_FullMethodName               = "/desktop.DesktopService/SetLocale"
@@ -63,9 +69,13 @@ type DesktopServiceClient interface {
 	ExportOOMReport(ctx context.Context, in *OOMReportExportRequest, opts ...grpc.CallOption) (*CrashReportArchive, error)
 	DeleteOOMReport(ctx context.Context, in *OOMReportRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAllOOMReports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListPowerReports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OOMReportList, error)
+	ReadPowerReport(ctx context.Context, in *OOMReportRequest, opts ...grpc.CallOption) (*OOMReportContent, error)
+	MarkPowerReportRead(ctx context.Context, in *OOMReportRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ExportPowerReport(ctx context.Context, in *OOMReportExportRequest, opts ...grpc.CallOption) (*CrashReportArchive, error)
+	DeletePowerReport(ctx context.Context, in *OOMReportRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteAllPowerReports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	InstallUpdate(ctx context.Context, in *InstallUpdateRequest, opts ...grpc.CallOption) (*InstallUpdateResponse, error)
-	GetDataProtection(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DataProtectionInfo, error)
-	SetDataProtection(ctx context.Context, in *SetDataProtectionRequest, opts ...grpc.CallOption) (*DataProtectionInfo, error)
 	GetSecuritySettings(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SecuritySettings, error)
 	SetInsecureModeEnabled(ctx context.Context, in *SetInsecureModeEnabledRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SetLocale(ctx context.Context, in *SetLocaleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -259,30 +269,70 @@ func (c *desktopServiceClient) DeleteAllOOMReports(ctx context.Context, in *empt
 	return out, nil
 }
 
+func (c *desktopServiceClient) ListPowerReports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OOMReportList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OOMReportList)
+	err := c.cc.Invoke(ctx, DesktopService_ListPowerReports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *desktopServiceClient) ReadPowerReport(ctx context.Context, in *OOMReportRequest, opts ...grpc.CallOption) (*OOMReportContent, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OOMReportContent)
+	err := c.cc.Invoke(ctx, DesktopService_ReadPowerReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *desktopServiceClient) MarkPowerReportRead(ctx context.Context, in *OOMReportRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DesktopService_MarkPowerReportRead_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *desktopServiceClient) ExportPowerReport(ctx context.Context, in *OOMReportExportRequest, opts ...grpc.CallOption) (*CrashReportArchive, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CrashReportArchive)
+	err := c.cc.Invoke(ctx, DesktopService_ExportPowerReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *desktopServiceClient) DeletePowerReport(ctx context.Context, in *OOMReportRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DesktopService_DeletePowerReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *desktopServiceClient) DeleteAllPowerReports(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DesktopService_DeleteAllPowerReports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *desktopServiceClient) InstallUpdate(ctx context.Context, in *InstallUpdateRequest, opts ...grpc.CallOption) (*InstallUpdateResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(InstallUpdateResponse)
 	err := c.cc.Invoke(ctx, DesktopService_InstallUpdate_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *desktopServiceClient) GetDataProtection(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DataProtectionInfo, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DataProtectionInfo)
-	err := c.cc.Invoke(ctx, DesktopService_GetDataProtection_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *desktopServiceClient) SetDataProtection(ctx context.Context, in *SetDataProtectionRequest, opts ...grpc.CallOption) (*DataProtectionInfo, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DataProtectionInfo)
-	err := c.cc.Invoke(ctx, DesktopService_SetDataProtection_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -341,9 +391,13 @@ type DesktopServiceServer interface {
 	ExportOOMReport(context.Context, *OOMReportExportRequest) (*CrashReportArchive, error)
 	DeleteOOMReport(context.Context, *OOMReportRequest) (*emptypb.Empty, error)
 	DeleteAllOOMReports(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	ListPowerReports(context.Context, *emptypb.Empty) (*OOMReportList, error)
+	ReadPowerReport(context.Context, *OOMReportRequest) (*OOMReportContent, error)
+	MarkPowerReportRead(context.Context, *OOMReportRequest) (*emptypb.Empty, error)
+	ExportPowerReport(context.Context, *OOMReportExportRequest) (*CrashReportArchive, error)
+	DeletePowerReport(context.Context, *OOMReportRequest) (*emptypb.Empty, error)
+	DeleteAllPowerReports(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	InstallUpdate(context.Context, *InstallUpdateRequest) (*InstallUpdateResponse, error)
-	GetDataProtection(context.Context, *emptypb.Empty) (*DataProtectionInfo, error)
-	SetDataProtection(context.Context, *SetDataProtectionRequest) (*DataProtectionInfo, error)
 	GetSecuritySettings(context.Context, *emptypb.Empty) (*SecuritySettings, error)
 	SetInsecureModeEnabled(context.Context, *SetInsecureModeEnabledRequest) (*emptypb.Empty, error)
 	SetLocale(context.Context, *SetLocaleRequest) (*emptypb.Empty, error)
@@ -358,76 +412,115 @@ type DesktopServiceServer interface {
 type UnimplementedDesktopServiceServer struct{}
 
 func (UnimplementedDesktopServiceServer) GetDaemonInfo(context.Context, *emptypb.Empty) (*DaemonInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDaemonInfo not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetDaemonInfo not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) ClaimService(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ClaimService not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ClaimService not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) TakeOverService(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TakeOverService not implemented")
+	return nil, status.Error(codes.Unimplemented, "method TakeOverService not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) StartService(context.Context, *StartServiceRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StartService not implemented")
+	return nil, status.Error(codes.Unimplemented, "method StartService not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) GetWorkingDirectory(context.Context, *emptypb.Empty) (*WorkingDirectoryInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetWorkingDirectory not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetWorkingDirectory not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) DestroyWorkingDirectory(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DestroyWorkingDirectory not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DestroyWorkingDirectory not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) ListCrashReports(context.Context, *emptypb.Empty) (*CrashReportList, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListCrashReports not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListCrashReports not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) ReadCrashReport(context.Context, *CrashReportRequest) (*CrashReportContent, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReadCrashReport not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ReadCrashReport not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) MarkCrashReportRead(context.Context, *CrashReportRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MarkCrashReportRead not implemented")
+	return nil, status.Error(codes.Unimplemented, "method MarkCrashReportRead not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) ExportCrashReport(context.Context, *CrashReportExportRequest) (*CrashReportArchive, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ExportCrashReport not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ExportCrashReport not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) DeleteCrashReport(context.Context, *CrashReportRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteCrashReport not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteCrashReport not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) DeleteAllCrashReports(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteAllCrashReports not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteAllCrashReports not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) ListOOMReports(context.Context, *emptypb.Empty) (*OOMReportList, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListOOMReports not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListOOMReports not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) ReadOOMReport(context.Context, *OOMReportRequest) (*OOMReportContent, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReadOOMReport not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ReadOOMReport not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) MarkOOMReportRead(context.Context, *OOMReportRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MarkOOMReportRead not implemented")
+	return nil, status.Error(codes.Unimplemented, "method MarkOOMReportRead not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) ExportOOMReport(context.Context, *OOMReportExportRequest) (*CrashReportArchive, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ExportOOMReport not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ExportOOMReport not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) DeleteOOMReport(context.Context, *OOMReportRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteOOMReport not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteOOMReport not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) DeleteAllOOMReports(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteAllOOMReports not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteAllOOMReports not implemented")
 }
+
+func (UnimplementedDesktopServiceServer) ListPowerReports(context.Context, *emptypb.Empty) (*OOMReportList, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPowerReports not implemented")
+}
+
+func (UnimplementedDesktopServiceServer) ReadPowerReport(context.Context, *OOMReportRequest) (*OOMReportContent, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReadPowerReport not implemented")
+}
+
+func (UnimplementedDesktopServiceServer) MarkPowerReportRead(context.Context, *OOMReportRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method MarkPowerReportRead not implemented")
+}
+
+func (UnimplementedDesktopServiceServer) ExportPowerReport(context.Context, *OOMReportExportRequest) (*CrashReportArchive, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExportPowerReport not implemented")
+}
+
+func (UnimplementedDesktopServiceServer) DeletePowerReport(context.Context, *OOMReportRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePowerReport not implemented")
+}
+
+func (UnimplementedDesktopServiceServer) DeleteAllPowerReports(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAllPowerReports not implemented")
+}
+
 func (UnimplementedDesktopServiceServer) InstallUpdate(context.Context, *InstallUpdateRequest) (*InstallUpdateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InstallUpdate not implemented")
+	return nil, status.Error(codes.Unimplemented, "method InstallUpdate not implemented")
 }
-func (UnimplementedDesktopServiceServer) GetDataProtection(context.Context, *emptypb.Empty) (*DataProtectionInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDataProtection not implemented")
-}
-func (UnimplementedDesktopServiceServer) SetDataProtection(context.Context, *SetDataProtectionRequest) (*DataProtectionInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetDataProtection not implemented")
-}
+
 func (UnimplementedDesktopServiceServer) GetSecuritySettings(context.Context, *emptypb.Empty) (*SecuritySettings, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSecuritySettings not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetSecuritySettings not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) SetInsecureModeEnabled(context.Context, *SetInsecureModeEnabledRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetInsecureModeEnabled not implemented")
+	return nil, status.Error(codes.Unimplemented, "method SetInsecureModeEnabled not implemented")
 }
+
 func (UnimplementedDesktopServiceServer) SetLocale(context.Context, *SetLocaleRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetLocale not implemented")
+	return nil, status.Error(codes.Unimplemented, "method SetLocale not implemented")
 }
 func (UnimplementedDesktopServiceServer) mustEmbedUnimplementedDesktopServiceServer() {}
 func (UnimplementedDesktopServiceServer) testEmbeddedByValue()                        {}
@@ -440,7 +533,7 @@ type UnsafeDesktopServiceServer interface {
 }
 
 func RegisterDesktopServiceServer(s grpc.ServiceRegistrar, srv DesktopServiceServer) {
-	// If the following call pancis, it indicates UnimplementedDesktopServiceServer was
+	// If the following call panics, it indicates UnimplementedDesktopServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
@@ -774,6 +867,114 @@ func _DesktopService_DeleteAllOOMReports_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DesktopService_ListPowerReports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DesktopServiceServer).ListPowerReports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DesktopService_ListPowerReports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DesktopServiceServer).ListPowerReports(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DesktopService_ReadPowerReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OOMReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DesktopServiceServer).ReadPowerReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DesktopService_ReadPowerReport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DesktopServiceServer).ReadPowerReport(ctx, req.(*OOMReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DesktopService_MarkPowerReportRead_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OOMReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DesktopServiceServer).MarkPowerReportRead(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DesktopService_MarkPowerReportRead_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DesktopServiceServer).MarkPowerReportRead(ctx, req.(*OOMReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DesktopService_ExportPowerReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OOMReportExportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DesktopServiceServer).ExportPowerReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DesktopService_ExportPowerReport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DesktopServiceServer).ExportPowerReport(ctx, req.(*OOMReportExportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DesktopService_DeletePowerReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OOMReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DesktopServiceServer).DeletePowerReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DesktopService_DeletePowerReport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DesktopServiceServer).DeletePowerReport(ctx, req.(*OOMReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DesktopService_DeleteAllPowerReports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DesktopServiceServer).DeleteAllPowerReports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DesktopService_DeleteAllPowerReports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DesktopServiceServer).DeleteAllPowerReports(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DesktopService_InstallUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InstallUpdateRequest)
 	if err := dec(in); err != nil {
@@ -788,42 +989,6 @@ func _DesktopService_InstallUpdate_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DesktopServiceServer).InstallUpdate(ctx, req.(*InstallUpdateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _DesktopService_GetDataProtection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DesktopServiceServer).GetDataProtection(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: DesktopService_GetDataProtection_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DesktopServiceServer).GetDataProtection(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _DesktopService_SetDataProtection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetDataProtectionRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DesktopServiceServer).SetDataProtection(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: DesktopService_SetDataProtection_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DesktopServiceServer).SetDataProtection(ctx, req.(*SetDataProtectionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -962,16 +1127,32 @@ var DesktopService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _DesktopService_DeleteAllOOMReports_Handler,
 		},
 		{
+			MethodName: "ListPowerReports",
+			Handler:    _DesktopService_ListPowerReports_Handler,
+		},
+		{
+			MethodName: "ReadPowerReport",
+			Handler:    _DesktopService_ReadPowerReport_Handler,
+		},
+		{
+			MethodName: "MarkPowerReportRead",
+			Handler:    _DesktopService_MarkPowerReportRead_Handler,
+		},
+		{
+			MethodName: "ExportPowerReport",
+			Handler:    _DesktopService_ExportPowerReport_Handler,
+		},
+		{
+			MethodName: "DeletePowerReport",
+			Handler:    _DesktopService_DeletePowerReport_Handler,
+		},
+		{
+			MethodName: "DeleteAllPowerReports",
+			Handler:    _DesktopService_DeleteAllPowerReports_Handler,
+		},
+		{
 			MethodName: "InstallUpdate",
 			Handler:    _DesktopService_InstallUpdate_Handler,
-		},
-		{
-			MethodName: "GetDataProtection",
-			Handler:    _DesktopService_GetDataProtection_Handler,
-		},
-		{
-			MethodName: "SetDataProtection",
-			Handler:    _DesktopService_SetDataProtection_Handler,
 		},
 		{
 			MethodName: "GetSecuritySettings",
@@ -1144,28 +1325,35 @@ type ApplicationServiceServer interface {
 type UnimplementedApplicationServiceServer struct{}
 
 func (UnimplementedApplicationServiceServer) CheckConfig(context.Context, *ConfigContent) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckConfig not implemented")
+	return nil, status.Error(codes.Unimplemented, "method CheckConfig not implemented")
 }
+
 func (UnimplementedApplicationServiceServer) FormatConfig(context.Context, *ConfigContent) (*ConfigContent, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FormatConfig not implemented")
+	return nil, status.Error(codes.Unimplemented, "method FormatConfig not implemented")
 }
+
 func (UnimplementedApplicationServiceServer) GenerateConfigSchema(context.Context, *emptypb.Empty) (*ConfigContent, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GenerateConfigSchema not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GenerateConfigSchema not implemented")
 }
+
 func (UnimplementedApplicationServiceServer) EncodeProfile(context.Context, *ProfileContent) (*ProfileData, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EncodeProfile not implemented")
+	return nil, status.Error(codes.Unimplemented, "method EncodeProfile not implemented")
 }
+
 func (UnimplementedApplicationServiceServer) DecodeProfile(context.Context, *ProfileData) (*ProfileContent, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DecodeProfile not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DecodeProfile not implemented")
 }
+
 func (UnimplementedApplicationServiceServer) ArchiveReport(context.Context, *ArchiveReportRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ArchiveReport not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ArchiveReport not implemented")
 }
+
 func (UnimplementedApplicationServiceServer) StartStandaloneNetworkQualityTest(*StandaloneNetworkQualityTestRequest, grpc.ServerStreamingServer[daemon.NetworkQualityTestProgress]) error {
-	return status.Errorf(codes.Unimplemented, "method StartStandaloneNetworkQualityTest not implemented")
+	return status.Error(codes.Unimplemented, "method StartStandaloneNetworkQualityTest not implemented")
 }
+
 func (UnimplementedApplicationServiceServer) StartStandaloneSTUNTest(*StandaloneSTUNTestRequest, grpc.ServerStreamingServer[daemon.STUNTestProgress]) error {
-	return status.Errorf(codes.Unimplemented, "method StartStandaloneSTUNTest not implemented")
+	return status.Error(codes.Unimplemented, "method StartStandaloneSTUNTest not implemented")
 }
 func (UnimplementedApplicationServiceServer) mustEmbedUnimplementedApplicationServiceServer() {}
 func (UnimplementedApplicationServiceServer) testEmbeddedByValue()                            {}
@@ -1178,7 +1366,7 @@ type UnsafeApplicationServiceServer interface {
 }
 
 func RegisterApplicationServiceServer(s grpc.ServiceRegistrar, srv ApplicationServiceServer) {
-	// If the following call pancis, it indicates UnimplementedApplicationServiceServer was
+	// If the following call panics, it indicates UnimplementedApplicationServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
