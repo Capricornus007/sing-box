@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-VERSION="1.26.6"
+VERSION="1.27.0"
 PATCH_COMMITS=(
   "a4ae550aa148b04c9d4890e98bee63aede5c4b53"
   "95b851f661584711faa8115b3234a461044f4510"
@@ -31,7 +31,7 @@ cd go_win7
 # modify from https://github.com/restic/restic/issues/4636#issuecomment-1896455557
 # these patch URLs only work on golang1.26.x
 # that means after golang1.27 release it must be changed
-# see: https://github.com/MetaCubeX/go/commits/release-branch.go1.26/
+# see: https://github.com/MetaCubeX/go/commits/release-branch.go1.27/
 # revert:
 # 693def151adff1af707d82d28f55dba81ceb08e1: "crypto/rand,runtime: switch RtlGenRandom for ProcessPrng"
 # 7c1157f9544922e96945196b47b95664b1e39108: "net: remove sysSocket fallback for Windows 7"
