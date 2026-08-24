@@ -1,7 +1,7 @@
 include Makefile
 
 ADBLOCK_RUST_REPO ?= https://github.com/brave/adblock-rust
-ADBLOCK_RUST_COMMIT ?= d5ed6133b853cc062865456678dfa5eca68e7e8e
+ADBLOCK_RUST_COMMIT ?= 886d45dcf5283ce8eddc6d961e7dd27966ab23f2
 ADBLOCK_RUST_DIR ?= ../adblock-rust
 ADBLOCK_BRIDGE_DIR ?= common/adblock/bridge
 ADBLOCK_TAGS ?= $(TAGS),with_adblock

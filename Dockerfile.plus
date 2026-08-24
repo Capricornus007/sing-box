@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM rust:1.97-alpine AS rust
 RUN apk add --no-cache git musl-dev build-base
 WORKDIR /src
 ARG ADBLOCK_RUST_REPO=https://github.com/brave/adblock-rust
-ARG ADBLOCK_RUST_COMMIT=d5ed6133b853cc062865456678dfa5eca68e7e8e
+ARG ADBLOCK_RUST_COMMIT=886d45dcf5283ce8eddc6d961e7dd27966ab23f2
 RUN git clone "$ADBLOCK_RUST_REPO" /adblock-rust \
     && git -C /adblock-rust checkout "$ADBLOCK_RUST_COMMIT"
 COPY common/adblock/bridge /src/common/adblock/bridge
