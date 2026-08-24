@@ -167,6 +167,7 @@ type OutboundGroup interface {
 type URLTestGroup interface {
 	OutboundGroup
 	URLTest(ctx context.Context) (map[string]uint16, error)
+	PerformUpdateCheck()
 }
 
 func OutboundTag(detour Outbound) string {
