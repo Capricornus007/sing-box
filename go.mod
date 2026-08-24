@@ -224,3 +224,5 @@ require (
 	gvisor.dev/gvisor v0.0.0-20250606233247-e3c4c4cad86f // indirect
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )
+
+replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.0-20260824090716-d6ee8f1320b9

@@ -12,6 +12,8 @@ filippo.io/hpke v0.4.0/go.mod h1:EmAN849/P3qdeK+PCMkDpDm83vRHM5cDipBJ8xbQLVY=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/Capricornus007/gvisor-awg v0.0.0-20260817092404-335e131adb08 h1:sDYKpzVKFLBAAwCzPTP5qg28MePlLXhMPH6NsGuKgAo=
 github.com/Capricornus007/gvisor-awg v0.0.0-20260817092404-335e131adb08/go.mod h1:bhfheyy4BzZATxnsgXCch4Li853hJRok3pRES+bQ4rA=
+github.com/Capricornus007/sing-tun v0.0.0-20260824090716-d6ee8f1320b9 h1:Tg1bLFUXYA3k+ZZZ2Xo4E0pFvGPOpGfjxZK3GVS5HfA=
+github.com/Capricornus007/sing-tun v0.0.0-20260824090716-d6ee8f1320b9/go.mod h1:3EgPst7agntRO7D6GOsiZ1l9FoqdLeuWmKT5TnWkmf0=
 github.com/Capricornus007/sing-vmess v0.2.8-mod.1-nb4a h1:cfJKqekuknWsBwG6eaL5YwGCoe6tB62N98nIQEnh6zM=
 github.com/Capricornus007/sing-vmess v0.2.8-mod.1-nb4a/go.mod h1:P11scgTxMxVVQ8dlM27yNm3Cro40mD0+gHbnqrNGDuY=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=
@@ -367,8 +369,6 @@ github.com/sagernet/sing-shadowsocks2 v0.2.1 h1:dWV9OXCeFPuYGHb6IRqlSptVnSzOelnq
 github.com/sagernet/sing-shadowsocks2 v0.2.1/go.mod h1:RnXS0lExcDAovvDeniJ4IKa2IuChrdipolPYWBv9hWQ=
 github.com/sagernet/sing-shadowtls v0.2.1 h1:ZiHZdnEnP+YS73NMsxiZmIFCwNd0M4k7PkGCKNXhbaM=
 github.com/sagernet/sing-shadowtls v0.2.1/go.mod h1:sWqKnGlMipCHaGsw1sTTlimyUpgzP4WP3pjhCsYt9oA=
-github.com/sagernet/sing-tun v0.8.12-0.20260810140529-d67734281390 h1:hEBG77TGYDLDtrcfexL+OuwMGNGw18nyhdEAmag2Ia8=
-github.com/sagernet/sing-tun v0.8.12-0.20260810140529-d67734281390/go.mod h1:3EgPst7agntRO7D6GOsiZ1l9FoqdLeuWmKT5TnWkmf0=
 github.com/sagernet/sing-usbip v0.0.0-20260817040617-28bd42667eca h1:5wA+IE0Fq1CGVLOgSpm0gKKZ03HzugcJ2JyhmDqeX6A=
 github.com/sagernet/sing-usbip v0.0.0-20260817040617-28bd42667eca/go.mod h1:ADAZZU85MnM91XNhd2TdZRTaIbA7RjTZuQ1KCHcUbNg=
 github.com/sagernet/smux v1.5.50-sing-box-mod.1 h1:XkJcivBC9V4wBjiGXIXZ229aZCU1hzcbp6kSkkyQ478=
