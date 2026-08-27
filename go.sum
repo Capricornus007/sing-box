@@ -22,6 +22,8 @@ github.com/Capricornus007/sing-vmess v0.0.0-20260825051027-dc00ac91b8d1 h1:Aibuj
 github.com/Capricornus007/sing-vmess v0.0.0-20260825051027-dc00ac91b8d1/go.mod h1:8ZD8jr9ePjSoxdyEaEsplHMXnv1oHAu7Vcf7nQM5c04=
 github.com/Capricornus007/sing-vmess v0.2.8-mod.1-nb4a h1:cfJKqekuknWsBwG6eaL5YwGCoe6tB62N98nIQEnh6zM=
 github.com/Capricornus007/sing-vmess v0.2.8-mod.1-nb4a/go.mod h1:P11scgTxMxVVQ8dlM27yNm3Cro40mD0+gHbnqrNGDuY=
+github.com/Capricornus007/utls v0.0.0-20260827224231-78b6cc0a0cd3 h1:M3LRTl0ygnI+wYSWlrbOjhJUjuA6cErTFVGYXdQlNrE=
+github.com/Capricornus007/utls v0.0.0-20260827224231-78b6cc0a0cd3/go.mod h1:B7+wt6Q3CHArHfLkkaFMg3y6xU8TjMPOwrI6au03Q4E=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=
 github.com/RyuaNerin/go-krypto v1.3.0/go.mod h1:9R9TU936laAIqAmjcHo/LsaXYOZlymudOAxjaBf62UM=
 github.com/RyuaNerin/testingutil v0.1.0 h1:IYT6JL57RV3U2ml3dLHZsVtPOP6yNK7WUVdzzlpNrss=
