@@ -57,7 +57,7 @@ func init() {
 			congestionControl = func(conn *quic.Conn) congestion.CongestionControl {
 				return congestion_meta1.NewCubicSender(
 					congestion_meta1.DefaultClock{TimeFunc: timeFunc},
-					congestion.ByteCount(conn.Config().InitialPacketSize),
+					conn.InitialPacketSize(),
 					false,
 				)
 			}
@@ -65,7 +65,7 @@ func init() {
 			congestionControl = func(conn *quic.Conn) congestion.CongestionControl {
 				return congestion_meta1.NewCubicSender(
 					congestion_meta1.DefaultClock{TimeFunc: timeFunc},
-					congestion.ByteCount(conn.Config().InitialPacketSize),
+					conn.InitialPacketSize(),
 					true,
 				)
 			}
@@ -76,6 +76,7 @@ func init() {
 		quicListener, err := qtls.ListenEarly(udpConn, tlsConfig, &quic.Config{
 			MaxIncomingStreams: 1 << 60,
 			Allow0RTT:          true,
+			DisablePathManager: true,
 		})
 		if err != nil {
 			udpConn.Close()
