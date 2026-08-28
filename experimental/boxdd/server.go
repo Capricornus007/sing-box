@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/daemon"
 	"github.com/sagernet/sing-box/experimental/libbox"
 	"github.com/sagernet/sing-box/include"
@@ -195,6 +196,7 @@ func (d *Daemon) configureWorkingDirectoryLocked(directory string) error {
 		WorkingPath:       directory,
 		TempPath:          directory,
 		CrashReportSource: "Daemon",
+		AppVersion:        C.Version,
 	})
 	if err != nil {
 		return err
