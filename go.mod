@@ -229,4 +229,4 @@ replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.
 
 replace github.com/metacubex/utls => github.com/Capricornus007/utls v0.0.0-20260827224231-78b6cc0a0cd3
 
-replace github.com/sagernet/sing-quic => ../sing-quic
+replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.6.4-0.20260828054750-f2d9d4b93a5b
