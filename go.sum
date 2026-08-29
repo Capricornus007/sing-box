@@ -371,6 +371,8 @@ github.com/sagernet/sing-shadowtls v0.2.1 h1:ZiHZdnEnP+YS73NMsxiZmIFCwNd0M4k7PkG
 github.com/sagernet/sing-shadowtls v0.2.1/go.mod h1:sWqKnGlMipCHaGsw1sTTlimyUpgzP4WP3pjhCsYt9oA=
 github.com/sagernet/sing-usbip v0.0.0-20260817040617-28bd42667eca h1:5wA+IE0Fq1CGVLOgSpm0gKKZ03HzugcJ2JyhmDqeX6A=
 github.com/sagernet/sing-usbip v0.0.0-20260817040617-28bd42667eca/go.mod h1:ADAZZU85MnM91XNhd2TdZRTaIbA7RjTZuQ1KCHcUbNg=
+github.com/sagernet/sing-tun v0.8.14 h1:Vz1HpGCWhG92pHUjhOqNoyn4zVCcd5bXXsdIKDYWM8k=
+github.com/sagernet/sing-tun v0.8.14/go.mod h1:QvarqUtHfj1ULaRR+6kZOS/OoCE+pYGq67A5tyIy+dQ=
 github.com/sagernet/smux v1.5.50-sing-box-mod.1 h1:XkJcivBC9V4wBjiGXIXZ229aZCU1hzcbp6kSkkyQ478=
 github.com/sagernet/smux v1.5.50-sing-box-mod.1/go.mod h1:NjhsCEWedJm7eFLyhuBgIEzwfhRmytrUoiLluxs5Sk8=
 github.com/sagernet/tailscale v1.102.1-sing-box-1.14-mod.3 h1:c7jWyEt7n3WdbDxkc7EqmPQtPT+Hct2l1CtmEDztMuo=
