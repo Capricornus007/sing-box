@@ -96,9 +96,9 @@ require (
 	lukechampine.com/blake3 v1.3.0
 )
 
-replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20260825050901-5b38d63aef7b
+replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20260830041433-f0b1aef285a5
 
-replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.0.0-20260825051027-dc00ac91b8d1
+replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.0.0-20260828053500-2871bdd27001
 
 replace gvisor.dev/gvisor => github.com/Capricornus007/gvisor-awg v0.0.0-20260817092404-335e131adb08
 
@@ -225,7 +225,7 @@ require (
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )
 
-replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.0-20260825051009-072adbecd842
+replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.0-20260828053505-37867ee8978c
 
 replace github.com/metacubex/utls => github.com/Capricornus007/utls v0.0.0-20260827224231-78b6cc0a0cd3
 
