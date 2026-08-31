@@ -225,7 +225,7 @@ require (
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )
 
-replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.0-20260830110024-57fbdbbe2e9d
+replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.0-20260831085649-4da5e7111e80
 
 replace github.com/metacubex/utls => github.com/Capricornus007/utls v0.0.0-20260827224231-78b6cc0a0cd3
 
