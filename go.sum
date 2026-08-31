@@ -10,8 +10,8 @@ filippo.io/edwards25519 v1.2.0/go.mod h1:xzAOLCNug/yB62zG1bQ8uziwrIqIuxhctzJT18Q
 filippo.io/hpke v0.4.0 h1:p575VVQ6ted4pL+it6M00V/f2qTZITO0zgmdKCkd5+A=
 filippo.io/hpke v0.4.0/go.mod h1:EmAN849/P3qdeK+PCMkDpDm83vRHM5cDipBJ8xbQLVY=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/Capricornus007/gvisor-awg v0.0.0-20260817092404-335e131adb08 h1:sDYKpzVKFLBAAwCzPTP5qg28MePlLXhMPH6NsGuKgAo=
-github.com/Capricornus007/gvisor-awg v0.0.0-20260817092404-335e131adb08/go.mod h1:bhfheyy4BzZATxnsgXCch4Li853hJRok3pRES+bQ4rA=
+github.com/Capricornus007/gvisor-awg v0.0.0-20260831101950-c8bd42888210 h1:+nR/jWapVg+SCq4fnN1FwELu65mOiylikLxYheR33x4=
+github.com/Capricornus007/gvisor-awg v0.0.0-20260831101950-c8bd42888210/go.mod h1:5wZkKkAvb2cqr8oOGG2Y1t/CbV+vVcUfL5pH212TCC4=
 github.com/Capricornus007/sing-quic v0.6.4-0.20260828054750-f2d9d4b93a5b h1:dvusS6HreFn2qmjliI0zhwodounkZZIbhx4bOiJCb/I=
 github.com/Capricornus007/sing-quic v0.6.4-0.20260828054750-f2d9d4b93a5b/go.mod h1:ZZqD2XqAs9DhH6fUOEsHuA6kVIHNi7derWxysPViuAw=
 github.com/Capricornus007/sing-snell v0.0.0-20260830041433-f0b1aef285a5 h1:K2jmiy72zN4xlCFIXcWG+j4YOO1UiYzvc3mjARFSHhk=

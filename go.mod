@@ -100,7 +100,7 @@ replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v
 
 replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.0.0-20260828053500-2871bdd27001
 
-replace gvisor.dev/gvisor => github.com/Capricornus007/gvisor-awg v0.0.0-20260817092404-335e131adb08
+replace gvisor.dev/gvisor => github.com/Capricornus007/gvisor-awg v0.0.0-20260831101950-c8bd42888210
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
