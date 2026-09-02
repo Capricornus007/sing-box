@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	stdTLS "crypto/tls"
-	"github.com/goccy/go-json"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
