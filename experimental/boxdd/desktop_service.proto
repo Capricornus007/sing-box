@@ -32,8 +32,6 @@ service DesktopService {
   rpc DeletePowerReport(OOMReportRequest) returns (google.protobuf.Empty) {}
   rpc DeleteAllPowerReports(google.protobuf.Empty) returns (google.protobuf.Empty) {}
   rpc InstallUpdate(InstallUpdateRequest) returns (InstallUpdateResponse) {}
-  rpc GetDataProtection(google.protobuf.Empty) returns (DataProtectionInfo) {}
-  rpc SetDataProtection(SetDataProtectionRequest) returns (DataProtectionInfo) {}
   rpc GetSecuritySettings(google.protobuf.Empty) returns (SecuritySettings) {}
   rpc SetInsecureModeEnabled(SetInsecureModeEnabledRequest) returns (google.protobuf.Empty) {}
   rpc SetLocale(SetLocaleRequest) returns (google.protobuf.Empty) {}
@@ -184,15 +182,6 @@ message OOMReportFile {
   string name = 1;
   bytes content = 2;
   bool is_profile = 3;
-}
-
-message DataProtectionInfo {
-  bool enabled = 1;
-  bytes key = 2;
-}
-
-message SetDataProtectionRequest {
-  bool enabled = 1;
 }
 
 message SecuritySettings {

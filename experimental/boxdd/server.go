@@ -36,7 +36,6 @@ type Daemon struct {
 	server                  *grpc.Server
 	runtimeWorkingDirectory string
 	lifecycleAccess         sync.Mutex
-	dataProtectionAccess    sync.Mutex
 	closed                  bool
 	peerAccess              sync.Mutex
 	peerConnections         map[peerConnection]peerIdentity
