@@ -281,6 +281,12 @@ func (c *v5DeadlineTestClient) DialPacketConn(conn net.Conn) (N.NetPacketConn, e
 
 func (c *v5DeadlineTestClient) Close() error { return nil }
 
+func (c *v5DeadlineTestClient) Reset() {}
+
+func (c *v5DeadlineTestClient) SetKeepIdleConnections(keep bool) {}
+
+func (c *v5DeadlineTestClient) CloseIdleConnections() {}
+
 func TestV5LazyPacketConnWriteDeadlineDuringInit(t *testing.T) {
 	clientConn, serverConn := net.Pipe()
 	t.Cleanup(func() { serverConn.Close() })
