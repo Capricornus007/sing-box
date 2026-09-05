@@ -44,13 +44,23 @@ type Outbound struct {
 	psk           []byte
 	userKey       []byte
 	version       int
+	reuse         bool
 	quicDestCache *expiringmap.Map[quicDestCacheKey, uint64]
 	quicDestSeq   atomic.Uint64
 }
 
+var (
+	_ adapter.InterfaceUpdateListener = (*Outbound)(nil)
+	_ adapter.IdleConnectionKeeper    = (*Outbound)(nil)
+	_ adapter.OutboundWithMultiplex   = (*Outbound)(nil)
+)
+
 type snellClient interface {
 	snellprotocol.Method
 	DialContext(ctx context.Context, destination M.Socksaddr) (net.Conn, error)
+	Reset()
+	SetKeepIdleConnections(keep bool)
+	CloseIdleConnections()
 	Close() error
 }
 
@@ -134,6 +144,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		psk:        []byte(options.PSK),
 		userKey:    []byte(options.UserKey),
 		version:    version,
+		reuse:      options.Reuse,
 	}
 	if version == 5 {
 		outbound.quicDestCache = expiringmap.New[quicDestCacheKey, uint64](quicDestCacheTTL)
@@ -278,9 +289,19 @@ type quicDestCacheKey struct {
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 	_ = ctx
-	if resetter, ok := h.client.(interface{ Reset() }); ok {
-		resetter.Reset()
-	}
+	h.client.Reset()
+}
+
+func (h *Outbound) MultiplexEnabled() bool {
+	return h.reuse
+}
+
+func (h *Outbound) SetKeepIdleConnections(keep bool) {
+	h.client.SetKeepIdleConnections(keep)
+}
+
+func (h *Outbound) CloseIdleConnections() {
+	h.client.CloseIdleConnections()
 }
 
 func (h *Outbound) isRecentQUICDest(source M.Socksaddr, destination M.Socksaddr) bool {

@@ -51,11 +51,11 @@ func (e *blockedError) Error() string {
 		if processInfo.UserName != "" {
 			writeMetadata("process_user", processInfo.UserName)
 		}
-		if processInfo.ProcessPath != "" {
-			writeMetadata("process_path", processInfo.ProcessPath)
+		if len(processInfo.ProcessPaths) > 0 {
+			writeMetadata("process_path", processInfo.ProcessPaths[0])
 		}
-		if len(processInfo.AndroidPackageNames) > 0 {
-			writeMetadata("packages", strings.Join(processInfo.AndroidPackageNames, ","))
+		if len(processInfo.PackageNames) > 0 {
+			writeMetadata("packages", strings.Join(processInfo.PackageNames, ","))
 		}
 	}
 	return builder.String()

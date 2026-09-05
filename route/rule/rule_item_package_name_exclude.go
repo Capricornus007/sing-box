@@ -30,10 +30,10 @@ func NewPackageNameExcludeItem(packageNameList []string) *PackageNameExcludeItem
 }
 
 func (r *PackageNameExcludeItem) Match(metadata *adapter.InboundContext) bool {
-	if metadata.ProcessInfo == nil || len(metadata.ProcessInfo.AndroidPackageNames) == 0 {
+	if metadata.ProcessInfo == nil || len(metadata.ProcessInfo.PackageNames) == 0 {
 		return false
 	}
-	for _, packageName := range metadata.ProcessInfo.AndroidPackageNames {
+	for _, packageName := range metadata.ProcessInfo.PackageNames {
 		if r.excludeNone {
 			return true
 		}

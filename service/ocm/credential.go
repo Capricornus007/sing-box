@@ -12,6 +12,7 @@ import (
 	"time"
 
 	E "github.com/sagernet/sing/common/exceptions"
+	"github.com/sagernet/sing/service/filemanager"
 )
 
 const (
@@ -43,8 +44,8 @@ func getDefaultCredentialsPath() (string, error) {
 	return filepath.Join(userInfo.HomeDir, ".codex", "auth.json"), nil
 }
 
-func readCredentialsFromFile(path string) (*oauthCredentials, error) {
-	data, err := os.ReadFile(path)
+func readCredentialsFromFile(ctx context.Context, path string) (*oauthCredentials, error) {
+	data, err := filemanager.ReadFile(ctx, path)
 	if err != nil {
 		return nil, err
 	}
@@ -56,20 +57,12 @@ func readCredentialsFromFile(path string) (*oauthCredentials, error) {
 	return &credentials, nil
 }
 
-func checkCredentialFileWritable(path string) error {
-	file, err := os.OpenFile(path, os.O_WRONLY, 0)
-	if err != nil {
-		return err
-	}
-	return file.Close()
-}
-
-func writeCredentialsToFile(credentials *oauthCredentials, path string) error {
+func writeCredentialsToFile(ctx context.Context, credentials *oauthCredentials, path string) error {
 	data, err := json.MarshalIndent(credentials, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o600)
+	return filemanager.WriteFile(ctx, path, data, 0o600)
 }
 
 type oauthCredentials struct {
@@ -119,7 +112,7 @@ func (c *oauthCredentials) needsRefresh() bool {
 	return time.Since(*c.LastRefresh) >= time.Duration(tokenRefreshIntervalDays)*24*time.Hour
 }
 
-func refreshToken(ctx context.Context, httpClient *http.Client, credentials *oauthCredentials) (*oauthCredentials, error) {
+func refreshToken(httpClient *http.Client, credentials *oauthCredentials) (*oauthCredentials, error) {
 	if credentials.Tokens == nil || credentials.Tokens.RefreshToken == "" {
 		return nil, E.New("refresh token is empty")
 	}
@@ -134,24 +127,19 @@ func refreshToken(ctx context.Context, httpClient *http.Client, credentials *oau
 		return nil, E.Cause(err, "marshal request")
 	}
 
-	response, err := doHTTPWithRetry(ctx, httpClient, func() (*http.Request, error) {
-		request, err := http.NewRequest("POST", oauth2TokenURL, bytes.NewReader(requestBody))
-		if err != nil {
-			return nil, err
-		}
-		request.Header.Set("Content-Type", "application/json")
-		request.Header.Set("Accept", "application/json")
-		return request, nil
-	})
+	request, err := http.NewRequest("POST", oauth2TokenURL, bytes.NewReader(requestBody))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
+
+	response, err := httpClient.Do(request)
 	if err != nil {
 		return nil, err
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode == http.StatusTooManyRequests {
-		body, _ := io.ReadAll(response.Body)
-		return nil, E.New("refresh rate limited: ", response.Status, " ", string(body))
-	}
 	if response.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(response.Body)
 		return nil, E.New("refresh failed: ", response.Status, " ", string(body))
@@ -184,42 +172,4 @@ func refreshToken(ctx context.Context, httpClient *http.Client, credentials *oau
 	newCredentials.LastRefresh = &now
 
 	return &newCredentials, nil
-}
-
-func cloneCredentials(credentials *oauthCredentials) *oauthCredentials {
-	if credentials == nil {
-		return nil
-	}
-	cloned := *credentials
-	if credentials.Tokens != nil {
-		clonedTokens := *credentials.Tokens
-		cloned.Tokens = &clonedTokens
-	}
-	if credentials.LastRefresh != nil {
-		lastRefresh := *credentials.LastRefresh
-		cloned.LastRefresh = &lastRefresh
-	}
-	return &cloned
-}
-
-func credentialsEqual(left *oauthCredentials, right *oauthCredentials) bool {
-	if left == nil || right == nil {
-		return left == right
-	}
-	if left.APIKey != right.APIKey {
-		return false
-	}
-	if (left.Tokens == nil) != (right.Tokens == nil) {
-		return false
-	}
-	if left.Tokens != nil && *left.Tokens != *right.Tokens {
-		return false
-	}
-	if (left.LastRefresh == nil) != (right.LastRefresh == nil) {
-		return false
-	}
-	if left.LastRefresh != nil && !left.LastRefresh.Equal(*right.LastRefresh) {
-		return false
-	}
-	return true
 }

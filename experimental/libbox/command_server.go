@@ -40,7 +40,12 @@ type CommandServer struct {
 	grpcServer        *grpc.Server
 	listener          net.Listener
 	endPauseTimer     *time.Timer
+	sleepAt           time.Time
 }
+
+// iOS wakes the extension for every push and background task; in collected power reports
+// most sleeps last under two minutes and none exceeded ten.
+const closeIdleConnectionsAfterSleep = 2 * time.Minute
 
 type CommandServerHandler interface {
 	ServiceStop() error
@@ -253,9 +258,10 @@ func (s *CommandServer) NeedFindProcess() bool {
 }
 
 func (s *CommandServer) Pause() {
+	s.sleepAt = time.Now().Round(0)
 	recorder := s.powerManager.Recorder()
 	if recorder != nil {
-		recorder.RecordPlatformEvent("ne-sleep")
+		recorder.RecordDeviceSleep()
 	}
 	instance := s.StartedService.Instance()
 	if instance == nil || instance.PauseManager() == nil {
@@ -263,6 +269,10 @@ func (s *CommandServer) Pause() {
 	}
 	instance.PauseManager().DevicePause()
 	if C.IsIos {
+		// iOS calls wake within seconds of sleep while the device stays locked, so wake is
+		// ignored and the pause ends one minute after the last sleep instead. Go timers on
+		// darwin run on CLOCK_UPTIME_RAW, which does not advance while the device sleeps,
+		// so the minute counts awake time only and never expires inside a sleep.
 		if s.endPauseTimer == nil {
 			s.endPauseTimer = time.AfterFunc(time.Minute, instance.PauseManager().DeviceWake)
 		} else {
@@ -272,13 +282,17 @@ func (s *CommandServer) Pause() {
 }
 
 func (s *CommandServer) Wake() {
+	wakeAt := time.Now().Round(0)
 	recorder := s.powerManager.Recorder()
 	if recorder != nil {
-		recorder.RecordPlatformEvent("ne-wake")
+		recorder.RecordDeviceWake()
 	}
 	instance := s.StartedService.Instance()
-	if instance == nil || instance.PauseManager() == nil {
+	if instance == nil || instance.Box() == nil || instance.PauseManager() == nil {
 		return
+	}
+	if !s.sleepAt.IsZero() && wakeAt.Sub(s.sleepAt) >= closeIdleConnectionsAfterSleep {
+		instance.Box().CloseIdleConnections()
 	}
 	if !C.IsIos {
 		instance.PauseManager().DeviceWake()

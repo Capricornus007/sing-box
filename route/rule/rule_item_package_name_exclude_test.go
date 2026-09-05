@@ -18,7 +18,7 @@ func TestPackageNameExcludeNone(t *testing.T) {
 		t.Fatal("none sentinel matched empty package names")
 	}
 	if !item.Match(&adapter.InboundContext{ProcessInfo: &adapter.ConnectionOwner{
-		AndroidPackageNames: []string{"com.example.app"},
+		PackageNames: []string{"com.example.app"},
 	}}) {
 		t.Fatal("none sentinel did not match non-empty package names")
 	}
@@ -27,12 +27,12 @@ func TestPackageNameExcludeNone(t *testing.T) {
 func TestPackageNameExcludeList(t *testing.T) {
 	item := NewPackageNameExcludeItem([]string{"com.example.excluded"})
 	if item.Match(&adapter.InboundContext{ProcessInfo: &adapter.ConnectionOwner{
-		AndroidPackageNames: []string{"com.example.excluded"},
+		PackageNames: []string{"com.example.excluded"},
 	}}) {
 		t.Fatal("package_name_exclude matched excluded package")
 	}
 	if !item.Match(&adapter.InboundContext{ProcessInfo: &adapter.ConnectionOwner{
-		AndroidPackageNames: []string{"com.example.allowed"},
+		PackageNames: []string{"com.example.allowed"},
 	}}) {
 		t.Fatal("package_name_exclude did not match allowed package")
 	}

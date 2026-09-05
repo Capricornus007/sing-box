@@ -3,10 +3,12 @@ package ocm
 import (
 	"bytes"
 	"context"
+	stdTLS "crypto/tls"
 	"encoding/json"
 	"errors"
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	boxService "github.com/sagernet/sing-box/adapter/service"
+	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/listener"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
@@ -23,14 +26,15 @@ import (
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
+	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
+	"github.com/sagernet/sing/common/ntp"
 	aTLS "github.com/sagernet/sing/common/tls"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/responses"
 	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 func RegisterService(registry *boxService.Registry) {
@@ -48,101 +52,20 @@ type errorDetails struct {
 }
 
 func writeJSONError(w http.ResponseWriter, r *http.Request, statusCode int, errorType string, message string) {
-	writeJSONErrorWithCode(w, r, statusCode, errorType, "", message)
-}
-
-func writeJSONErrorWithCode(w http.ResponseWriter, r *http.Request, statusCode int, errorType string, errorCode string, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
 	json.NewEncoder(w).Encode(errorResponse{
 		Error: errorDetails{
 			Type:    errorType,
-			Code:    errorCode,
 			Message: message,
 		},
 	})
 }
 
-func writePlainTextError(w http.ResponseWriter, statusCode int, message string) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(statusCode)
-	_, _ = io.WriteString(w, message)
-}
-
-const (
-	retryableUsageMessage = "current credential reached its usage limit; retry the request to use another credential"
-	retryableUsageCode    = "credential_usage_exhausted"
-)
-
-func hasAlternativeCredential(provider credentialProvider, currentCredential credential, filter func(credential) bool) bool {
-	if provider == nil || currentCredential == nil {
-		return false
-	}
-	for _, cred := range provider.allCredentials() {
-		if cred == currentCredential {
-			continue
-		}
-		if filter != nil && !filter(cred) {
-			continue
-		}
-		if cred.isUsable() {
-			return true
-		}
-	}
-	return false
-}
-
-func unavailableCredentialMessage(provider credentialProvider, fallback string) string {
-	if provider == nil {
-		return fallback
-	}
-	message := allRateLimitedError(provider.allCredentials()).Error()
-	if message == "all credentials unavailable" && fallback != "" {
-		return fallback
-	}
-	return message
-}
-
-func writeRetryableUsageError(w http.ResponseWriter, r *http.Request) {
-	writeJSONErrorWithCode(w, r, http.StatusServiceUnavailable, "server_error", retryableUsageCode, retryableUsageMessage)
-}
-
-func writeNonRetryableCredentialError(w http.ResponseWriter, message string) {
-	writePlainTextError(w, http.StatusBadRequest, message)
-}
-
-func writeCredentialUnavailableError(
-	w http.ResponseWriter,
-	r *http.Request,
-	provider credentialProvider,
-	currentCredential credential,
-	filter func(credential) bool,
-	fallback string,
-) {
-	if hasAlternativeCredential(provider, currentCredential, filter) {
-		writeRetryableUsageError(w, r)
-		return
-	}
-	writeNonRetryableCredentialError(w, unavailableCredentialMessage(provider, fallback))
-}
-
 func isHopByHopHeader(header string) bool {
 	switch strings.ToLower(header) {
 	case "connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailers", "transfer-encoding", "upgrade", "host":
-		return true
-	default:
-		return false
-	}
-}
-
-func isReverseProxyHeader(header string) bool {
-	lowerHeader := strings.ToLower(header)
-	if strings.HasPrefix(lowerHeader, "cf-") {
-		return true
-	}
-	switch lowerHeader {
-	case "cdn-loop", "true-client-ip", "x-forwarded-for", "x-forwarded-proto", "x-real-ip":
 		return true
 	default:
 		return false
@@ -204,43 +127,75 @@ type Service struct {
 	boxService.Adapter
 	ctx            context.Context
 	logger         log.ContextLogger
-	options        option.OCMServiceOptions
+	credentialPath string
+	detour         string
+	credentials    *oauthCredentials
+	users          []option.OCMUser
+	dialer         N.Dialer
+	httpClient     *http.Client
 	httpHeaders    http.Header
 	listener       *listener.Listener
 	tlsConfig      tls.ServerConfig
 	httpServer     *http.Server
 	userManager    *UserManager
+	accessMutex    sync.RWMutex
+	usageTracker   *AggregatedUsage
 	webSocketMutex sync.Mutex
 	webSocketGroup sync.WaitGroup
 	webSocketConns map[*webSocketSession]struct{}
 	shuttingDown   bool
-
-	// Legacy mode
-	legacyCredential *defaultCredential
-	legacyProvider   credentialProvider
-
-	// Multi-credential mode
-	providers      map[string]credentialProvider
-	allCredentials []credential
-	userConfigMap  map[string]*option.OCMUser
 }
 
 func NewService(ctx context.Context, logger log.ContextLogger, tag string, options option.OCMServiceOptions) (adapter.Service, error) {
-	err := validateOCMOptions(options)
+	serviceDialer, err := dialer.NewWithOptions(dialer.Options{
+		Context: ctx,
+		Options: option.DialerOptions{
+			Detour: options.Detour,
+		},
+		RemoteIsDomain: true,
+	})
 	if err != nil {
-		return nil, E.Cause(err, "validate options")
+		return nil, E.Cause(err, "create dialer")
+	}
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			ForceAttemptHTTP2: true,
+			TLSClientConfig: &stdTLS.Config{
+				RootCAs: adapter.RootPoolFromContext(ctx),
+				Time:    ntp.TimeFuncFromContext(ctx),
+			},
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return serviceDialer.DialContext(ctx, network, M.ParseSocksaddr(addr))
+			},
+		},
 	}
 
 	userManager := &UserManager{
 		tokenMap: make(map[string]string),
 	}
 
+	var usageTracker *AggregatedUsage
+	if options.UsagesPath != "" {
+		usageTracker = &AggregatedUsage{
+			LastUpdated:  time.Now(),
+			Combinations: make([]CostCombination, 0),
+			ctx:          ctx,
+			filePath:     options.UsagesPath,
+			logger:       logger,
+		}
+	}
+
 	service := &Service{
-		Adapter:     boxService.NewAdapter(C.TypeOCM, tag),
-		ctx:         ctx,
-		logger:      logger,
-		options:     options,
-		httpHeaders: options.Headers.Build(),
+		Adapter:        boxService.NewAdapter(C.TypeOCM, tag),
+		detour:         options.Detour,
+		ctx:            ctx,
+		logger:         logger,
+		credentialPath: options.CredentialPath,
+		users:          options.Users,
+		dialer:         serviceDialer,
+		httpClient:     httpClient,
+		httpHeaders:    options.Headers.Build(),
 		listener: listener.New(listener.Options{
 			Context: ctx,
 			Logger:  logger,
@@ -248,34 +203,8 @@ func NewService(ctx context.Context, logger log.ContextLogger, tag string, optio
 			Listen:  options.ListenOptions,
 		}),
 		userManager:    userManager,
+		usageTracker:   usageTracker,
 		webSocketConns: make(map[*webSocketSession]struct{}),
-	}
-
-	if len(options.Credentials) > 0 {
-		providers, allCredentials, err := buildOCMCredentialProviders(ctx, options, logger)
-		if err != nil {
-			return nil, E.Cause(err, "build credential providers")
-		}
-		service.providers = providers
-		service.allCredentials = allCredentials
-
-		userConfigMap := make(map[string]*option.OCMUser)
-		for i := range options.Users {
-			userConfigMap[options.Users[i].Name] = &options.Users[i]
-		}
-		service.userConfigMap = userConfigMap
-	} else {
-		cred, err := newDefaultCredential(ctx, "default", option.OCMDefaultCredentialOptions{
-			CredentialPath: options.CredentialPath,
-			UsagesPath:     options.UsagesPath,
-			Detour:         options.Detour,
-		}, logger)
-		if err != nil {
-			return nil, err
-		}
-		service.legacyCredential = cred
-		service.legacyProvider = &singleCredentialProvider{cred: cred}
-		service.allCredentials = []credential{cred}
 	}
 
 	if options.TLS != nil {
@@ -294,35 +223,28 @@ func (s *Service) Start(stage adapter.StartStage) error {
 		return nil
 	}
 
-	s.userManager.UpdateUsers(s.options.Users)
+	s.userManager.UpdateUsers(s.users)
 
-	for _, cred := range s.allCredentials {
-		if extCred, ok := cred.(*externalCredential); ok && extCred.reverse && extCred.connectorURL != nil {
-			extCred.reverseService = s
-		}
-		err := cred.start()
-		if err != nil {
-			return err
-		}
-		tag := cred.tagName()
-		cred.setOnBecameUnusable(func() {
-			s.interruptWebSocketSessionsForCredential(tag)
-		})
+	credentials, err := platformReadCredentials(s.ctx, s.credentialPath)
+	if err != nil {
+		return E.Cause(err, "read credentials")
 	}
-	if len(s.options.Credentials) > 0 {
-		err := validateOCMCompositeCredentialModes(s.options, s.providers)
+	s.credentials = credentials
+
+	if s.usageTracker != nil {
+		err = s.usageTracker.Load()
 		if err != nil {
-			return E.Cause(err, "validate loaded credentials")
+			s.logger.Warn("load usage statistics: ", err)
 		}
 	}
 
 	router := chi.NewRouter()
 	router.Mount("/", s)
 
-	s.httpServer = &http.Server{Handler: h2c.NewHandler(router, &http2.Server{})}
+	s.httpServer = &http.Server{Handler: router}
 
 	if s.tlsConfig != nil {
-		err := s.tlsConfig.Start()
+		err = s.tlsConfig.Start()
 		if err != nil {
 			return E.Cause(err, "create TLS config")
 		}
@@ -350,247 +272,172 @@ func (s *Service) Start(stage adapter.StartStage) error {
 	return nil
 }
 
-func (s *Service) resolveCredentialProvider(username string) (credentialProvider, error) {
-	if len(s.options.Users) > 0 {
-		return credentialForUser(s.userConfigMap, s.providers, s.legacyProvider, username)
+func (s *Service) getAccessToken() (string, error) {
+	s.accessMutex.RLock()
+	if !s.credentials.needsRefresh() {
+		token := s.credentials.getAccessToken()
+		s.accessMutex.RUnlock()
+		return token, nil
 	}
-	provider := noUserCredentialProvider(s.providers, s.legacyProvider, s.options)
-	if provider == nil {
-		return nil, E.New("no credential available")
+	s.accessMutex.RUnlock()
+
+	s.accessMutex.Lock()
+	defer s.accessMutex.Unlock()
+
+	if !s.credentials.needsRefresh() {
+		return s.credentials.getAccessToken(), nil
 	}
-	return provider, nil
+
+	newCredentials, err := refreshToken(s.httpClient, s.credentials)
+	if err != nil {
+		return "", err
+	}
+
+	s.credentials = newCredentials
+
+	err = platformWriteCredentials(s.ctx, newCredentials, s.credentialPath)
+	if err != nil {
+		s.logger.Warn("persist refreshed token: ", err)
+	}
+
+	return newCredentials.getAccessToken(), nil
+}
+
+func (s *Service) getAccountID() string {
+	s.accessMutex.RLock()
+	defer s.accessMutex.RUnlock()
+	return s.credentials.getAccountID()
+}
+
+func (s *Service) isAPIKeyMode() bool {
+	s.accessMutex.RLock()
+	defer s.accessMutex.RUnlock()
+	return s.credentials.isAPIKeyMode()
+}
+
+func (s *Service) getBaseURL() string {
+	if s.isAPIKeyMode() {
+		return openaiAPIBaseURL
+	}
+	return chatGPTBackendURL
 }
 
 func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := log.ContextWithNewID(r.Context())
-	if r.URL.Path == "/ocm/v1/status" {
-		s.handleStatusEndpoint(w, r)
-		return
-	}
-
-	if r.URL.Path == "/ocm/v1/reverse" {
-		s.handleReverseConnect(ctx, w, r)
-		return
-	}
-
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/v1/") {
 		writeJSONError(w, r, http.StatusNotFound, "invalid_request_error", "path must start with /v1/")
 		return
 	}
 
+	var proxyPath string
+	if s.isAPIKeyMode() {
+		proxyPath = path
+	} else {
+		if path == "/v1/chat/completions" {
+			writeJSONError(w, r, http.StatusBadRequest, "invalid_request_error",
+				"chat completions endpoint is only available in API key mode")
+			return
+		}
+		proxyPath = strings.TrimPrefix(path, "/v1")
+	}
+
 	var username string
-	if len(s.options.Users) > 0 {
+	if len(s.users) > 0 {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			s.logger.WarnContext(ctx, "authentication failed for request from ", r.RemoteAddr, ": missing Authorization header")
+			s.logger.Warn("authentication failed for request from ", r.RemoteAddr, ": missing Authorization header")
 			writeJSONError(w, r, http.StatusUnauthorized, "authentication_error", "missing api key")
 			return
 		}
 		clientToken := strings.TrimPrefix(authHeader, "Bearer ")
 		if clientToken == authHeader {
-			s.logger.WarnContext(ctx, "authentication failed for request from ", r.RemoteAddr, ": invalid Authorization format")
+			s.logger.Warn("authentication failed for request from ", r.RemoteAddr, ": invalid Authorization format")
 			writeJSONError(w, r, http.StatusUnauthorized, "authentication_error", "invalid api key format")
 			return
 		}
 		var ok bool
 		username, ok = s.userManager.Authenticate(clientToken)
 		if !ok {
-			s.logger.WarnContext(ctx, "authentication failed for request from ", r.RemoteAddr, ": unknown key: ", clientToken)
+			s.logger.Warn("authentication failed for request from ", r.RemoteAddr, ": unknown key: ", clientToken)
 			writeJSONError(w, r, http.StatusUnauthorized, "authentication_error", "invalid api key")
 			return
 		}
 	}
 
-	sessionID := r.Header.Get("session_id")
-
-	// Resolve credential provider and user config
-	var provider credentialProvider
-	var userConfig *option.OCMUser
-	if len(s.options.Users) > 0 {
-		userConfig = s.userConfigMap[username]
-		var err error
-		provider, err = credentialForUser(s.userConfigMap, s.providers, s.legacyProvider, username)
-		if err != nil {
-			s.logger.ErrorContext(ctx, "resolve credential: ", err)
-			writeJSONError(w, r, http.StatusInternalServerError, "api_error", err.Error())
-			return
-		}
-	} else {
-		provider = noUserCredentialProvider(s.providers, s.legacyProvider, s.options)
-	}
-	if provider == nil {
-		writeJSONError(w, r, http.StatusInternalServerError, "api_error", "no credential available")
-		return
-	}
-
-	provider.pollIfStale(s.ctx)
-
-	var credentialFilter func(credential) bool
-	if userConfig != nil && !userConfig.AllowExternalUsage {
-		credentialFilter = func(c credential) bool { return !c.isExternal() }
-	}
-
-	selectedCredential, isNew, err := provider.selectCredential(sessionID, credentialFilter)
-	if err != nil {
-		writeNonRetryableCredentialError(w, unavailableCredentialMessage(provider, err.Error()))
-		return
-	}
-
 	if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") && strings.HasPrefix(path, "/v1/responses") {
-		s.handleWebSocket(ctx, w, r, path, username, sessionID, userConfig, provider, selectedCredential, credentialFilter, isNew)
+		s.handleWebSocket(w, r, proxyPath, username)
 		return
 	}
 
-	if !selectedCredential.isExternal() && selectedCredential.ocmIsAPIKeyMode() {
-		// API key mode path handling
-	} else if !selectedCredential.isExternal() {
-		if path == "/v1/chat/completions" {
-			writeJSONError(w, r, http.StatusBadRequest, "invalid_request_error",
-				"chat completions endpoint is only available in API key mode")
-			return
-		}
-	}
-
-	shouldTrackUsage := selectedCredential.usageTrackerOrNil() != nil &&
-		(path == "/v1/chat/completions" || strings.HasPrefix(path, "/v1/responses"))
-	canRetryRequest := len(provider.allCredentials()) > 1
-
-	// Read body for model extraction and retry buffer when JSON replay is useful.
-	var bodyBytes []byte
 	var requestModel string
-	var requestServiceTier string
-	if r.Body != nil && (shouldTrackUsage || canRetryRequest) {
-		mediaType, _, parseErr := mime.ParseMediaType(r.Header.Get("Content-Type"))
-		isJSONRequest := parseErr == nil && (mediaType == "application/json" || strings.HasSuffix(mediaType, "+json"))
-		if isJSONRequest {
-			bodyBytes, err = io.ReadAll(r.Body)
-			if err != nil {
-				s.logger.ErrorContext(ctx, "read request body: ", err)
-				writeJSONError(w, r, http.StatusInternalServerError, "api_error", "failed to read request body")
-				return
-			}
+
+	if s.usageTracker != nil && r.Body != nil {
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err == nil {
 			var request struct {
-				Model       string `json:"model"`
-				ServiceTier string `json:"service_tier"`
+				Model string `json:"model"`
 			}
-			if json.Unmarshal(bodyBytes, &request) == nil {
+			err := json.Unmarshal(bodyBytes, &request)
+			if err == nil {
 				requestModel = request.Model
-				requestServiceTier = request.ServiceTier
 			}
-			r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 	}
 
-	if isNew {
-		logParts := []any{"assigned credential ", selectedCredential.tagName()}
-		if sessionID != "" {
-			logParts = append(logParts, " for session ", sessionID)
-		}
-		if username != "" {
-			logParts = append(logParts, " by user ", username)
-		}
-		if requestModel != "" {
-			logParts = append(logParts, ", model=", requestModel)
-		}
-		if requestServiceTier == "priority" {
-			logParts = append(logParts, ", fast")
-		}
-		s.logger.DebugContext(ctx, logParts...)
-	}
-
-	requestContext := selectedCredential.wrapRequestContext(r.Context())
-	defer func() {
-		requestContext.cancelRequest()
-	}()
-	proxyRequest, err := selectedCredential.buildProxyRequest(requestContext, r, bodyBytes, s.httpHeaders)
+	accessToken, err := s.getAccessToken()
 	if err != nil {
-		s.logger.ErrorContext(ctx, "create proxy request: ", err)
+		s.logger.Error("get access token: ", err)
+		writeJSONError(w, r, http.StatusUnauthorized, "authentication_error", "Authentication failed")
+		return
+	}
+
+	proxyURL := s.getBaseURL() + proxyPath
+	if r.URL.RawQuery != "" {
+		proxyURL += "?" + r.URL.RawQuery
+	}
+	proxyRequest, err := http.NewRequestWithContext(r.Context(), r.Method, proxyURL, r.Body)
+	if err != nil {
+		s.logger.Error("create proxy request: ", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "api_error", "Internal server error")
 		return
 	}
 
-	response, err := selectedCredential.httpTransport().Do(proxyRequest)
+	for key, values := range r.Header {
+		if !isHopByHopHeader(key) && key != "Authorization" {
+			proxyRequest.Header[key] = values
+		}
+	}
+
+	for key, values := range s.httpHeaders {
+		proxyRequest.Header.Del(key)
+		proxyRequest.Header[key] = values
+	}
+
+	proxyRequest.Header.Set("Authorization", "Bearer "+accessToken)
+
+	if accountID := s.getAccountID(); accountID != "" {
+		proxyRequest.Header.Set("ChatGPT-Account-Id", accountID)
+	}
+
+	response, err := s.httpClient.Do(proxyRequest)
 	if err != nil {
-		if r.Context().Err() != nil {
-			return
-		}
-		if requestContext.Err() != nil {
-			writeCredentialUnavailableError(w, r, provider, selectedCredential, credentialFilter, "credential became unavailable while processing the request")
-			return
-		}
 		writeJSONError(w, r, http.StatusBadGateway, "api_error", err.Error())
 		return
 	}
-	requestContext.releaseCredentialInterrupt()
-
-	// Transparent 429 retry
-	for response.StatusCode == http.StatusTooManyRequests {
-		resetAt := parseOCMRateLimitResetFromHeaders(response.Header)
-		nextCredential := provider.onRateLimited(sessionID, selectedCredential, resetAt, credentialFilter)
-		needsBodyReplay := r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodDelete
-		selectedCredential.updateStateFromHeaders(response.Header)
-		if (needsBodyReplay && bodyBytes == nil) || nextCredential == nil {
-			response.Body.Close()
-			writeCredentialUnavailableError(w, r, provider, selectedCredential, credentialFilter, "all credentials rate-limited")
-			return
-		}
-		response.Body.Close()
-		s.logger.InfoContext(ctx, "retrying with credential ", nextCredential.tagName(), " after 429 from ", selectedCredential.tagName())
-		requestContext.cancelRequest()
-		requestContext = nextCredential.wrapRequestContext(r.Context())
-		retryRequest, buildErr := nextCredential.buildProxyRequest(requestContext, r, bodyBytes, s.httpHeaders)
-		if buildErr != nil {
-			s.logger.ErrorContext(ctx, "retry request: ", buildErr)
-			writeJSONError(w, r, http.StatusBadGateway, "api_error", buildErr.Error())
-			return
-		}
-		retryResponse, retryErr := nextCredential.httpTransport().Do(retryRequest)
-		if retryErr != nil {
-			if r.Context().Err() != nil {
-				return
-			}
-			if requestContext.Err() != nil {
-				writeCredentialUnavailableError(w, r, provider, nextCredential, credentialFilter, "credential became unavailable while retrying the request")
-				return
-			}
-			s.logger.ErrorContext(ctx, "retry request: ", retryErr)
-			writeJSONError(w, r, http.StatusBadGateway, "api_error", retryErr.Error())
-			return
-		}
-		requestContext.releaseCredentialInterrupt()
-		response = retryResponse
-		selectedCredential = nextCredential
-	}
 	defer response.Body.Close()
 
-	selectedCredential.updateStateFromHeaders(response.Header)
-
-	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusTooManyRequests {
-		body, _ := io.ReadAll(response.Body)
-		s.logger.ErrorContext(ctx, "upstream error from ", selectedCredential.tagName(), ": status ", response.StatusCode, " ", string(body))
-		go selectedCredential.pollUsage(s.ctx)
-		writeJSONError(w, r, http.StatusInternalServerError, "api_error",
-			"proxy request (status "+strconv.Itoa(response.StatusCode)+"): "+string(body))
-		return
-	}
-
-	// Rewrite response headers for external users
-	if userConfig != nil && userConfig.ExternalCredential != "" {
-		s.rewriteResponseHeadersForExternalUser(response.Header, userConfig)
-	}
-
 	for key, values := range response.Header {
-		if !isHopByHopHeader(key) && !isReverseProxyHeader(key) {
+		if !isHopByHopHeader(key) {
 			w.Header()[key] = values
 		}
 	}
 	w.WriteHeader(response.StatusCode)
 
-	usageTracker := selectedCredential.usageTrackerOrNil()
-	if usageTracker != nil && response.StatusCode == http.StatusOK &&
-		(path == "/v1/chat/completions" || strings.HasPrefix(path, "/v1/responses")) {
-		s.handleResponseWithTracking(ctx, w, response, usageTracker, path, requestModel, username)
+	trackUsage := s.usageTracker != nil && response.StatusCode == http.StatusOK &&
+		(path == "/v1/chat/completions" || strings.HasPrefix(path, "/v1/responses"))
+	if trackUsage {
+		s.handleResponseWithTracking(w, response, path, requestModel, username)
 	} else {
 		mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 		if err == nil && mediaType != "text/event-stream" {
@@ -599,7 +446,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		flusher, ok := w.(http.Flusher)
 		if !ok {
-			s.logger.ErrorContext(ctx, "streaming not supported")
+			s.logger.Error("streaming not supported")
 			return
 		}
 		buffer := make([]byte, buf.BufferSize)
@@ -608,7 +455,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if n > 0 {
 				_, writeError := w.Write(buffer[:n])
 				if writeError != nil {
-					s.logger.ErrorContext(ctx, "write streaming response: ", writeError)
+					s.logger.Error("write streaming response: ", writeError)
 					return
 				}
 				flusher.Flush()
@@ -620,7 +467,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Service) handleResponseWithTracking(ctx context.Context, writer http.ResponseWriter, response *http.Response, usageTracker *AggregatedUsage, path string, requestModel string, username string) {
+func (s *Service) handleResponseWithTracking(writer http.ResponseWriter, response *http.Response, path string, requestModel string, username string) {
 	isChatCompletions := path == "/v1/chat/completions"
 	weeklyCycleHint := extractWeeklyCycleHint(response.Header)
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
@@ -631,7 +478,7 @@ func (s *Service) handleResponseWithTracking(ctx context.Context, writer http.Re
 	if !isStreaming {
 		bodyBytes, err := io.ReadAll(response.Body)
 		if err != nil {
-			s.logger.ErrorContext(ctx, "read response body: ", err)
+			s.logger.Error("read response body: ", err)
 			return
 		}
 
@@ -664,7 +511,7 @@ func (s *Service) handleResponseWithTracking(ctx context.Context, writer http.Re
 			}
 			if responseModel != "" {
 				contextWindow := detectContextWindow(responseModel, serviceTier, inputTokens)
-				usageTracker.AddUsageWithCycleHint(
+				s.usageTracker.AddUsageWithCycleHint(
 					responseModel,
 					contextWindow,
 					inputTokens,
@@ -684,7 +531,7 @@ func (s *Service) handleResponseWithTracking(ctx context.Context, writer http.Re
 
 	flusher, ok := writer.(http.Flusher)
 	if !ok {
-		s.logger.ErrorContext(ctx, "streaming not supported")
+		s.logger.Error("streaming not supported")
 		return
 	}
 
@@ -712,8 +559,8 @@ func (s *Service) handleResponseWithTracking(ctx context.Context, writer http.Re
 					continue
 				}
 
-				if bytes.HasPrefix(line, []byte("data: ")) {
-					eventData := bytes.TrimPrefix(line, []byte("data: "))
+				if after, ok0 := bytes.CutPrefix(line, []byte("data: ")); ok0 {
+					eventData := after
 					if bytes.Equal(eventData, []byte("[DONE]")) {
 						continue
 					}
@@ -761,7 +608,7 @@ func (s *Service) handleResponseWithTracking(ctx context.Context, writer http.Re
 
 			_, writeError := writer.Write(buffer[:n])
 			if writeError != nil {
-				s.logger.ErrorContext(ctx, "write streaming response: ", writeError)
+				s.logger.Error("write streaming response: ", writeError)
 				return
 			}
 			flusher.Flush()
@@ -775,7 +622,7 @@ func (s *Service) handleResponseWithTracking(ctx context.Context, writer http.Re
 			if inputTokens > 0 || outputTokens > 0 {
 				if responseModel != "" {
 					contextWindow := detectContextWindow(responseModel, serviceTier, inputTokens)
-					usageTracker.AddUsageWithCycleHint(
+					s.usageTracker.AddUsageWithCycleHint(
 						responseModel,
 						contextWindow,
 						inputTokens,
@@ -793,124 +640,6 @@ func (s *Service) handleResponseWithTracking(ctx context.Context, writer http.Re
 	}
 }
 
-func (s *Service) handleStatusEndpoint(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSONError(w, r, http.StatusMethodNotAllowed, "invalid_request_error", "method not allowed")
-		return
-	}
-
-	if len(s.options.Users) == 0 {
-		writeJSONError(w, r, http.StatusForbidden, "authentication_error", "status endpoint requires user authentication")
-		return
-	}
-
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		writeJSONError(w, r, http.StatusUnauthorized, "authentication_error", "missing api key")
-		return
-	}
-	clientToken := strings.TrimPrefix(authHeader, "Bearer ")
-	if clientToken == authHeader {
-		writeJSONError(w, r, http.StatusUnauthorized, "authentication_error", "invalid api key format")
-		return
-	}
-	username, ok := s.userManager.Authenticate(clientToken)
-	if !ok {
-		writeJSONError(w, r, http.StatusUnauthorized, "authentication_error", "invalid api key")
-		return
-	}
-
-	userConfig := s.userConfigMap[username]
-	if userConfig == nil {
-		writeJSONError(w, r, http.StatusInternalServerError, "api_error", "user config not found")
-		return
-	}
-
-	provider, err := credentialForUser(s.userConfigMap, s.providers, s.legacyProvider, username)
-	if err != nil {
-		writeJSONError(w, r, http.StatusInternalServerError, "api_error", err.Error())
-		return
-	}
-
-	provider.pollIfStale(r.Context())
-	avgFiveHour, avgWeekly, totalWeight := s.computeAggregatedUtilization(provider, userConfig)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]float64{
-		"five_hour_utilization": avgFiveHour,
-		"weekly_utilization":    avgWeekly,
-		"plan_weight":           totalWeight,
-	})
-}
-
-func (s *Service) computeAggregatedUtilization(provider credentialProvider, userConfig *option.OCMUser) (float64, float64, float64) {
-	var totalWeightedRemaining5h, totalWeightedRemainingWeekly, totalWeight float64
-	for _, cred := range provider.allCredentials() {
-		if !cred.isAvailable() {
-			continue
-		}
-		if userConfig.ExternalCredential != "" && cred.tagName() == userConfig.ExternalCredential {
-			continue
-		}
-		if !userConfig.AllowExternalUsage && cred.isExternal() {
-			continue
-		}
-		weight := cred.planWeight()
-		remaining5h := cred.fiveHourCap() - cred.fiveHourUtilization()
-		if remaining5h < 0 {
-			remaining5h = 0
-		}
-		remainingWeekly := cred.weeklyCap() - cred.weeklyUtilization()
-		if remainingWeekly < 0 {
-			remainingWeekly = 0
-		}
-		totalWeightedRemaining5h += remaining5h * weight
-		totalWeightedRemainingWeekly += remainingWeekly * weight
-		totalWeight += weight
-	}
-	if totalWeight == 0 {
-		return 100, 100, 0
-	}
-	return 100 - totalWeightedRemaining5h/totalWeight,
-		100 - totalWeightedRemainingWeekly/totalWeight,
-		totalWeight
-}
-
-func (s *Service) rewriteResponseHeadersForExternalUser(headers http.Header, userConfig *option.OCMUser) {
-	provider, err := credentialForUser(s.userConfigMap, s.providers, s.legacyProvider, userConfig.Name)
-	if err != nil {
-		return
-	}
-
-	avgFiveHour, avgWeekly, totalWeight := s.computeAggregatedUtilization(provider, userConfig)
-
-	activeLimitIdentifier := normalizeRateLimitIdentifier(headers.Get("x-codex-active-limit"))
-	if activeLimitIdentifier == "" {
-		activeLimitIdentifier = "codex"
-	}
-
-	headers.Set("x-"+activeLimitIdentifier+"-primary-used-percent", strconv.FormatFloat(avgFiveHour, 'f', 2, 64))
-	headers.Set("x-"+activeLimitIdentifier+"-secondary-used-percent", strconv.FormatFloat(avgWeekly, 'f', 2, 64))
-	if totalWeight > 0 {
-		headers.Set("X-OCM-Plan-Weight", strconv.FormatFloat(totalWeight, 'f', -1, 64))
-	}
-}
-
-func (s *Service) InterfaceUpdated() {
-	for _, cred := range s.allCredentials {
-		extCred, ok := cred.(*externalCredential)
-		if !ok {
-			continue
-		}
-		if extCred.reverse && extCred.connectorURL != nil {
-			extCred.reverseService = s
-			extCred.resetReverseContext()
-			go extCred.connectorLoop()
-		}
-	}
-}
-
 func (s *Service) Close() error {
 	webSocketSessions := s.startWebSocketShutdown()
 
@@ -924,8 +653,12 @@ func (s *Service) Close() error {
 	}
 	s.webSocketGroup.Wait()
 
-	for _, cred := range s.allCredentials {
-		cred.close()
+	if s.usageTracker != nil {
+		s.usageTracker.cancelPendingSave()
+		saveErr := s.usageTracker.Save()
+		if saveErr != nil {
+			s.logger.Error("save usage statistics: ", saveErr)
+		}
 	}
 
 	return err
@@ -963,20 +696,6 @@ func (s *Service) isShuttingDown() bool {
 	return s.shuttingDown
 }
 
-func (s *Service) interruptWebSocketSessionsForCredential(tag string) {
-	s.webSocketMutex.Lock()
-	var toClose []*webSocketSession
-	for session := range s.webSocketConns {
-		if session.credentialTag == tag {
-			toClose = append(toClose, session)
-		}
-	}
-	s.webSocketMutex.Unlock()
-	for _, session := range toClose {
-		session.Close()
-	}
-}
-
 func (s *Service) startWebSocketShutdown() []*webSocketSession {
 	s.webSocketMutex.Lock()
 	defer s.webSocketMutex.Unlock()
@@ -988,4 +707,11 @@ func (s *Service) startWebSocketShutdown() []*webSocketSession {
 		webSocketSessions = append(webSocketSessions, session)
 	}
 	return webSocketSessions
+}
+
+func (s *Service) References() []string {
+	if s.detour == "" {
+		return nil
+	}
+	return []string{s.detour}
 }

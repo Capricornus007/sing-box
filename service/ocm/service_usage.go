@@ -1,6 +1,7 @@
 package ocm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/sagernet/sing-box/log"
 	E "github.com/sagernet/sing/common/exceptions"
+	"github.com/sagernet/sing/service/filemanager"
 )
 
 type UsageStats struct {
@@ -56,6 +58,7 @@ type AggregatedUsage struct {
 	LastUpdated  time.Time         `json:"last_updated"`
 	Combinations []CostCombination `json:"combinations"`
 	mutex        sync.Mutex
+	ctx          context.Context
 	filePath     string
 	logger       log.ContextLogger
 	lastSaveTime time.Time
@@ -851,10 +854,7 @@ func normalizeGPT5Model(model string) string {
 func calculateCost(stats UsageStats, model string, serviceTier string, contextWindow int) float64 {
 	pricing := getPricing(model, serviceTier, contextWindow)
 
-	regularInputTokens := stats.InputTokens - stats.CachedTokens
-	if regularInputTokens < 0 {
-		regularInputTokens = 0
-	}
+	regularInputTokens := max(stats.InputTokens-stats.CachedTokens, 0)
 
 	cost := (float64(regularInputTokens)*pricing.InputPrice +
 		float64(stats.OutputTokens)*pricing.OutputPrice +
@@ -1075,7 +1075,7 @@ func (u *AggregatedUsage) Load() error {
 	u.LastUpdated = time.Time{}
 	u.Combinations = nil
 
-	data, err := os.ReadFile(u.filePath)
+	data, err := filemanager.ReadFile(u.ctx, u.filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -1109,12 +1109,12 @@ func (u *AggregatedUsage) Save() error {
 	}
 
 	tmpFile := u.filePath + ".tmp"
-	err = os.WriteFile(tmpFile, data, 0o644)
+	err = filemanager.WriteFile(u.ctx, tmpFile, data, 0o644)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmpFile)
-	err = os.Rename(tmpFile, u.filePath)
+	defer filemanager.Remove(u.ctx, tmpFile)
+	err = filemanager.Rename(u.ctx, tmpFile, u.filePath)
 	if err == nil {
 		u.saveMutex.Lock()
 		u.lastSaveTime = time.Now()
