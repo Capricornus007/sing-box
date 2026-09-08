@@ -27,8 +27,6 @@ import (
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/common/uot"
 	"github.com/sagernet/sing/service"
-
-	"golang.org/x/exp/slices"
 )
 
 var defaultPacketSniffers = []sniff.PacketSniffer{
