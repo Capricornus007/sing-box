@@ -412,7 +412,15 @@ func (r *Router) PreMatch(metadata adapter.InboundContext, firstPacket []byte) a
 				}
 				return adapter.PreMatchResult{Action: adapter.PreMatchBypass}
 			}
-			return r.preMatchFlow(ctx, &metadata, packetDestination, currentRule, action.Outbound)
+			// 上游 f90999708：bypass 指定 outbound 時，preMatchFlow 的非 Flow 結果
+			// （Continue/Reject）都代表該 outbound 無法承接 flow——對 bypass 動作
+			// 而言一律退回 Bypass，否則 bypass 會被誤當 Reject 處理掉。
+			bypassResult := r.preMatchFlow(ctx, &metadata, packetDestination, currentRule, action.Outbound)
+			if bypassResult.Action != adapter.PreMatchFlow {
+				return adapter.PreMatchResult{Action: adapter.PreMatchBypass}
+			}
+			bypassResult.Action = adapter.PreMatchBypass
+			return bypassResult
 		case *R.RuleActionReject:
 			rejectErr := action.Error(r.ctx)
 			if errors.Is(rejectErr, R.ErrDrop) {
