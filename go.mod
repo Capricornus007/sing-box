@@ -232,3 +232,7 @@ replace github.com/metacubex/utls => github.com/Capricornus007/utls v0.0.0-20260
 replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.0.0-20260905061045-2f044ea1dc3d
 
 replace github.com/sagernet/wireguard-go => github.com/Capricornus007/wireguard-go v0.0.6
+
+replace github.com/sagernet/sing-mux => github.com/Capricornus007/sing-mux v0.3.6-0.20260905054442-91d1502591ce
+
+replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.4-0.20260910135123-2148fb758d91
