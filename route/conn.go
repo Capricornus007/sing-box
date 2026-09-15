@@ -80,6 +80,9 @@ func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
 		Conn:    conn,
 		manager: m,
 		element: element,
+		socketOwner: socketOwner{
+			original: conn,
+		},
 	}
 }
 
@@ -91,6 +94,9 @@ func (m *ConnectionManager) TrackPacketConn(conn net.PacketConn) net.PacketConn 
 		NetPacketConn: bufio.NewPacketConn(conn),
 		manager:       m,
 		element:       element,
+		socketOwner: socketOwner{
+			original: conn,
+		},
 	}
 }
 
@@ -453,19 +459,22 @@ func (m *ConnectionManager) packetConnectionCopy(ctx context.Context, source N.P
 }
 
 type socketOwner struct {
-	access sync.Mutex
-	owner  io.Closer
-	closed bool
+	access   sync.Mutex
+	original io.Closer
+	owner    io.Closer
+	closed   bool
 }
 
-func (o *socketOwner) Attach(closer io.Closer) bool {
+// Attach 註冊 splice owner 並交回 original closer（sing-tun SpliceSocket
+// v2 介面：splice 層負責關閉 original，2026-09-15 對齊上游 testing）。
+func (o *socketOwner) Attach(closer io.Closer) (io.Closer, bool) {
 	o.access.Lock()
 	defer o.access.Unlock()
-	if o.closed {
-		return false
+	if o.closed || o.owner != nil {
+		return nil, false
 	}
 	o.owner = closer
-	return true
+	return o.original, true
 }
 
 func (o *socketOwner) Detach() {
