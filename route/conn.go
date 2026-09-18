@@ -49,6 +49,8 @@ func (m *ConnectionManager) Start(stage adapter.StartStage) error {
 }
 
 func (m *ConnectionManager) Count() int {
+	m.access.Lock()
+	defer m.access.Unlock()
 	return m.connections.Len()
 }
 
@@ -73,31 +75,27 @@ func (m *ConnectionManager) Close() error {
 }
 
 func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
-	m.access.Lock()
-	element := m.connections.PushBack(conn)
-	m.access.Unlock()
-	return &trackedConn{
-		Conn:    conn,
-		manager: m,
-		element: element,
-		socketOwner: socketOwner{
-			original: conn,
-		},
+	tracked := &trackedConn{
+		Conn:        conn,
+		socketOwner: socketOwner{original: conn},
+		manager:     m,
 	}
+	m.access.Lock()
+	tracked.element = m.connections.PushBack(tracked)
+	m.access.Unlock()
+	return tracked
 }
 
 func (m *ConnectionManager) TrackPacketConn(conn net.PacketConn) net.PacketConn {
-	m.access.Lock()
-	element := m.connections.PushBack(conn)
-	m.access.Unlock()
-	return &trackedPacketConn{
+	tracked := &trackedPacketConn{
 		NetPacketConn: bufio.NewPacketConn(conn),
+		socketOwner:   socketOwner{original: conn},
 		manager:       m,
-		element:       element,
-		socketOwner: socketOwner{
-			original: conn,
-		},
 	}
+	m.access.Lock()
+	tracked.element = m.connections.PushBack(tracked)
+	m.access.Unlock()
+	return tracked
 }
 
 func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
@@ -247,9 +245,6 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 		return
 	}
 	udpTimeout := packetTimeout(&metadata)
-	if udpTimeout == 0 {
-		udpTimeout = C.UDPTimeout
-	}
 	var (
 		spliceRemote any = remotePacketConn
 		spliced      bool
@@ -286,7 +281,7 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 		remotePacketConn = bufio.NewDestinationNATPacketConn(bufio.NewPacketConn(remotePacketConn), metadata.Destination, metadata.RouteOriginalDestination)
 	}
 	if udpTimeout > 0 {
-		ctx, conn = newActiveTimeoutPacketConn(ctx, conn, udpTimeout)
+		ctx, conn = canceler.NewPacketConn(ctx, conn, udpTimeout)
 	}
 	destination := bufio.NewPacketConn(remotePacketConn)
 	var done atomic.Bool
@@ -294,50 +289,8 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 	go m.packetConnectionCopy(ctx, destination, conn, true, &done, onClose)
 }
 
-func newActiveTimeoutPacketConn(ctx context.Context, conn N.PacketConn, timeout time.Duration) (context.Context, N.PacketConn) {
-	if timeoutConn, isTimeoutConn := common.Cast[canceler.PacketConn](conn); isTimeoutConn {
-		switch timeoutConn.(type) {
-		case *canceler.TimerPacketConn, *canceler.TimeoutPacketConn:
-			oldTimeout := timeoutConn.Timeout()
-			if oldTimeout > 0 && timeout >= oldTimeout {
-				return ctx, conn
-			}
-			if timeoutConn.SetTimeout(timeout) {
-				return ctx, conn
-			}
-		}
-	}
-	if conn.SetReadDeadline(time.Time{}) == nil {
-		return canceler.NewTimeoutPacketConn(ctx, conn, timeout)
-	}
-	return canceler.NewPacketConn(ctx, conn, timeout)
-}
-
-// isNormalConnectionClose checks whether a relay copy error is an expected
-// close signal after the connection has already made progress.
-func isNormalConnectionClose(err error, transferred int64) bool {
-	if err == nil {
-		return false
-	}
-	if E.IsClosedOrCanceled(err) {
-		return true
-	}
-	if transferred > 0 && E.IsMulti(err, io.ErrUnexpectedEOF) {
-		return true
-	}
-	errMsg := err.Error()
-	// HTTP/2 and HTTP/3 normal close patterns
-	// NO_ERROR: explicit normal close (RFC 7540)
-	// response body closed: normal completion of HTTP/2 response
-	// INTERNAL_ERROR; received from peer: server-side stream cleanup (common with xhttp/Xray-core)
-	return strings.Contains(errMsg, "NO_ERROR") ||
-		strings.Contains(errMsg, "http2: response body closed") ||
-		strings.Contains(errMsg, "http2: client connection force closed via ClientConn.Close") ||
-		strings.Contains(errMsg, "INTERNAL_ERROR; received from peer")
-}
-
 func (m *ConnectionManager) connectionCopy(ctx context.Context, source net.Conn, destination net.Conn, direction bool, done *atomic.Bool, onClose N.CloseHandlerFunc) {
-	transferred, err := bufio.CopyWithIncreateBuffer(destination, source, bufio.DefaultIncreaseBufferAfter, bufio.DefaultBatchSize)
+	_, err := bufio.CopyWithIncreateBuffer(destination, source, bufio.DefaultIncreaseBufferAfter, bufio.DefaultBatchSize)
 	if err != nil {
 		common.Close(source, destination)
 	} else if duplexDst, isDuplex := destination.(N.WriteCloser); isDuplex {
@@ -357,7 +310,7 @@ func (m *ConnectionManager) connectionCopy(ctx context.Context, source net.Conn,
 	if !direction {
 		if err == nil {
 			m.logger.DebugContext(ctx, "connection upload finished")
-		} else if !isNormalConnectionClose(err, transferred) {
+		} else if !E.IsClosedOrCanceled(err) {
 			m.logger.ErrorContext(ctx, "connection upload closed: ", err)
 		} else {
 			m.logger.TraceContext(ctx, "connection upload closed")
@@ -365,7 +318,7 @@ func (m *ConnectionManager) connectionCopy(ctx context.Context, source net.Conn,
 	} else {
 		if err == nil {
 			m.logger.DebugContext(ctx, "connection download finished")
-		} else if !isNormalConnectionClose(err, transferred) {
+		} else if !E.IsClosedOrCanceled(err) {
 			m.logger.ErrorContext(ctx, "connection download closed: ", err)
 		} else {
 			m.logger.TraceContext(ctx, "connection download closed")
@@ -465,8 +418,6 @@ type socketOwner struct {
 	closed   bool
 }
 
-// Attach 註冊 splice owner 並交回 original closer（sing-tun SpliceSocket
-// v2 介面：splice 層負責關閉 original，2026-09-15 對齊上游 testing）。
 func (o *socketOwner) Attach(closer io.Closer) (io.Closer, bool) {
 	o.access.Lock()
 	defer o.access.Unlock()
@@ -477,10 +428,11 @@ func (o *socketOwner) Attach(closer io.Closer) (io.Closer, bool) {
 	return o.original, true
 }
 
-func (o *socketOwner) Detach() {
+func (o *socketOwner) detach() bool {
 	o.access.Lock()
+	defer o.access.Unlock()
 	o.owner = nil
-	o.access.Unlock()
+	return o.closed
 }
 
 func (o *socketOwner) close() bool {
@@ -508,6 +460,12 @@ func (c *trackedConn) SyscallConn() (syscall.RawConn, error) {
 		return nil, os.ErrInvalid
 	}
 	return syscallConn.SyscallConn()
+}
+
+func (c *trackedConn) Detach() {
+	if c.socketOwner.detach() {
+		c.Conn.Close()
+	}
 }
 
 func (c *trackedConn) Close() error {
@@ -545,6 +503,12 @@ func (c *trackedPacketConn) SyscallConn() (syscall.RawConn, error) {
 		return nil, os.ErrInvalid
 	}
 	return syscallConn.SyscallConn()
+}
+
+func (c *trackedPacketConn) Detach() {
+	if c.socketOwner.detach() {
+		c.NetPacketConn.Close()
+	}
 }
 
 func (c *trackedPacketConn) Close() error {

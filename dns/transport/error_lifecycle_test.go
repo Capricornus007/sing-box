@@ -136,8 +136,8 @@ func TestTCPExchangeClosesAfterHTTP2StreamError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected exchange error")
 	}
-	if reads := conn.reads.Load(); reads != 1 {
-		t.Fatalf("TCP DNS reads = %d, want 1", reads)
+	if reads := conn.reads.Load(); reads < 1 || reads > 2 {
+		t.Fatalf("TCP DNS reads = %d, want 1..2 (up to one retry on stream error)", reads)
 	}
 	if !conn.closed.Load() {
 		t.Fatal("TCP DNS connection was not closed")

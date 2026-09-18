@@ -148,7 +148,6 @@ func (c *Client) dialHTTP2(ctx context.Context) (net.Conn, error) {
 		}
 	}
 	go func() {
-		//nolint:bodyclose // successful response bodies are used as the returned stream.
 		response, err := c.transport.Load().RoundTrip(request)
 		if err != nil {
 			conn.Setup(nil, err)

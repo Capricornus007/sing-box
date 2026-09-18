@@ -8,14 +8,13 @@ import (
 	"net"
 	"net/netip"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/service/powerreport"
-	tun "github.com/sagernet/sing-tun"
+	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
@@ -107,6 +106,16 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	if options.MTU == 0 {
 		options.MTU = 1408
 	}
+	return &Endpoint{
+		options:        options,
+		peers:          peers,
+		ipcConf:        ipcConf,
+		allowedAddress: allowedAddresses,
+	}, nil
+}
+
+func (e *Endpoint) Initialize(memoryPressure func() tun.MemoryPressure) error {
+	options := e.options
 	deviceOptions := DeviceOptions{
 		Context:         options.Context,
 		Logger:          options.Logger,
@@ -118,24 +127,20 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 		UDPFiltering:    options.UDPFiltering,
 		UDPNATMax:       options.UDPNATMax,
 		InterfaceFinder: options.InterfaceFinder,
+		MemoryPressure:  memoryPressure,
 		CreateDialer:    options.CreateDialer,
 		Name:            options.Name,
 		MTU:             options.MTU,
 		Address:         options.Address,
-		AllowedAddress:  allowedAddresses,
+		AllowedAddress:  e.allowedAddress,
 	}
 	tunDevice, err := NewDevice(deviceOptions)
 	if err != nil {
-		return nil, E.Cause(err, "create WireGuard device")
+		return E.Cause(err, "create WireGuard device")
 	}
-	return &Endpoint{
-		options:        options,
-		peers:          peers,
-		ipcConf:        ipcConf,
-		allowedAddress: allowedAddresses,
-		tunDevice:      tunDevice,
-		returnDevice:   &returnDeviceWrapper{Device: tunDevice},
-	}, nil
+	e.tunDevice = tunDevice
+	e.returnDevice = &returnDeviceWrapper{Device: tunDevice}
+	return nil
 }
 
 func (e *Endpoint) Start(postStart bool) error {
@@ -209,30 +214,27 @@ func (e *Endpoint) Start(postStart bool) error {
 			e.options.Logger.Error(fmt.Sprintf(strings.ToLower(format), args...))
 		},
 	}
-	wgDevice := device.NewDevice(wireGuardDeviceContext(e.options.Context), e.returnDevice, bind, logger, e.options.Workers)
+	wgDevice := device.NewDevice(e.options.Context, e.returnDevice, bind, logger, e.options.Workers)
 	e.tunDevice.SetDevice(wgDevice)
-	var ipcConf strings.Builder
-	ipcConf.WriteString(e.ipcConf)
-	for _, peer := range e.peers {
-		ipcConf.WriteString(peer.GenerateIpcLines())
-	}
-	err = wgDevice.IpcSet(ipcConf.String())
-	if err != nil {
-		wgDevice.Close()
-		return E.Cause(err, "setup wireguard: \n", ipcConf.String())
-	}
-	for _, peer := range e.peers {
+	domainPeers := make(map[device.NoisePublicKey]*peerConfig)
+	for peerIndex, peer := range e.peers {
 		if !peer.destination.IsDomain() {
 			continue
 		}
 		var publicKey device.NoisePublicKey
-		common.Must(publicKey.FromHex(peer.publicKeyHex))
-		wgPeer, found := wgDevice.LookupActivePeer(publicKey)
-		if !found {
+		err = publicKey.FromHex(peer.publicKeyHex)
+		if err != nil {
 			wgDevice.Close()
-			return E.New("missing configured peer: ", peer.destination)
+			return E.Cause(err, "decode public key for peer ", peerIndex)
 		}
-		wgPeer.SetEndpointResolver(func() ([]conn.Endpoint, error) {
+		domainPeers[publicKey] = &e.peers[peerIndex]
+	}
+	if len(domainPeers) > 0 {
+		wgDevice.SetEndpointResolverFunc(func(publicKey device.NoisePublicKey) ([]conn.Endpoint, error) {
+			peer, found := domainPeers[publicKey]
+			if !found {
+				return nil, nil
+			}
 			addresses, lookupErr := e.options.ResolvePeer(peer.destination.Fqdn)
 			if lookupErr != nil {
 				return nil, lookupErr
@@ -251,6 +253,16 @@ func (e *Endpoint) Start(postStart bool) error {
 			}
 			return endpoints, nil
 		})
+	}
+	var ipcConf strings.Builder
+	ipcConf.WriteString(e.ipcConf)
+	for _, peer := range e.peers {
+		ipcConf.WriteString(peer.GenerateIpcLines())
+	}
+	err = wgDevice.IpcSet(ipcConf.String())
+	if err != nil {
+		wgDevice.Close()
+		return E.Cause(err, "setup wireguard: \n", ipcConf.String())
 	}
 	e.device.Store(wgDevice)
 	e.pause = service.FromContext[pause.Manager](e.options.Context)
@@ -337,7 +349,7 @@ func (e *Endpoint) Close() error {
 	if wgDevice != nil {
 		return nil
 	}
-	return e.tunDevice.Close()
+	return common.Close(e.tunDevice)
 }
 
 func (e *Endpoint) Lookup(address netip.Addr) *device.Peer {
@@ -353,13 +365,6 @@ func (e *Endpoint) BindUpdate() error {
 		return nil
 	}
 	return wgDevice.BindUpdate()
-}
-
-func wireGuardDeviceContext(ctx context.Context) context.Context {
-	deviceContext := service.ExtendContext(ctx)
-	// The endpoint owns pause transitions. Letting wireguard-go observe the same
-	// manager can deadlock DevicePause when Down waits for a paused timer callback.
-	return service.ContextWith[pause.Manager](deviceContext, nil)
 }
 
 func (e *Endpoint) onPauseUpdated(event int) {
@@ -395,7 +400,7 @@ func (c peerConfig) GenerateIpcLines() string {
 	var ipcLines strings.Builder
 	ipcLines.WriteString("\npublic_key=" + c.publicKeyHex)
 	if c.endpoint.IsValid() {
-		ipcLines.WriteString("\nendpoint=" + formatWGEndpoint(c.endpoint))
+		ipcLines.WriteString("\nendpoint=" + c.endpoint.String())
 	}
 	if c.preSharedKeyHex != "" {
 		ipcLines.WriteString("\npreshared_key=" + c.preSharedKeyHex)
@@ -407,8 +412,4 @@ func (c peerConfig) GenerateIpcLines() string {
 		ipcLines.WriteString("\npersistent_keepalive_interval=" + F.ToString(c.keepalive))
 	}
 	return ipcLines.String()
-}
-
-func formatWGEndpoint(endpoint netip.AddrPort) string {
-	return net.JoinHostPort(endpoint.Addr().String(), strconv.Itoa(int(endpoint.Port())))
 }

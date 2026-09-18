@@ -14,9 +14,9 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	R "github.com/sagernet/sing-box/route/rule"
-	mux "github.com/sagernet/sing-mux"
-	tun "github.com/sagernet/sing-tun"
-	vmess "github.com/sagernet/sing-vmess"
+	"github.com/sagernet/sing-mux"
+	"github.com/sagernet/sing-tun"
+	"github.com/sagernet/sing-vmess"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/bufio"
@@ -26,7 +26,6 @@ import (
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/common/uot"
-	"github.com/sagernet/sing/service"
 )
 
 var defaultPacketSniffers = []sniff.PacketSniffer{
@@ -55,31 +54,15 @@ func (r *Router) RouteConnection(ctx context.Context, conn net.Conn, metadata ad
 	return nil
 }
 
-func cachePacketBuffers(conn N.PacketConn, packetBuffers []*N.PacketBuffer) N.PacketConn {
-	for i := len(packetBuffers) - 1; i >= 0; i-- {
-		packetBuffer := packetBuffers[i]
-		conn = bufio.NewCachedPacketConn(conn, packetBuffer.Buffer, packetBuffer.Destination)
-		N.PutPacketBuffer(packetBuffer)
-	}
-	return conn
-}
-
 func (r *Router) RouteConnectionEx(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	err := r.routeConnection(ctx, conn, metadata, onClose)
 	if err != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, err)
-		r.logRouteError(ctx, err)
-	}
-}
-
-func (r *Router) logRouteError(ctx context.Context, err error) {
-	var adblockErr adblockBlockedError
-	if errors.As(err, &adblockErr) {
-		r.logger.InfoContext(ctx, adblockErr)
-	} else if E.IsClosedOrCanceled(err) || R.IsRejected(err) {
-		r.logger.DebugContext(ctx, "connection closed: ", err)
-	} else {
-		r.logger.ErrorContext(ctx, err)
+		if E.IsClosedOrCanceled(err) || R.IsRejected(err) {
+			r.logger.DebugContext(ctx, "connection closed: ", err)
+		} else {
+			r.logger.ErrorContext(ctx, err)
+		}
 	}
 }
 
@@ -124,13 +107,6 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	selectedRule, _, buffers, _, err := r.matchRule(ctx, &metadata, conn, nil)
 	if err != nil {
 		return err
-	}
-	adblockService := service.FromContext[adapter.AdblockService](r.ctx)
-	if adblockService != nil && metadata.Protocol == "" {
-		newBuffer, _, _ := r.actionSniff(ctx, &metadata, &R.RuleActionSniff{}, conn, nil, buffers, nil)
-		if newBuffer != nil {
-			buffers = append(buffers, newBuffer)
-		}
 	}
 	var selectedOutbound adapter.Outbound
 	if selectedRule != nil {
@@ -186,12 +162,10 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	for _, buffer := range buffers {
 		conn = bufio.NewCachedConn(conn, buffer)
 	}
-	if adblockService != nil {
-		handled, err := adblockService.HandleTCP(ctx, conn, metadata, selectedOutbound, onClose)
-		if handled {
-			return err
-		}
+	if selectedRule != nil {
+		metadata.RouteRule = selectedRule.String()
 	}
+	metadata.RouteOutbound = selectedOutbound.Tag()
 	for _, tracker := range r.trackers {
 		conn = tracker.RoutedConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
 	}
@@ -210,7 +184,11 @@ func (r *Router) RoutePacketConnection(ctx context.Context, conn N.PacketConn, m
 	}))
 	if err != nil {
 		conn.Close()
-		r.logRouteError(ctx, err)
+		if E.IsClosedOrCanceled(err) || R.IsRejected(err) {
+			r.logger.DebugContext(ctx, "connection closed: ", err)
+		} else {
+			r.logger.ErrorContext(ctx, err)
+		}
 	}
 	select {
 	case <-done:
@@ -223,7 +201,11 @@ func (r *Router) RoutePacketConnectionEx(ctx context.Context, conn N.PacketConn,
 	err := r.routePacketConnection(ctx, conn, metadata, onClose)
 	if err != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, err)
-		r.logRouteError(ctx, err)
+		if E.IsClosedOrCanceled(err) || R.IsRejected(err) {
+			r.logger.DebugContext(ctx, "connection closed: ", err)
+		} else {
+			r.logger.ErrorContext(ctx, err)
+		}
 	}
 }
 
@@ -260,13 +242,6 @@ func (r *Router) routePacketConnection(ctx context.Context, conn N.PacketConn, m
 	selectedRule, _, _, packetBuffers, err := r.matchRule(ctx, &metadata, nil, conn)
 	if err != nil {
 		return err
-	}
-	adblockService := service.FromContext[adapter.AdblockService](r.ctx)
-	if adblockService != nil && metadata.Protocol == "" {
-		_, newPacketBuffers, _ := r.actionSniff(ctx, &metadata, &R.RuleActionSniff{}, nil, conn, nil, packetBuffers)
-		if len(newPacketBuffers) > 0 {
-			packetBuffers = newPacketBuffers
-		}
 	}
 	var selectedOutbound adapter.Outbound
 	var selectReturn bool
@@ -316,11 +291,12 @@ func (r *Router) routePacketConnection(ctx context.Context, conn N.PacketConn, m
 		selectedOutbound = defaultOutbound
 	}
 	conn = cachePacketBuffers(conn, packetBuffers)
+	if selectedRule != nil {
+		metadata.RouteRule = selectedRule.String()
+	}
+	metadata.RouteOutbound = selectedOutbound.Tag()
 	for _, tracker := range r.trackers {
 		conn = tracker.RoutedPacketConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
-	}
-	if r.nekoTracker != nil {
-		conn = r.nekoTracker.RoutedPacketConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
 	}
 	if metadata.FakeIP {
 		conn = newFakeIPNATPacketConn(bufio.NewNetPacketConn(conn), metadata.OriginDestination, metadata.Destination)
@@ -412,15 +388,15 @@ func (r *Router) PreMatch(metadata adapter.InboundContext, firstPacket []byte) a
 				}
 				return adapter.PreMatchResult{Action: adapter.PreMatchBypass}
 			}
-			// 上游 f90999708：bypass 指定 outbound 時，preMatchFlow 的非 Flow 結果
-			// （Continue/Reject）都代表該 outbound 無法承接 flow——對 bypass 動作
-			// 而言一律退回 Bypass，否則 bypass 會被誤當 Reject 處理掉。
-			bypassResult := r.preMatchFlow(ctx, &metadata, packetDestination, currentRule, action.Outbound)
-			if bypassResult.Action != adapter.PreMatchFlow {
+			if metadata.Destination.IsDomain() || metadata.Destination != packetDestination {
+				return r.preMatchFlow(ctx, &metadata, packetDestination, currentRule, action.Outbound)
+			}
+			result := r.preMatchFlow(ctx, &metadata, packetDestination, currentRule, action.Outbound)
+			if result.Action != adapter.PreMatchFlow {
 				return adapter.PreMatchResult{Action: adapter.PreMatchBypass}
 			}
-			bypassResult.Action = adapter.PreMatchBypass
-			return bypassResult
+			result.Action = adapter.PreMatchBypass
+			return result
 		case *R.RuleActionReject:
 			rejectErr := action.Error(r.ctx)
 			if rejectErr == nil && metadata.Network == N.NetworkICMP {
@@ -543,9 +519,9 @@ func (r *Router) preMatchFlow(ctx context.Context, metadata *adapter.InboundCont
 	} else if metadata.Destination != packetDestination {
 		result.Destination = metadata.Destination.AddrPort()
 	}
-	r.logger.InfoContext(ctx, "pre-match: forward ", metadata.Network, " connection from ", metadata.Source.AddrString(), " to ", metadata.Destination.AddrString(), " via outbound/", outbound.Type(), "[", outbound.Tag(), "]")
 	metadataCopy := *metadata
 	result.NewTracker = func() tun.FlowTracker {
+		r.logger.InfoContext(ctx, "pre-match: forward ", metadataCopy.Network, " connection from ", metadataCopy.Source.AddrString(), " to ", metadataCopy.Destination.AddrString(), " via outbound/", outbound.Type(), "[", outbound.Tag(), "]")
 		flowTrackers := make([]tun.FlowTracker, 0, len(r.trackers)+1)
 		flowTrackers = append(flowTrackers, newFlowLogger(ctx, r.logger, metadataCopy, outbound))
 		for _, tracker := range r.trackers {
@@ -564,23 +540,6 @@ func (r *Router) preMatchFlow(ctx context.Context, metadata *adapter.InboundCont
 
 func (r *Router) prepareMatchMetadata(ctx context.Context, metadata *adapter.InboundContext) error {
 	r.searchProcessInfo(ctx, metadata)
-	if r.neighborResolver != nil && metadata.SourceMACAddress == nil && metadata.Source.Addr.IsValid() {
-		mac, macFound := r.neighborResolver.LookupMAC(metadata.Source.Addr)
-		if macFound {
-			metadata.SourceMACAddress = mac
-		}
-		hostname, hostnameFound := r.neighborResolver.LookupHostname(metadata.Source.Addr)
-		if hostnameFound {
-			metadata.SourceHostname = hostname
-			if macFound {
-				r.logger.InfoContext(ctx, "found neighbor: ", mac, ", hostname: ", hostname)
-			} else {
-				r.logger.InfoContext(ctx, "found neighbor hostname: ", hostname)
-			}
-		} else if macFound {
-			r.logger.InfoContext(ctx, "found neighbor: ", mac)
-		}
-	}
 	if r.neighborResolver != nil && metadata.SourceMACAddress == nil && metadata.Source.Addr.IsValid() {
 		mac, macFound := r.neighborResolver.LookupMAC(metadata.Source.Addr)
 		if macFound {

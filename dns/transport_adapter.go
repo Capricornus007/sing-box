@@ -7,9 +7,9 @@ import (
 type TransportAdapter struct {
 	transportType string
 	transportTag  string
-	dependencies  []string
 	outbound      string
 	hasOutbound   bool
+	dependencies  []string
 	references    []string
 }
 
@@ -34,9 +34,9 @@ func NewTransportAdapterWithLocalOptions(transportType string, transportTag stri
 		transportType: transportType,
 		transportTag:  transportTag,
 		dependencies:  dependencies,
+		references:    references,
 		outbound:      localOptions.Detour,
 		hasOutbound:   true,
-		references:    references,
 	}
 }
 
@@ -53,9 +53,9 @@ func NewTransportAdapterWithRemoteOptions(transportType string, transportTag str
 		transportType: transportType,
 		transportTag:  transportTag,
 		dependencies:  dependencies,
+		references:    references,
 		outbound:      remoteOptions.Detour,
 		hasOutbound:   true,
-		references:    references,
 	}
 }
 
