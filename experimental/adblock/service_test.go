@@ -22,9 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coder/websocket"
-	"github.com/klauspost/compress/zstd"
-	mDNS "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/adblock/adblockrust"
 	C "github.com/sagernet/sing-box/constant"
@@ -35,6 +32,10 @@ import (
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/json/badoption"
 	M "github.com/sagernet/sing/common/metadata"
+
+	"github.com/coder/websocket"
+	"github.com/klauspost/compress/zstd"
+	mDNS "github.com/miekg/dns"
 )
 
 type fakeAdblockEngine struct {

@@ -2,8 +2,8 @@ package bytespool
 
 import "sync"
 
-func createAllocFunc(size int32) func() interface{} {
-	return func() interface{} {
+func createAllocFunc(size int32) func() any {
+	return func() any {
 		return make([]byte, size)
 	}
 }
@@ -24,7 +24,7 @@ var (
 
 func init() {
 	size := int32(2048)
-	for i := 0; i < numPools; i++ {
+	for i := range numPools {
 		pool[i] = sync.Pool{
 			New: createAllocFunc(size),
 		}
@@ -65,7 +65,7 @@ func Free(b []byte) {
 	b = b[0:cap(b)]
 	for i := numPools - 1; i >= 0; i-- {
 		if size >= poolSize[i] {
-			pool[i].Put(b)
+			pool[i].Put(b) //nolint:staticcheck // legacy xray pool holds raw []byte; converting to *[]byte would break paired Get() type assertion
 			return
 		}
 	}

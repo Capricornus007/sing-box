@@ -25,6 +25,7 @@ func (o *contextCaptureOutbound) DialContext(ctx context.Context, _ string, _ M.
 	o.ctx = ctx
 	return nil, errors.New("test dial")
 }
+
 func (*contextCaptureOutbound) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
 	return nil, errors.New("not implemented")
 }

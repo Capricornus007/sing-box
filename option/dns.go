@@ -10,7 +10,6 @@ import (
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/schema"
-	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badjson"
@@ -135,7 +134,7 @@ func rewriteDNSRcodeAction(rcodeMap map[string]int, ruleAction *DNSRuleAction) {
 		return
 	}
 	ruleAction.Action = C.RuleActionTypePredefined
-	ruleAction.PredefinedOptions.Rcode = common.Ptr(DNSRCode(rcode))
+	ruleAction.PredefinedOptions.Rcode = new(DNSRCode(rcode))
 }
 
 func (o DNSOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
@@ -171,7 +170,7 @@ func (o OptimisticDNSOptions) MarshalJSON() ([]byte, error) {
 	if o.Timeout == 0 {
 		return json.Marshal(o.Enabled)
 	}
-	return json.Marshal((_OptimisticDNSOptions)(o))
+	return json.Marshal(_OptimisticDNSOptions(o))
 }
 
 func (o *OptimisticDNSOptions) UnmarshalJSON(bytes []byte) error {

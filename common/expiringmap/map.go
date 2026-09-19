@@ -2,6 +2,7 @@ package expiringmap
 
 import (
 	"container/heap"
+	"maps"
 	"sync"
 	"time"
 )
@@ -254,9 +255,7 @@ func (m *Map[K, V]) compact() {
 		return
 	}
 	compacted := make(map[K]*entry[K, V], remaining)
-	for key, item := range m.entries {
-		compacted[key] = item
-	}
+	maps.Copy(compacted, m.entries)
 	m.entries = compacted
 	m.mapPeak = remaining
 }

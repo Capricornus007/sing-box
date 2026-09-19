@@ -7,16 +7,16 @@ import (
 	"net/netip"
 	"os"
 	"runtime"
-	"sync"
 
-	"github.com/amnezia-vpn/amneziawg-go/device"
-	wgTun "github.com/amnezia-vpn/amneziawg-go/tun"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/service"
+
+	"github.com/amnezia-vpn/amneziawg-go/device"
+	wgTun "github.com/amnezia-vpn/amneziawg-go/tun"
 )
 
 var _ Device = (*systemDevice)(nil)
@@ -27,7 +27,6 @@ type systemDevice struct {
 	device      tun.Tun
 	batchDevice tun.LinuxTUN
 	events      chan wgTun.Event
-	closeOnce   sync.Once
 }
 
 func newSystemDevice(options DeviceOptions) (*systemDevice, error) {
@@ -119,7 +118,7 @@ func (w *systemDevice) Write(bufs [][]byte, offset int) (count int, err error) {
 	} else {
 		for _, packet := range bufs {
 			if tun.PacketOffset > 0 {
-				common.ClearArray(packet[offset-tun.PacketOffset : offset])
+				clear(packet[offset-tun.PacketOffset : offset])
 				tun.PacketFillHeader(packet[offset-tun.PacketOffset:], tun.PacketIPVersion(packet[offset:]))
 			}
 			_, err = w.device.Write(packet[offset-tun.PacketOffset:])

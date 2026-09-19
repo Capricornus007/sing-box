@@ -9,11 +9,12 @@ import (
 	"math/rand"
 	"net"
 
-	utls "github.com/metacubex/utls"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/experimental/adblock/consts"
 	"github.com/sagernet/sing-box/experimental/adblock/ctx"
 	E "github.com/sagernet/sing/common/exceptions"
+
+	utls "github.com/metacubex/utls"
 	"golang.org/x/net/http2"
 )
 

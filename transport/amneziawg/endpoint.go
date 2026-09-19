@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/amnezia-vpn/amneziawg-go/device"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
@@ -19,6 +18,7 @@ import (
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/pause"
 
+	"github.com/amnezia-vpn/amneziawg-go/device"
 	"go4.org/netipx"
 )
 
@@ -55,7 +55,7 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 		}
 		if rawPeer.Endpoint.Addr.IsValid() {
 			peer.endpoint = rawPeer.Endpoint.AddrPort()
-		} else if rawPeer.Endpoint.IsFqdn() {
+		} else if rawPeer.Endpoint.IsFqdn() { //nolint:staticcheck // strict FQDN gate preserved; M.IsDomain change would silently widen accepted endpoint values
 			peer.destination = rawPeer.Endpoint
 		}
 		publicKeyBytes, err := base64.StdEncoding.DecodeString(rawPeer.PublicKey)
@@ -122,13 +122,13 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 
 func (e *Endpoint) Start(resolve bool) error {
 	if common.Any(e.peers, func(peer peerConfig) bool {
-		return !peer.endpoint.IsValid() && peer.destination.IsFqdn()
+		return !peer.endpoint.IsValid() && peer.destination.IsFqdn() //nolint:staticcheck // strict FQDN gate preserved; M.IsDomain change would silently widen accepted endpoint values
 	}) {
 		if !resolve {
 			return nil
 		}
 		for peerIndex, peer := range e.peers {
-			if peer.endpoint.IsValid() || !peer.destination.IsFqdn() {
+			if peer.endpoint.IsValid() || !peer.destination.IsFqdn() { //nolint:staticcheck // strict FQDN gate preserved; M.IsDomain change would silently widen accepted endpoint values
 				continue
 			}
 			destinationAddress, err := e.options.ResolvePeer(peer.destination.Fqdn)
@@ -163,22 +163,23 @@ func (e *Endpoint) Start(resolve bool) error {
 		return err
 	}
 	logger := &device.Logger{
-		Verbosef: func(format string, args ...interface{}) {
+		Verbosef: func(format string, args ...any) {
 			e.options.Logger.Debug(fmt.Sprintf(strings.ToLower(format), args...))
 		},
-		Errorf: func(format string, args ...interface{}) {
+		Errorf: func(format string, args ...any) {
 			e.options.Logger.Error(fmt.Sprintf(strings.ToLower(format), args...))
 		},
 	}
 	wgDevice := device.NewDevice(e.tunDevice, bind, logger)
 	e.tunDevice.SetDevice(wgDevice)
-	ipcConf := e.ipcConf
+	var ipcConf strings.Builder
+	ipcConf.WriteString(e.ipcConf)
 	for _, peer := range e.peers {
-		ipcConf += peer.GenerateIpcLines()
+		ipcConf.WriteString(peer.GenerateIpcLines())
 	}
-	err = wgDevice.IpcSet(ipcConf)
+	err = wgDevice.IpcSet(ipcConf.String())
 	if err != nil {
-		return E.Cause(err, "setup wireguard: \n", ipcConf)
+		return E.Cause(err, "setup wireguard: \n", ipcConf.String())
 	}
 	e.device = wgDevice
 	e.pause = service.FromContext[pause.Manager](e.options.Context)
@@ -232,20 +233,21 @@ type peerConfig struct {
 }
 
 func (c peerConfig) GenerateIpcLines() string {
-	ipcLines := "\npublic_key=" + c.publicKeyHex
+	var ipcLines strings.Builder
+	ipcLines.WriteString("\npublic_key=" + c.publicKeyHex)
 	if c.endpoint.IsValid() {
-		ipcLines += "\nendpoint=" + c.endpoint.String()
+		ipcLines.WriteString("\nendpoint=" + c.endpoint.String())
 	}
 	if c.preSharedKeyHex != "" {
-		ipcLines += "\npreshared_key=" + c.preSharedKeyHex
+		ipcLines.WriteString("\npreshared_key=" + c.preSharedKeyHex)
 	}
 	for _, allowedIP := range c.allowedIPs {
-		ipcLines += "\nallowed_ip=" + allowedIP.String()
+		ipcLines.WriteString("\nallowed_ip=" + allowedIP.String())
 	}
 	if c.keepalive > 0 {
-		ipcLines += "\npersistent_keepalive_interval=" + F.ToString(c.keepalive)
+		ipcLines.WriteString("\npersistent_keepalive_interval=" + F.ToString(c.keepalive))
 	}
-	return ipcLines
+	return ipcLines.String()
 }
 
 // generateAmneziaWGIpcLines emits the device-level AmneziaWG obfuscation

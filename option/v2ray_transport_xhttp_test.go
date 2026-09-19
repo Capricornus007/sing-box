@@ -1,11 +1,12 @@
 package option
 
 import (
-	"github.com/goccy/go-json"
 	"strings"
 	"testing"
 
 	Xbadoption "github.com/sagernet/sing-box/common/xray/json/badoption"
+
+	"github.com/goccy/go-json"
 )
 
 func TestV2RayXHTTPOptionsDefaults(t *testing.T) {

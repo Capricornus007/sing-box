@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/goccy/go-json"
 	"net/http"
 	"time"
+
+	"github.com/goccy/go-json"
 )
 
 type CloudflareApi struct {

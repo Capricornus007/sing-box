@@ -20,6 +20,7 @@ import (
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/contrab/freelru"
 	"github.com/sagernet/sing/service"
+
 	"golang.org/x/net/http2"
 )
 

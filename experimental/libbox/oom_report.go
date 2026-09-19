@@ -44,6 +44,7 @@ func OOMRecorderOptions(startedService *daemon.StartedService) oomkiller.Recorde
 		Logger:      log.StdLogger(),
 		AcceptDraft: acceptOOMDraft,
 		MetadataCallback: func(status oomkiller.ReportStatus) any {
+			//nolint:modernize // StartedAt is a promoted field of the embedded reportMetadata; it cannot be moved into the struct literal because reportMetadata is already initialized there (go vet: cannot specify promoted field and enclosing embedded field).
 			metadata := oomReportMetadata{
 				reportMetadata: baseReportMetadata(),
 				RecordedAt:     status.RecordedAt.UTC().Format(time.RFC3339),

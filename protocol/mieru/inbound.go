@@ -27,7 +27,6 @@ import (
 	mieruserver "github.com/enfein/mieru/v3/apis/server"
 	mierutp "github.com/enfein/mieru/v3/apis/trafficpattern"
 	mierupb "github.com/enfein/mieru/v3/pkg/appctl/appctlpb"
-	"google.golang.org/protobuf/proto"
 )
 
 func RegisterInbound(registry *inbound.Registry) {
@@ -237,7 +236,7 @@ func (c *mieruPacketConn) WritePacket(buffer *buf.Buffer, destination M.Socksadd
 	common.Must(header.WriteZeroN(3))
 
 	var addr mierumodel.AddrSpec
-	if destination.IsFqdn() {
+	if destination.IsFqdn() { //nolint:staticcheck // keep strict FQDN gate to preserve mieru address resolution; M.IsDomain change would alter which destinations fall into the FQDN branch
 		addr.FQDN = destination.Fqdn
 	} else {
 		addr.IP = destination.Addr.AsSlice()
@@ -274,13 +273,13 @@ func buildMieruServerConfig(_ context.Context, options option.MieruInboundOption
 	var portBindings []*mierupb.PortBinding
 	if options.ListenOptions.ListenPort != 0 {
 		portBindings = append(portBindings, &mierupb.PortBinding{
-			Port:     proto.Int32(int32(options.ListenOptions.ListenPort)),
+			Port:     new(int32(options.ListenOptions.ListenPort)),
 			Protocol: transportProtocol,
 		})
 	}
 	for _, portRange := range options.ListenPorts {
 		portBindings = append(portBindings, &mierupb.PortBinding{
-			PortRange: proto.String(portRange),
+			PortRange: new(portRange),
 			Protocol:  transportProtocol,
 		})
 	}
@@ -289,8 +288,8 @@ func buildMieruServerConfig(_ context.Context, options option.MieruInboundOption
 	userNames := make([]string, 0, len(options.Users))
 	for _, user := range options.Users {
 		users = append(users, &mierupb.User{
-			Name:     proto.String(user.Name),
-			Password: proto.String(user.Password),
+			Name:     new(user.Name),
+			Password: new(user.Password),
 		})
 		userNames = append(userNames, user.Name)
 	}
@@ -298,7 +297,7 @@ func buildMieruServerConfig(_ context.Context, options option.MieruInboundOption
 	var advancedSettings *mierupb.ServerAdvancedSettings
 	if options.UserHintIsMandatory {
 		advancedSettings = &mierupb.ServerAdvancedSettings{
-			UserHintIsMandatory: proto.Bool(true),
+			UserHintIsMandatory: new(true),
 		}
 	}
 	return &mieruserver.ServerConfig{

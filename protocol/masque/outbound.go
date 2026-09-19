@@ -3,7 +3,6 @@ package masque
 import (
 	"context"
 	"encoding/base64"
-	"github.com/goccy/go-json"
 	"net"
 	"net/netip"
 	"time"
@@ -25,6 +24,8 @@ import (
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/service"
+
+	"github.com/goccy/go-json"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -178,9 +179,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			Name:   options.Name,
 			CreateDialer: func(interfaceName string) N.Dialer {
 				return common.Must1(dialer.NewDefault(ctx, option.DialerOptions{
-					AbstractDialerOptions: option.AbstractDialerOptions{
-						BindInterface: interfaceName,
-					},
+					BindInterface: interfaceName,
 				}))
 			},
 			Dialer: outboundDialer,

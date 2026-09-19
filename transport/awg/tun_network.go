@@ -5,10 +5,11 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/amnezia-vpn/amneziawg-go/v3/tun"
-	"github.com/amnezia-vpn/amneziawg-go/v3/tun/netstack"
 	"github.com/sagernet/sing-box/common/interrupt"
 	"github.com/sagernet/sing/common/metadata"
+
+	"github.com/amnezia-vpn/amneziawg-go/v3/tun"
+	"github.com/amnezia-vpn/amneziawg-go/v3/tun/netstack"
 )
 
 type networkTun struct {

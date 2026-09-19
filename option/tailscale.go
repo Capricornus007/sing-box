@@ -126,7 +126,7 @@ func (d *DERPVerifyClientURLOptions) UnmarshalJSON(bytes []byte) error {
 	err := json.Unmarshal(bytes, &stringValue)
 	if err == nil {
 		*d = DERPVerifyClientURLOptions{
-			_DERPVerifyClientURLBase: _DERPVerifyClientURLBase{URL: stringValue},
+			URL: stringValue,
 		}
 		return nil
 	}
@@ -167,11 +167,10 @@ type _DERPSTUNListenOptions struct {
 type DERPSTUNListenOptions _DERPSTUNListenOptions
 
 func (d DERPSTUNListenOptions) MarshalJSON() ([]byte, error) {
+	//nolint:staticcheck // S1016 would convert d to _DERPSTUNListenOptions and preserve every ListenOptions field; the intent here is to zero out all fields except Enabled and ListenPort so the subsequent equality check detects "only Enabled + ListenPort are set"
 	portOptions := _DERPSTUNListenOptions{
-		Enabled: d.Enabled,
-		ListenOptions: ListenOptions{
-			ListenPort: d.ListenPort,
-		},
+		Enabled:    d.Enabled,
+		ListenPort: d.ListenPort,
 	}
 	if _DERPSTUNListenOptions(d) == portOptions {
 		return json.Marshal(d.Enabled)

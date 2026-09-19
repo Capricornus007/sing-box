@@ -1,3 +1,4 @@
+//nolint:unused // blockedError + its methods are only referenced from with_adblock-tagged files (dns.go, service_handlers_block.go); default lint build excludes that tag so they look dead but are live under the adblock build
 package adblock
 
 import (

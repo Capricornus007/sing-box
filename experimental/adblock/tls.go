@@ -27,6 +27,7 @@ import (
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/common/ntp"
 	"github.com/sagernet/sing/contrab/freelru"
+
 	"golang.org/x/sync/singleflight"
 )
 

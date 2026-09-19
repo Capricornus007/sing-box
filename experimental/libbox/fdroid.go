@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/tls"
-	"github.com/goccy/go-json"
 	"io"
 	"net"
 	"net/http"
@@ -18,6 +17,8 @@ import (
 	"time"
 
 	E "github.com/sagernet/sing/common/exceptions"
+
+	"github.com/goccy/go-json"
 )
 
 const fdroidUserAgent = "F-Droid 1.21.1"

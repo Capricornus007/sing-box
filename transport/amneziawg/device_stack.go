@@ -7,8 +7,6 @@ import (
 	"net"
 	"os"
 
-	"github.com/amnezia-vpn/amneziawg-go/device"
-	wgTun "github.com/amnezia-vpn/amneziawg-go/tun"
 	"github.com/sagernet/gvisor/pkg/buffer"
 	"github.com/sagernet/gvisor/pkg/tcpip"
 	"github.com/sagernet/gvisor/pkg/tcpip/adapters/gonet"
@@ -22,6 +20,9 @@ import (
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
+
+	"github.com/amnezia-vpn/amneziawg-go/device"
+	wgTun "github.com/amnezia-vpn/amneziawg-go/tun"
 )
 
 var _ Device = (*stackDevice)(nil)

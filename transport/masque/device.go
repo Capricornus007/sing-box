@@ -3,6 +3,7 @@ package masque
 import (
 	"context"
 	"net/netip"
+	"slices"
 	"sync"
 	"time"
 
@@ -69,12 +70,10 @@ func (p *flowPort) PortMTU() uint32 {
 func (p *flowPort) AttachReturn(returnPath tun.Return) error {
 	p.returnAccess.Lock()
 	defer p.returnAccess.Unlock()
-	for _, existing := range p.returnPaths {
-		if existing == returnPath {
-			return nil
-		}
+	if slices.Contains(p.returnPaths, returnPath) {
+		return nil
 	}
-	p.returnPaths = append(p.returnPaths[:len(p.returnPaths):len(p.returnPaths)], returnPath)
+	p.returnPaths = append(slices.Clip(p.returnPaths), returnPath)
 	return nil
 }
 

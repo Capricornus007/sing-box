@@ -4,7 +4,6 @@ package adblock
 
 import (
 	"context"
-	"github.com/goccy/go-json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +14,8 @@ import (
 	"github.com/sagernet/sing-box/experimental/adblock/db"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+
+	"github.com/goccy/go-json"
 )
 
 func mustFilterListOption(t *testing.T, url string) option.AdblockFilterList {

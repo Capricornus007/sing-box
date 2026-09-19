@@ -52,7 +52,7 @@ func (c OCMCredential) MarshalJSON() ([]byte, error) {
 	default:
 		return nil, E.New("unknown credential type: ", c.Type)
 	}
-	return badjson.MarshallObjects((_OCMCredential)(c), v)
+	return badjson.MarshallObjects(_OCMCredential(c), v)
 }
 
 func (c *OCMCredential) UnmarshalJSON(bytes []byte) error {

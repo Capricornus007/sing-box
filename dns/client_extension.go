@@ -7,15 +7,17 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/miekg/dns"
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	E "github.com/sagernet/sing/common/exceptions"
+
+	"github.com/miekg/dns"
 )
 
+//nolint:unused // retained for downstream fork compatibility (hawkff/1.12.x+ and Capricornus007/hawkff feature lines still call this from dns/client.go); removing would break their A/AAAA split-exchange path
 func (c *Client) lookupToExchange_A_AAAA(ctx context.Context, transport adapter.DNSTransport, dnsName string, strategy C.DomainStrategy, options adapter.DNSQueryOptions, responseChecker func(response *dns.Msg) bool) ([]netip.Addr, []netip.Addr, error) {
-	var response4 []netip.Addr = []netip.Addr{}
-	var response6 []netip.Addr = []netip.Addr{}
+	response4 := []netip.Addr{}
+	response6 := []netip.Addr{}
 	dnsQueryTypes := []uint16{dns.TypeA, dns.TypeAAAA}
 	var returnError error
 	var count atomic.Int64

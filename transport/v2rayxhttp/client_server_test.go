@@ -28,6 +28,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
+
 	"golang.org/x/net/http2"
 )
 
@@ -271,12 +272,10 @@ func TestClientDialContextUsesCustomSessionID(t *testing.T) {
 	}
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path:            "/xhttp",
-				SessionIDTable:  "ab",
-				SessionIDLength: Xbadoption.Range{From: 32, To: 32},
-			},
-			Mode: "packet-up",
+			Path:            "/xhttp",
+			SessionIDTable:  "ab",
+			SessionIDLength: Xbadoption.Range{From: 32, To: 32},
+			Mode:            "packet-up",
 		},
 		baseRequestURL:  url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
 		baseRequestURL2: url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
@@ -316,12 +315,10 @@ func TestClientDialContextStreamOneKeepsEmptySessionID(t *testing.T) {
 	}
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path:            "/xhttp",
-				SessionIDTable:  "ab",
-				SessionIDLength: Xbadoption.Range{From: 32, To: 32},
-			},
-			Mode: "stream-one",
+			Path:            "/xhttp",
+			SessionIDTable:  "ab",
+			SessionIDLength: Xbadoption.Range{From: 32, To: 32},
+			Mode:            "stream-one",
 		},
 		baseRequestURL: url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
 		getHTTPClient: func() (DialerClient, *XmuxClient, error) {
@@ -345,15 +342,13 @@ func TestClientDialContextStreamOneKeepsEmptySessionID(t *testing.T) {
 
 func TestXHTTPProfileOptionsPrimaryAndLegacyMerge(t *testing.T) {
 	base := option.V2RayXHTTPOptions{
-		V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-			SessionIDPlacement: option.PlacementHeader,
-			SessionIDKey:       "X-New-Session",
-			SessionPlacement:   option.PlacementHeader,
-			SessionKey:         "X-Legacy-Session",
-			SessionIDTable:     "ab",
-			SessionIDLength:    Xbadoption.Range{From: 32, To: 32},
-		},
-		Mode: "packet-up",
+		SessionIDPlacement: option.PlacementHeader,
+		SessionIDKey:       "X-New-Session",
+		SessionPlacement:   option.PlacementHeader,
+		SessionKey:         "X-Legacy-Session",
+		SessionIDTable:     "ab",
+		SessionIDLength:    Xbadoption.Range{From: 32, To: 32},
+		Mode:               "packet-up",
 	}
 	primary := xhttpProfileOptions(base, xhttpSessionProfilePrimary)
 	if primary.GetNormalizedSessionKey() != "X-New-Session" {
@@ -376,13 +371,11 @@ func TestXHTTPProfileOptionsPrimaryAndLegacyMerge(t *testing.T) {
 
 func TestXHTTPFallbackProfileKindsSessionCombinations(t *testing.T) {
 	options := &option.V2RayXHTTPOptions{
-		V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-			SessionIDPlacement: option.PlacementHeader,
-			SessionIDKey:       "X-New-Session",
-			SessionPlacement:   option.PlacementCookie,
-			SessionKey:         "legacy_session",
-		},
-		Mode: "packet-up",
+		SessionIDPlacement: option.PlacementHeader,
+		SessionIDKey:       "X-New-Session",
+		SessionPlacement:   option.PlacementCookie,
+		SessionKey:         "legacy_session",
+		Mode:               "packet-up",
 	}
 	kinds := xhttpFallbackProfileKinds(options)
 	expectedKinds := []xhttpSessionProfileKind{
@@ -453,11 +446,9 @@ func TestXHTTPFallbackProfileKindsDisabledWhenPairsUnavailable(t *testing.T) {
 
 func TestXHTTPProfileOptionsPrimaryKeepsLegacyOnlySession(t *testing.T) {
 	base := option.V2RayXHTTPOptions{
-		V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-			SessionPlacement: option.PlacementHeader,
-			SessionKey:       "X-Legacy-Session",
-		},
-		Mode: "packet-up",
+		SessionPlacement: option.PlacementHeader,
+		SessionKey:       "X-Legacy-Session",
+		Mode:             "packet-up",
 	}
 	primary := xhttpProfileOptions(base, xhttpSessionProfilePrimary)
 	if primary.GetNormalizedSessionPlacement() != option.PlacementHeader {
@@ -491,14 +482,12 @@ func TestClientDialContextFallsBackToLegacyProfile(t *testing.T) {
 	var output bytes.Buffer
 	factory := newBufferLogger(t.Context(), &output)
 	primaryOptions := &option.V2RayXHTTPOptions{
-		V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-			Path:               "/xhttp",
-			SessionIDPlacement: option.PlacementHeader,
-			SessionIDKey:       "X-New-Session",
-			SessionPlacement:   option.PlacementHeader,
-			SessionKey:         "X-Legacy-Session",
-		},
-		Mode: "packet-up",
+		Path:               "/xhttp",
+		SessionIDPlacement: option.PlacementHeader,
+		SessionIDKey:       "X-New-Session",
+		SessionPlacement:   option.PlacementHeader,
+		SessionKey:         "X-Legacy-Session",
+		Mode:               "packet-up",
 	}
 	fallbackOptionsValue := xhttpProfileOptions(*primaryOptions, xhttpSessionProfileLegacy)
 	fallbackOptions := &fallbackOptionsValue
@@ -554,14 +543,12 @@ func TestClientDialContextReturnsFailureWhenFallbackProbesFail(t *testing.T) {
 	primaryErr := errors.New("primary failed")
 	fallbackErr := errors.New("fallback failed")
 	primaryOptions := &option.V2RayXHTTPOptions{
-		V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-			Path:               "/xhttp",
-			SessionIDPlacement: option.PlacementHeader,
-			SessionIDKey:       "X-New-Session",
-			SessionPlacement:   option.PlacementHeader,
-			SessionKey:         "X-Legacy-Session",
-		},
-		Mode: "packet-up",
+		Path:               "/xhttp",
+		SessionIDPlacement: option.PlacementHeader,
+		SessionIDKey:       "X-New-Session",
+		SessionPlacement:   option.PlacementHeader,
+		SessionKey:         "X-Legacy-Session",
+		Mode:               "packet-up",
 	}
 	fallbackOptionsValue := xhttpProfileOptions(*primaryOptions, xhttpSessionProfileLegacy)
 	fallbackOptions := &fallbackOptionsValue
@@ -610,14 +597,12 @@ func TestClientDialContextConcurrentFallbackProbesOnce(t *testing.T) {
 	var output synchronizedBuffer
 	factory := newBufferLogger(t.Context(), &output)
 	primaryOptions := &option.V2RayXHTTPOptions{
-		V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-			Path:               "/xhttp",
-			SessionIDPlacement: option.PlacementHeader,
-			SessionIDKey:       "X-New-Session",
-			SessionPlacement:   option.PlacementHeader,
-			SessionKey:         "X-Legacy-Session",
-		},
-		Mode: "packet-up",
+		Path:               "/xhttp",
+		SessionIDPlacement: option.PlacementHeader,
+		SessionIDKey:       "X-New-Session",
+		SessionPlacement:   option.PlacementHeader,
+		SessionKey:         "X-Legacy-Session",
+		Mode:               "packet-up",
 	}
 	fallbackOptionsValue := xhttpProfileOptions(*primaryOptions, xhttpSessionProfileLegacy)
 	fallbackOptions := &fallbackOptionsValue
@@ -650,15 +635,13 @@ func TestClientDialContextConcurrentFallbackProbesOnce(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make(chan error, dialCount)
 	for range dialCount {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			conn, err := client.DialContext(t.Context())
 			if err == nil {
 				closeSilently(conn)
 			}
 			errs <- err
-		}()
+		})
 	}
 	eventually(t, time.Second, func() bool {
 		return fallbackCalls.Load() == 1
@@ -687,14 +670,12 @@ func TestClientDialContextConcurrentFallbackProbesOnce(t *testing.T) {
 
 func TestClientDialContextFallbackProbeIgnoresRequestTimeout(t *testing.T) {
 	primaryOptions := &option.V2RayXHTTPOptions{
-		V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-			Path:               "/xhttp",
-			SessionIDPlacement: option.PlacementHeader,
-			SessionIDKey:       "X-New-Session",
-			SessionPlacement:   option.PlacementHeader,
-			SessionKey:         "X-Legacy-Session",
-		},
-		Mode: "packet-up",
+		Path:               "/xhttp",
+		SessionIDPlacement: option.PlacementHeader,
+		SessionIDKey:       "X-New-Session",
+		SessionPlacement:   option.PlacementHeader,
+		SessionKey:         "X-Legacy-Session",
+		Mode:               "packet-up",
 	}
 	fallbackOptionsValue := xhttpProfileOptions(*primaryOptions, xhttpSessionProfileLegacy)
 	fallbackOptions := &fallbackOptionsValue
@@ -759,14 +740,12 @@ func TestClientDialContextFallbackProbeIgnoresRequestTimeout(t *testing.T) {
 
 func TestClientDialContextStallsNewDialsDuringFallbackProbe(t *testing.T) {
 	primaryOptions := &option.V2RayXHTTPOptions{
-		V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-			Path:               "/xhttp",
-			SessionIDPlacement: option.PlacementHeader,
-			SessionIDKey:       "X-New-Session",
-			SessionPlacement:   option.PlacementHeader,
-			SessionKey:         "X-Legacy-Session",
-		},
-		Mode: "packet-up",
+		Path:               "/xhttp",
+		SessionIDPlacement: option.PlacementHeader,
+		SessionIDKey:       "X-New-Session",
+		SessionPlacement:   option.PlacementHeader,
+		SessionKey:         "X-Legacy-Session",
+		Mode:               "packet-up",
 	}
 	fallbackOptionsValue := xhttpProfileOptions(*primaryOptions, xhttpSessionProfileLegacy)
 	fallbackOptions := &fallbackOptionsValue
@@ -843,15 +822,13 @@ func TestClientDialContextStallsNewDialsDuringFallbackProbe(t *testing.T) {
 
 func TestClientPacketUpUsesResolvedFallbackForRotatedPosts(t *testing.T) {
 	primaryOptions := &option.V2RayXHTTPOptions{
-		V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-			Path:               "/xhttp",
-			SessionIDPlacement: option.PlacementHeader,
-			SessionIDKey:       "X-New-Session",
-			SessionPlacement:   option.PlacementHeader,
-			SessionKey:         "X-Legacy-Session",
-			ScMaxEachPostBytes: &Xbadoption.Range{From: 4, To: 4},
-		},
-		Mode: "packet-up",
+		Path:               "/xhttp",
+		SessionIDPlacement: option.PlacementHeader,
+		SessionIDKey:       "X-New-Session",
+		SessionPlacement:   option.PlacementHeader,
+		SessionKey:         "X-Legacy-Session",
+		ScMaxEachPostBytes: &Xbadoption.Range{From: 4, To: 4},
+		Mode:               "packet-up",
 	}
 	fallbackOptionsValue := xhttpProfileOptions(*primaryOptions, xhttpSessionProfileLegacy)
 	fallbackOptions := &fallbackOptionsValue
@@ -1054,9 +1031,7 @@ func newClientDialLoggingTestClient(logger logger.ContextLogger) *Client {
 	dialerClient := &stubDialerClient{}
 	return &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path: "/xhttp",
-			},
+			Path: "/xhttp",
 			Mode: "stream-one",
 		},
 		dest:            M.Socksaddr{Fqdn: "example.com", Port: 443},
@@ -1213,11 +1188,9 @@ func TestClientPacketUpZeroPostSizeDoesNotPanic(t *testing.T) {
 	dialerClient := &stubDialerClient{}
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path:               "/xhttp",
-				ScMaxEachPostBytes: &Xbadoption.Range{},
-			},
-			Mode: "packet-up",
+			Path:               "/xhttp",
+			ScMaxEachPostBytes: &Xbadoption.Range{},
+			Mode:               "packet-up",
 		},
 		baseRequestURL:  url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
 		baseRequestURL2: url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
@@ -1265,11 +1238,9 @@ func TestClientPacketUpPostPacketErrorClosesBodyAndReleasesXmux(t *testing.T) {
 	xmux.LeftRequests.Store(10)
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path:               "/xhttp",
-				ScMaxEachPostBytes: &Xbadoption.Range{From: 4, To: 4},
-			},
-			Mode: "packet-up",
+			Path:               "/xhttp",
+			ScMaxEachPostBytes: &Xbadoption.Range{From: 4, To: 4},
+			Mode:               "packet-up",
 		},
 		baseRequestURL:  url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
 		baseRequestURL2: url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
@@ -1336,13 +1307,11 @@ func TestClientPacketUpDoesNotUseBufferedPostsAsClientPostLimit(t *testing.T) {
 	}
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path:                 "/xhttp",
-				ScMaxEachPostBytes:   &Xbadoption.Range{From: 1, To: 1},
-				ScMinPostsIntervalMs: &Xbadoption.Range{From: 1, To: 1},
-				ScMaxBufferedPosts:   1,
-			},
-			Mode: "packet-up",
+			Path:                 "/xhttp",
+			ScMaxEachPostBytes:   &Xbadoption.Range{From: 1, To: 1},
+			ScMinPostsIntervalMs: &Xbadoption.Range{From: 1, To: 1},
+			ScMaxBufferedPosts:   1,
+			Mode:                 "packet-up",
 		},
 		baseRequestURL:  url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
 		baseRequestURL2: url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
@@ -1405,9 +1374,7 @@ func TestClientPacketUpPostUsageDoesNotConsumeXmuxConcurrency(t *testing.T) {
 	var firstXmux *XmuxClient
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path: "/xhttp",
-			},
+			Path: "/xhttp",
 			Mode: "packet-up",
 		},
 		baseRequestURL:  url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
@@ -1462,9 +1429,7 @@ func TestClientPacketUpWithoutDownloadUsesSingleXmuxSelection(t *testing.T) {
 	var downloadGets atomic.Int32
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path: "/xhttp",
-			},
+			Path: "/xhttp",
 			Mode: "packet-up",
 		},
 		baseRequestURL:  url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
@@ -1509,9 +1474,7 @@ func TestClientPacketUpWithDownloadUsesSeparateXmuxSelection(t *testing.T) {
 	var downloadGets atomic.Int32
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path: "/xhttp",
-			},
+			Path: "/xhttp",
 			Mode: "packet-up",
 		},
 		downloadDest:    &downloadDest,
@@ -1743,9 +1706,7 @@ func TestClientPacketUpReleasesRotatedXmuxAfterPost(t *testing.T) {
 	var uploadGets atomic.Int32
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path: "/xhttp",
-			},
+			Path: "/xhttp",
 			Mode: "packet-up",
 		},
 		downloadDest:    &downloadDest,
@@ -1843,9 +1804,7 @@ func TestClientPacketUpSharedXmuxKeepsDownloadUsageUntilConnectionClose(t *testi
 
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path: "/xhttp",
-			},
+			Path: "/xhttp",
 			Mode: "packet-up",
 		},
 		baseRequestURL:  url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
@@ -1964,9 +1923,7 @@ func TestClientStreamModesReleaseRetiredXmuxOnConnectionClose(t *testing.T) {
 
 			client := &Client{
 				options: &option.V2RayXHTTPOptions{
-					V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-						Path: "/xhttp",
-					},
+					Path: "/xhttp",
 					Mode: test.mode,
 				},
 				downloadDest:    downloadDest,
@@ -2071,9 +2028,7 @@ func TestClientStreamCloseWriteEndsUploadBodyOnly(t *testing.T) {
 			}
 			client := &Client{
 				options: &option.V2RayXHTTPOptions{
-					V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-						Path: "/xhttp",
-					},
+					Path: "/xhttp",
 					Mode: test.mode,
 				},
 				baseRequestURL:  url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},
@@ -2659,7 +2614,7 @@ func TestCreateHTTPClientTracksRawConnBeforeTLSHandshake(t *testing.T) {
 	dialer := &stubNetworkDialer{dial: func(context.Context, string, M.Socksaddr) (net.Conn, error) {
 		return &emptyReadConn{Conn: clientConn}, nil
 	}}
-	tlsConfig := &recordingTLSConfig{fakeTLSConfig: fakeTLSConfig{nextProtos: []string{http2.NextProtoTLS}}}
+	tlsConfig := &recordingTLSConfig{nextProtos: []string{http2.NextProtoTLS}}
 	client := createHTTPClient(
 		M.Socksaddr{Fqdn: "example.com", Port: 443},
 		dialer,
@@ -2698,8 +2653,8 @@ func TestCreateHTTPClientReleasesRawConnAfterTLSHandshakeFailure(t *testing.T) {
 	}}
 	handshakeErr := errors.New("handshake failed")
 	tlsConfig := &recordingTLSConfig{
-		fakeTLSConfig: fakeTLSConfig{nextProtos: []string{http2.NextProtoTLS}},
-		handshakeErr:  handshakeErr,
+		nextProtos:   []string{http2.NextProtoTLS},
+		handshakeErr: handshakeErr,
 	}
 	client := createHTTPClient(
 		M.Socksaddr{Fqdn: "example.com", Port: 443},
@@ -2794,9 +2749,7 @@ func TestClientResetClosesXmuxManagersWithoutClosingClient(t *testing.T) {
 	})
 	client := &Client{
 		options: &option.V2RayXHTTPOptions{
-			V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{
-				Path: "/xhttp",
-			},
+			Path: "/xhttp",
 			Mode: "stream-one",
 		},
 		baseRequestURL: url.URL{Scheme: "https", Host: "example.com", Path: "/xhttp"},

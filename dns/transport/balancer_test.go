@@ -420,14 +420,12 @@ func TestBalancerFirstQueryMeasurementIsShared(t *testing.T) {
 	})
 	var wg sync.WaitGroup
 	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, err := balancer.Exchange(context.Background(), testQuery())
 			if err != nil {
 				t.Error(err)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if created["first"].calls.Load() != 5 || created["second"].calls.Load() != 1 {

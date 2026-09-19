@@ -46,7 +46,7 @@ type Router struct {
 	neighborResolver  adapter.NeighborResolver
 	pauseManager      pause.Manager
 	trackers          []adapter.ConnectionTracker
-	nekoTracker       adapter.ConnectionTracker
+	nekoTracker       adapter.ConnectionTracker //nolint:unused // reserved slot for the NekoBox+ connection-tracker patch stream; not yet wired into the current RouteConnection/RoutePacketConnection bodies
 	platformInterface adapter.PlatformInterface
 	started           bool
 }

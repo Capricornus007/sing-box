@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/amnezia-vpn/amneziawg-go/conn"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -16,6 +15,8 @@ import (
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/pause"
+
+	"github.com/amnezia-vpn/amneziawg-go/conn"
 )
 
 var _ conn.Bind = (*ClientBind)(nil)
@@ -136,7 +137,7 @@ func (c *ClientBind) receive(packets [][]byte, sizes []int, eps []conn.Endpoint)
 	sizes[0] = n
 	if n > 3 {
 		b := packets[0]
-		common.ClearArray(b[1:4])
+		clear(b[1:4])
 	}
 	eps[0] = remoteEndpoint(M.SocksaddrFromNet(addr).Unwrap().AddrPort())
 	count = 1
@@ -242,16 +243,16 @@ func (e remoteEndpoint) SrcToString() string {
 }
 
 func (e remoteEndpoint) DstToString() string {
-	return (netip.AddrPort)(e).String()
+	return netip.AddrPort(e).String()
 }
 
 func (e remoteEndpoint) DstToBytes() []byte {
-	b, _ := (netip.AddrPort)(e).MarshalBinary()
+	b, _ := netip.AddrPort(e).MarshalBinary()
 	return b
 }
 
 func (e remoteEndpoint) DstIP() netip.Addr {
-	return (netip.AddrPort)(e).Addr()
+	return netip.AddrPort(e).Addr()
 }
 
 func (e remoteEndpoint) SrcIP() netip.Addr {

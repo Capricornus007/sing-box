@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"runtime"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,12 +34,7 @@ const (
 
 // Is returns true if current State is one of the candidates.
 func (s State) Is(states ...State) bool {
-	for _, state := range states {
-		if s == state {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(states, s)
 }
 
 func nowMillisec() int64 {
@@ -84,10 +80,7 @@ func (info *RoundTripInfo) Update(rtt uint32, current uint32) {
 			delta = info.srtt - rtt
 		}
 		info.variation = (3*info.variation + delta) / 4
-		info.srtt = (7*info.srtt + rtt) / 8
-		if info.srtt < info.minRtt {
-			info.srtt = info.minRtt
-		}
+		info.srtt = max((7*info.srtt+rtt)/8, info.minRtt)
 	}
 
 	var rto uint32
@@ -138,10 +131,10 @@ type Connection struct {
 	dataInput        chan struct{}
 	dataOutput       chan struct{}
 	Config           *Config
-	state            int32
-	stateBeginTime   uint32
-	lastIncomingTime uint32
-	lastPingTime     uint32
+	state            atomic.Int32
+	stateBeginTime   atomic.Uint32
+	lastIncomingTime atomic.Uint32
+	lastPingTime     atomic.Uint32
 	mss              uint32
 	roundTrip        *RoundTripInfo
 	receivingWorker  *ReceivingWorker
@@ -176,7 +169,7 @@ func NewConnection(meta ConnMetadata, writer PacketWriter, closer io.Closer, con
 	isTerminated := func() bool {
 		return conn.State() == StateTerminated
 	}
-	
+
 	conn.dataUpdater = NewUpdater(
 		config.GetTTIValue(),
 		func() bool {
@@ -199,13 +192,13 @@ func (c *Connection) Elapsed() uint32 {
 }
 
 func (c *Connection) State() State {
-	return State(atomic.LoadInt32(&c.state))
+	return State(c.state.Load())
 }
 
 func (c *Connection) SetState(state State) {
 	current := c.Elapsed()
-	atomic.StoreInt32(&c.state, int32(state))
-	atomic.StoreUint32(&c.stateBeginTime, current)
+	c.state.Store(int32(state))
+	c.stateBeginTime.Store(current)
 
 	switch state {
 	case StateReadyToClose:
@@ -263,7 +256,7 @@ func (c *Connection) OnPeerClosed() {
 
 func (c *Connection) Input(segments []Segment) {
 	current := c.Elapsed()
-	atomic.StoreUint32(&c.lastIncomingTime, current)
+	c.lastIncomingTime.Store(current)
 
 	for _, s := range segments {
 		if s.Conversation() != c.meta.Conversation {
@@ -322,7 +315,7 @@ func (c *Connection) Input(segments []Segment) {
 }
 
 func (c *Connection) waitForDataInput() error {
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		select {
 		case <-c.dataInput:
 			return nil
@@ -359,7 +352,7 @@ func (c *Connection) Read(b []byte) (int, error) {
 		if c.State().Is(StateReadyToClose, StateTerminating, StateTerminated) {
 			return 0, io.EOF
 		}
-		
+
 		nBytes := c.receivingWorker.Read(b)
 		if nBytes > 0 {
 			c.dataUpdater.WakeUp()
@@ -377,7 +370,7 @@ func (c *Connection) Read(b []byte) (int, error) {
 }
 
 func (c *Connection) waitForDataOutput() error {
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		select {
 		case <-c.dataOutput:
 			return nil
@@ -448,31 +441,31 @@ func (c *Connection) updateTask() {
 	if c.State() == StateTerminated {
 		return
 	}
-	if c.State() == StateActive && current-atomic.LoadUint32(&c.lastIncomingTime) >= 30000 {
+	if c.State() == StateActive && current-c.lastIncomingTime.Load() >= 30000 {
 		_ = c.Close()
 	}
 	if c.State() == StateReadyToClose && c.sendingWorker.IsEmpty() {
 		c.SetState(StateTerminating)
 	}
 	if c.State() == StateTerminating {
-		if current-atomic.LoadUint32(&c.stateBeginTime) > 8000 {
+		if current-c.stateBeginTime.Load() > 8000 {
 			c.SetState(StateTerminated)
 		} else {
 			c.Ping(current, CommandTerminate)
 		}
 		return
 	}
-	if c.State() == StatePeerTerminating && current-atomic.LoadUint32(&c.stateBeginTime) > 4000 {
+	if c.State() == StatePeerTerminating && current-c.stateBeginTime.Load() > 4000 {
 		c.SetState(StateTerminating)
 	}
-	if c.State() == StateReadyToClose && current-atomic.LoadUint32(&c.stateBeginTime) > 15000 {
+	if c.State() == StateReadyToClose && current-c.stateBeginTime.Load() > 15000 {
 		c.SetState(StateTerminating)
 	}
 
 	c.receivingWorker.Flush(current)
 	c.sendingWorker.Flush(current)
 
-	if current-atomic.LoadUint32(&c.lastPingTime) >= 3000 {
+	if current-c.lastPingTime.Load() >= 3000 {
 		c.Ping(current, CommandPing)
 	}
 
@@ -561,6 +554,6 @@ func (c *Connection) Ping(current uint32, cmd Command) {
 		seg.Option = SegmentOptionClose
 	}
 	c.output.Write(seg)
-	atomic.StoreUint32(&c.lastPingTime, current)
+	c.lastPingTime.Store(current)
 	seg.Release()
 }

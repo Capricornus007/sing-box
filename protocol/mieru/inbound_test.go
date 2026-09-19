@@ -3,9 +3,10 @@ package mieru
 import (
 	"testing"
 
+	"github.com/sagernet/sing-box/option"
+
 	mierutp "github.com/enfein/mieru/v3/apis/trafficpattern"
 	mierupb "github.com/enfein/mieru/v3/pkg/appctl/appctlpb"
-	"github.com/sagernet/sing-box/option"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -18,10 +19,8 @@ func TestBuildMieruServerConfigPreservesTrafficPatternPadding(t *testing.T) {
 	})
 
 	config, _, err := buildMieruServerConfig(t.Context(), option.MieruInboundOptions{
-		ListenOptions: option.ListenOptions{
-			ListenPort: 25565,
-		},
-		Transport: "TCP",
+		ListenPort: 25565,
+		Transport:  "TCP",
 		Users: []option.MieruUser{
 			{
 				Name:     "minecraft",

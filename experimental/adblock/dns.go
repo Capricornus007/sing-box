@@ -7,11 +7,12 @@ import (
 	"net"
 	"strings"
 
-	mDNS "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/adblock/adblockrust"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+
+	mDNS "github.com/miekg/dns"
 	"golang.org/x/net/publicsuffix"
 )
 

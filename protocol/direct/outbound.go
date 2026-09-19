@@ -86,7 +86,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		fallbackDelay:  time.Duration(options.FallbackDelay),
 		dialer:         outboundDialer.(dialer.ParallelInterfaceDialer),
 		isEmpty: reflect.DeepEqual(options.DialerOptions, option.DialerOptions{
-			AbstractDialerOptions: option.AbstractDialerOptions{UDPFragmentDefault: true},
+			UDPFragmentDefault: true,
 		}),
 	}
 	//nolint:staticcheck
@@ -444,10 +444,7 @@ func sendFragmentedClientHello(conn *FragmentedClientHelloConn, clientHello []by
 	clientHelloData := clientHello[5:]
 	i := 0
 	for {
-		fragmentEnd := i + int(randBetween(int64(minFragmentSize), int64(maxFragmentSize)))
-		if fragmentEnd > clientHelloLen {
-			fragmentEnd = clientHelloLen
-		}
+		fragmentEnd := min(i+int(randBetween(int64(minFragmentSize), int64(maxFragmentSize))), clientHelloLen)
 
 		fragment := clientHelloData[i:fragmentEnd]
 		i = fragmentEnd

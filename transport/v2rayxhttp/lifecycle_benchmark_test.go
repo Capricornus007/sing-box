@@ -15,6 +15,7 @@ import (
 
 	Xbadoption "github.com/sagernet/sing-box/common/xray/json/badoption"
 	"github.com/sagernet/sing-box/option"
+
 	"golang.org/x/net/http2"
 )
 

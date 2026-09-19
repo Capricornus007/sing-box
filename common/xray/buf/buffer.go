@@ -113,7 +113,7 @@ func (b *Buffer) Release() {
 	switch b.ownership {
 	case managed:
 		if cap(p) == Size {
-			pool.Put(p)
+			pool.Put(p) //nolint:staticcheck // legacy xray pool holds raw []byte; converting to *[]byte would break paired Get() type assertion
 		}
 	case bytespools:
 		bytespool.Free(p)

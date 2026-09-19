@@ -18,6 +18,7 @@ import (
 	"github.com/sagernet/sing-box/common/xray/signal/done"
 	"github.com/sagernet/sing-box/option"
 	E "github.com/sagernet/sing/common/exceptions"
+
 	"golang.org/x/net/http2"
 )
 

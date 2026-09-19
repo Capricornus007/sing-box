@@ -3,6 +3,8 @@
 package regexpr
 
 import (
+	"slices"
+
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 )
@@ -22,11 +24,9 @@ func CalculateLogLevels(input log.Level, logOptionsPtr *option.LogOptions) []log
 }
 
 func SetLogLevel(levels ...log.Level) {
-	for _, level := range levels {
-		if level == logLevelNone {
-			configureLogging(true)
-			return
-		}
+	if slices.Contains(levels, logLevelNone) {
+		configureLogging(true)
+		return
 	}
 	configureLogging(false)
 }

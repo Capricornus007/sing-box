@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sagernet/sing-box/option"
+
 	"golang.org/x/net/http2/hpack"
 )
 
@@ -18,9 +19,11 @@ const (
 	PaddingMethodTokenish PaddingMethod = "tokenish"
 )
 
-const charsetBase62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const avgHuffmanBytesPerCharBase62 = 0.8
-const validationTolerance = 2
+const (
+	charsetBase62                = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	avgHuffmanBytesPerCharBase62 = 0.8
+	validationTolerance          = 2
+)
 
 type XPaddingPlacement struct {
 	Placement string
@@ -70,17 +73,14 @@ func absInt(x int) int {
 }
 
 func GenerateTokenishPaddingBase62(targetHuffmanBytes int) string {
-	n := int(math.Ceil(float64(targetHuffmanBytes) / avgHuffmanBytesPerCharBase62))
-	if n < 1 {
-		n = 1
-	}
+	n := max(int(math.Ceil(float64(targetHuffmanBytes)/avgHuffmanBytesPerCharBase62)), 1)
 	randBase62Str, ok := randStringFromCharset(n, charsetBase62)
 	if !ok {
 		return ""
 	}
 	const maxIter = 150
 	adjustChar := byte('X')
-	for iter := 0; iter < maxIter; iter++ {
+	for range maxIter {
 		currentLength := int(hpack.HuffmanEncodeLength(randBase62Str))
 		diff := currentLength - targetHuffmanBytes
 		if absInt(diff) <= validationTolerance {

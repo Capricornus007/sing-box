@@ -46,9 +46,7 @@ func newSystemDevice(options DeviceOptions) (*systemDevice, error) {
 		options.MTU = DefaultMTU
 	}
 	interfaceDialer, err := dialer.NewDefault(options.Context, option.DialerOptions{
-		AbstractDialerOptions: option.AbstractDialerOptions{
-			BindInterface: options.Name,
-		},
+		BindInterface: options.Name,
 	})
 	if err != nil {
 		return nil, err

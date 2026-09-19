@@ -312,6 +312,8 @@ func parseLeaf(t testing.TB, certificate *tls.Certificate) *x509.Certificate {
 	return leaf
 }
 
-var _ adapter.Outbound = (*tlsCountingOutbound)(nil)
-var _ adapter.Outbound = (*failingOutbound)(nil)
-var _ crypto.Signer = (*ecdsa.PrivateKey)(nil)
+var (
+	_ adapter.Outbound = (*tlsCountingOutbound)(nil)
+	_ adapter.Outbound = (*failingOutbound)(nil)
+	_ crypto.Signer    = (*ecdsa.PrivateKey)(nil)
+)

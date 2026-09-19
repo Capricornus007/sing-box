@@ -27,6 +27,7 @@ func (s *packetStream) ReceiveDatagram(context.Context) ([]byte, error) {
 	s.received = s.received[1:]
 	return packet, nil
 }
+
 func (s *packetStream) SendDatagram(packet []byte) error {
 	s.sent = append(s.sent, append([]byte(nil), packet...))
 	return nil

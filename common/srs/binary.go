@@ -287,7 +287,7 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 					if err != nil {
 						return
 					}
-					value = append(value, common.Ptr(badoption.Prefixable(prefix)))
+					value = append(value, new(badoption.Prefixable(prefix)))
 				}
 				rule.NetworkInterfaceAddress.Put(option.InterfaceType(key), value)
 			}
@@ -304,7 +304,7 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 				if err != nil {
 					return
 				}
-				value = append(value, common.Ptr(badoption.Prefixable(prefix)))
+				value = append(value, new(badoption.Prefixable(prefix)))
 			}
 			rule.DefaultInterfaceAddress = value
 		case ruleItemFinal:

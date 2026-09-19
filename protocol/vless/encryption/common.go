@@ -15,6 +15,7 @@ import (
 
 	"github.com/sagernet/sing-box/common/xray/crypto"
 	E "github.com/sagernet/sing/common/exceptions"
+
 	"golang.org/x/crypto/chacha20poly1305"
 	"lukechampine.com/blake3"
 )
@@ -59,7 +60,7 @@ func (c *CommonConn) Write(b []byte) (int, error) {
 	c.writeAccess.Lock()
 	defer c.writeAccess.Unlock()
 	outBytes := OutBytesPool.Get().([]byte)
-	defer OutBytesPool.Put(outBytes)
+	defer OutBytesPool.Put(outBytes) //nolint:staticcheck // pool stores raw []byte to match existing Get().([]byte); wrapping in *[]byte would change the pool contract
 	written := 0
 	for written < len(b) {
 		chunk := b[written:]

@@ -2,12 +2,13 @@ package option
 
 import (
 	"crypto/tls"
-	"github.com/goccy/go-json"
 	"strings"
 
 	"github.com/sagernet/sing-box/schema"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json/badoption"
+
+	"github.com/goccy/go-json"
 )
 
 type InboundTLSOptions struct {

@@ -55,8 +55,8 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 			return nil, err
 		}
 	} else {
-		if strings.HasPrefix(options.LocalOptions.Path, "geoip:") {
-			rules, err := nekoutils.GetGeoIPHeadlessRules(strings.TrimPrefix(options.LocalOptions.Path, "geoip:"))
+		if after, ok := strings.CutPrefix(options.LocalOptions.Path, "geoip:"); ok {
+			rules, err := nekoutils.GetGeoIPHeadlessRules(after)
 			if err != nil {
 				return nil, err
 			}
@@ -65,8 +65,8 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 			}
 			return ruleSet, nil
 		}
-		if strings.HasPrefix(options.LocalOptions.Path, "geosite:") {
-			rules, err := nekoutils.GetGeoSiteHeadlessRules(strings.TrimPrefix(options.LocalOptions.Path, "geosite:"))
+		if after, ok := strings.CutPrefix(options.LocalOptions.Path, "geosite:"); ok {
+			rules, err := nekoutils.GetGeoSiteHeadlessRules(after)
 			if err != nil {
 				return nil, err
 			}

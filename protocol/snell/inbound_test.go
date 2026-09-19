@@ -11,6 +11,7 @@ import (
 	snellprotocol "github.com/sagernet/sing-snell"
 	"github.com/sagernet/sing/common/buf"
 	M "github.com/sagernet/sing/common/metadata"
+
 	"github.com/stretchr/testify/require"
 )
 

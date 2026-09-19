@@ -185,7 +185,8 @@ func (s *Service) PreCacheFilters(uriList []string, databasePath string) (result
 							LastUpdated: list.lastUpdated,
 							LastEtag:    list.lastEtag,
 						},
-					)}
+					),
+				}
 			}()
 
 		}

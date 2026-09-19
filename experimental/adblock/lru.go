@@ -7,9 +7,10 @@ import (
 	"encoding/gob"
 	"sync"
 
-	xxhash "github.com/cespare/xxhash/v2"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/contrab/freelru"
+
+	xxhash "github.com/cespare/xxhash/v2"
 )
 
 const defaultCheckCacheSize = 16384

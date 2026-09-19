@@ -52,7 +52,7 @@ func (c CCMCredential) MarshalJSON() ([]byte, error) {
 	default:
 		return nil, E.New("unknown credential type: ", c.Type)
 	}
-	return badjson.MarshallObjects((_CCMCredential)(c), v)
+	return badjson.MarshallObjects(_CCMCredential(c), v)
 }
 
 func (c *CCMCredential) UnmarshalJSON(bytes []byte) error {

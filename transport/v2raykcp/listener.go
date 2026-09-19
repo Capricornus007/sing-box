@@ -13,22 +13,22 @@ import (
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
+	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
-	"github.com/sagernet/sing/common/logger"
 )
 
 var _ adapter.V2RayServerTransport = (*Server)(nil)
 
 type Server struct {
-	ctx       context.Context
-	logger    logger.ContextLogger
-	config    *Config
-	tlsConfig tls.ServerConfig
-	handler   adapter.V2RayServerTransportHandler
-	listener  *net.UDPConn
-	sessions  sync.Map // map[ConnectionID]*Connection
-	security  cipher.AEAD
+	ctx        context.Context
+	logger     logger.ContextLogger
+	config     *Config
+	tlsConfig  tls.ServerConfig
+	handler    adapter.V2RayServerTransportHandler
+	listener   *net.UDPConn
+	sessions   sync.Map // map[ConnectionID]*Connection
+	security   cipher.AEAD
 	headerSize int
 }
 
@@ -166,7 +166,7 @@ func (s *Server) handlePacket(data []byte, remoteAddr net.Addr) {
 }
 
 func (s *Server) Close() error {
-	s.sessions.Range(func(key, value interface{}) bool {
+	s.sessions.Range(func(key, value any) bool {
 		conn := value.(*Connection)
 		conn.Close()
 		return true

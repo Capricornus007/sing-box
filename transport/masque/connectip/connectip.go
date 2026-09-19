@@ -374,10 +374,7 @@ func (c *Conn) WritePacket(b []byte) (icmp []byte, err error) {
 	// too big" reply quotes the datagram as the app sent it (RFC 1191/792).
 	var origHead []byte
 	if len(b) > 0 {
-		snapLen := len(b)
-		if snapLen > minMTU {
-			snapLen = minMTU
-		}
+		snapLen := min(len(b), minMTU)
 		origHead = append(origHead, b[:snapLen]...)
 	}
 
@@ -389,8 +386,7 @@ func (c *Conn) WritePacket(b []byte) (icmp []byte, err error) {
 		return nil, nil
 	}
 	if err := c.str.SendDatagram(data); err != nil {
-		var errDTL *quic.DatagramTooLargeError
-		if errors.As(err, &errDTL) {
+		if _, ok := errors.AsType[*quic.DatagramTooLargeError](err); ok {
 			icmpPacket, cerr := composeICMPTooLargePacket(origHead, minMTU)
 			if cerr != nil {
 				return nil, nil

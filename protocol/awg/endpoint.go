@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/netip"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -370,57 +371,58 @@ func genIpcConfig(opts option.AwgEndpointOptions, resolvePeer func(domain string
 	if err != nil {
 		return "", err
 	}
-	s := "private_key=" + hex.EncodeToString(privateKeyBytes)
+	var s strings.Builder
+	s.WriteString("private_key=" + hex.EncodeToString(privateKeyBytes))
 	if opts.ListenPort != 0 {
-		s += "\nlisten_port=" + format.ToString(opts.ListenPort)
+		s.WriteString("\nlisten_port=" + format.ToString(opts.ListenPort))
 	}
 	if opts.Jc != 0 {
-		s += "\njc=" + format.ToString(opts.Jc)
+		s.WriteString("\njc=" + format.ToString(opts.Jc))
 	}
 	if opts.Jmin != 0 {
-		s += "\njmin=" + format.ToString(opts.Jmin)
+		s.WriteString("\njmin=" + format.ToString(opts.Jmin))
 	}
 	if opts.Jmax != 0 {
-		s += "\njmax=" + format.ToString(opts.Jmax)
+		s.WriteString("\njmax=" + format.ToString(opts.Jmax))
 	}
 	if opts.S1 != 0 {
-		s += "\ns1=" + format.ToString(opts.S1)
+		s.WriteString("\ns1=" + format.ToString(opts.S1))
 	}
 	if opts.S2 != 0 {
-		s += "\ns2=" + format.ToString(opts.S2)
+		s.WriteString("\ns2=" + format.ToString(opts.S2))
 	}
 	if opts.S3 != 0 {
-		s += "\ns3=" + format.ToString(opts.S3)
+		s.WriteString("\ns3=" + format.ToString(opts.S3))
 	}
 	if opts.S4 != 0 {
-		s += "\ns4=" + format.ToString(opts.S4)
+		s.WriteString("\ns4=" + format.ToString(opts.S4))
 	}
 	if opts.H1 != "" {
-		s += "\nh1=" + opts.H1
+		s.WriteString("\nh1=" + opts.H1)
 	}
 	if opts.H2 != "" {
-		s += "\nh2=" + opts.H2
+		s.WriteString("\nh2=" + opts.H2)
 	}
 	if opts.H3 != "" {
-		s += "\nh3=" + opts.H3
+		s.WriteString("\nh3=" + opts.H3)
 	}
 	if opts.H4 != "" {
-		s += "\nh4=" + opts.H4
+		s.WriteString("\nh4=" + opts.H4)
 	}
 	if opts.I1 != "" {
-		s += "\ni1=" + opts.I1
+		s.WriteString("\ni1=" + opts.I1)
 	}
 	if opts.I2 != "" {
-		s += "\ni2=" + opts.I2
+		s.WriteString("\ni2=" + opts.I2)
 	}
 	if opts.I3 != "" {
-		s += "\ni3=" + opts.I3
+		s.WriteString("\ni3=" + opts.I3)
 	}
 	if opts.I4 != "" {
-		s += "\ni4=" + opts.I4
+		s.WriteString("\ni4=" + opts.I4)
 	}
 	if opts.I5 != "" {
-		s += "\ni5=" + opts.I5
+		s.WriteString("\ni5=" + opts.I5)
 	}
 	if opts.HeaderProtectionKey != "" {
 		headerKeyBytes, err := base64.StdEncoding.DecodeString(opts.HeaderProtectionKey)
@@ -430,11 +432,11 @@ func genIpcConfig(opts option.AwgEndpointOptions, resolvePeer func(domain string
 		if len(headerKeyBytes) != awgHeaderKeySize {
 			return "", E.New("header_protection_key must decode to ", awgHeaderKeySize, " bytes")
 		}
-		s += "\nheader_protection_key=" + hex.EncodeToString(headerKeyBytes)
+		s.WriteString("\nheader_protection_key=" + hex.EncodeToString(headerKeyBytes))
 	}
 	appendRange := func(name string, value option.AwgUint32Range) {
 		if !value.IsZero() {
-			s += "\n" + name + "=" + value.String()
+			s.WriteString("\n" + name + "=" + value.String())
 		}
 	}
 	appendRange("content_padding_addition", opts.ContentPaddingAddition)
@@ -449,13 +451,13 @@ func genIpcConfig(opts option.AwgEndpointOptions, resolvePeer func(domain string
 		if err != nil {
 			return "", err
 		}
-		s += "\npublic_key=" + hex.EncodeToString(publicKeyBytes)
+		s.WriteString("\npublic_key=" + hex.EncodeToString(publicKeyBytes))
 		if peer.PresharedKey != "" {
 			presharedKeyBytes, err := base64.StdEncoding.DecodeString(peer.PresharedKey)
 			if err != nil {
 				return "", err
 			}
-			s += "\npreshared_key=" + hex.EncodeToString(presharedKeyBytes)
+			s.WriteString("\npreshared_key=" + hex.EncodeToString(presharedKeyBytes))
 		}
 		if peer.Address != "" && peer.Port != 0 {
 			// Resolve domain to IP if necessary
@@ -471,16 +473,16 @@ func genIpcConfig(opts option.AwgEndpointOptions, resolvePeer func(domain string
 				}
 				endpointAddr = resolvedAddr.String()
 			}
-			s += "\nendpoint=" + formatAWGEndpoint(endpointAddr, peer.Port)
+			s.WriteString("\nendpoint=" + formatAWGEndpoint(endpointAddr, peer.Port))
 		}
 		if !peer.PersistentKeepaliveInterval.IsZero() {
-			s += "\npersistent_keepalive_interval=" + peer.PersistentKeepaliveInterval.String()
+			s.WriteString("\npersistent_keepalive_interval=" + peer.PersistentKeepaliveInterval.String())
 		}
 		for _, allowedIp := range peer.AllowedIPs {
-			s += "\nallowed_ip=" + allowedIp.String()
+			s.WriteString("\nallowed_ip=" + allowedIp.String())
 		}
 	}
-	return s, nil
+	return s.String(), nil
 }
 
 func formatAWGEndpoint(host string, port uint16) string {
@@ -583,7 +585,7 @@ func (e *Endpoint) DialContext(ctx context.Context, network string, destination 
 	if err != nil {
 		return nil, err
 	}
-	if destination.IsFqdn() {
+	if destination.IsFqdn() { //nolint:staticcheck // keep strict FQDN routing gate; SagerNet's suggested M.IsDomain replacement changes semantics (upstream deprecation is advisory, not a bug)
 		destinationAddresses, err := e.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})
 		if err != nil {
 			return nil, err
@@ -601,7 +603,7 @@ func (e *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 	if err != nil {
 		return nil, err
 	}
-	if destination.IsFqdn() {
+	if destination.IsFqdn() { //nolint:staticcheck // keep strict FQDN routing gate; SagerNet's suggested M.IsDomain replacement changes semantics (upstream deprecation is advisory, not a bug)
 		destinationAddresses, err := e.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})
 		if err != nil {
 			return nil, err
@@ -615,12 +617,12 @@ func (e *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 	return device.ListenPacket(ctx, destination)
 }
 
-func (w *Endpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+func (e *Endpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
 	var metadata adapter.InboundContext
-	metadata.Inbound = w.Tag()
-	metadata.InboundType = w.Type()
+	metadata.Inbound = e.Tag()
+	metadata.InboundType = e.Type()
 	metadata.Source = source
-	for _, addr := range w.address {
+	for _, addr := range e.address {
 		if addr.Contains(destination.Addr) {
 			metadata.OriginDestination = destination
 			if destination.Addr.Is4() {
@@ -632,7 +634,7 @@ func (w *Endpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.
 		}
 	}
 	metadata.Destination = destination
-	w.logger.InfoContext(ctx, "inbound connection from ", source)
-	w.logger.InfoContext(ctx, "inbound connection to ", metadata.Destination)
-	w.router.RouteConnectionEx(ctx, conn, metadata, onClose)
+	e.logger.InfoContext(ctx, "inbound connection from ", source)
+	e.logger.InfoContext(ctx, "inbound connection to ", metadata.Destination)
+	e.router.RouteConnectionEx(ctx, conn, metadata, onClose)
 }

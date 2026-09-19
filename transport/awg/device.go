@@ -7,14 +7,14 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/amnezia-vpn/amneziawg-go/v3/conn"
-	"github.com/amnezia-vpn/amneziawg-go/v3/device"
-
 	"github.com/sagernet/sing-box/adapter"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/network"
+
+	"github.com/amnezia-vpn/amneziawg-go/v3/conn"
+	"github.com/amnezia-vpn/amneziawg-go/v3/device"
 )
 
 type DeviceOpts struct {
@@ -56,10 +56,10 @@ func NewDevice(ctx context.Context, logger logger.ContextLogger, dial network.Di
 	}
 
 	awgLogger := &device.Logger{
-		Verbosef: func(format string, args ...interface{}) {
+		Verbosef: func(format string, args ...any) {
 			logger.Debug(fmt.Sprintf(strings.ToLower(format), args...))
 		},
-		Errorf: func(format string, args ...interface{}) {
+		Errorf: func(format string, args ...any) {
 			logger.Error(fmt.Sprintf(strings.ToLower(format), args...))
 		},
 	}

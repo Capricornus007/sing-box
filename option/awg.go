@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/goccy/go-json"
 	"github.com/sagernet/sing/common/json/badoption"
+
+	"github.com/goccy/go-json"
 )
 
 type AwgUint32Range string

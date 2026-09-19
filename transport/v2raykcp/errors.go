@@ -1,6 +1,9 @@
 package v2raykcp
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 var (
 	// ErrIOTimeout is returned when I/O operation times out
@@ -11,19 +14,19 @@ var (
 	ErrClosedConnection = errors.New("connection closed")
 )
 
-func newError(values ...interface{}) error {
+func newError(values ...any) error {
 	return errors.New(toString(values...))
 }
 
-func toString(values ...interface{}) string {
-	result := ""
+func toString(values ...any) string {
+	var result strings.Builder
 	for _, value := range values {
 		switch v := value.(type) {
 		case string:
-			result += v
+			result.WriteString(v)
 		case error:
-			result += v.Error()
+			result.WriteString(v.Error())
 		}
 	}
-	return result
+	return result.String()
 }

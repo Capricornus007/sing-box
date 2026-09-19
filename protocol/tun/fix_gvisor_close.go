@@ -37,8 +37,10 @@ const (
 	actualSingtunGVisorSize = int(unsafe.Sizeof(singtun.GVisor{}))
 )
 
-var _ [actualSingtunGVisorSize - expectedGVisorSize]byte
-var _ [expectedGVisorSize - actualSingtunGVisorSize]byte
+var (
+	_ [actualSingtunGVisorSize - expectedGVisorSize]byte
+	_ [expectedGVisorSize - actualSingtunGVisorSize]byte
+)
 
 func forceCloseGVisorStack(stack singtun.Stack) {
 	gvs, ok := stack.(*singtun.GVisor)

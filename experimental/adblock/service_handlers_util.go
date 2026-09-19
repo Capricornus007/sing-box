@@ -24,6 +24,7 @@ import (
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/ntp"
+
 	"golang.org/x/net/http2"
 )
 

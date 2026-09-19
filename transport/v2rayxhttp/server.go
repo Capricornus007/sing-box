@@ -21,12 +21,11 @@ import (
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/common/xray/buf"
 	xnet "github.com/sagernet/sing-box/common/xray/net"
+	"github.com/sagernet/sing-box/common/xray/signal/done"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	qtls "github.com/sagernet/sing-quic"
-
-	"github.com/sagernet/sing-box/common/xray/signal/done"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
@@ -581,7 +580,6 @@ func ExtractMetaFromRequest(options *option.V2RayXHTTPOptions, req *http.Request
 	case option.PlacementPath:
 		if len(subpath) > pathPart {
 			seqStr = subpath[pathPart]
-			pathPart += 1
 		}
 	case option.PlacementQuery:
 		seqStr = req.URL.Query().Get(seqKey)

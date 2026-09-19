@@ -22,7 +22,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
+	"golang.org/x/net/http2/h2c" //nolint:staticcheck // h2c is deprecated but http.Server.Protocols replacement needs Go 1.25+ and changes cleartext HTTP/2 handling; keeping h2c for behavioural parity
 )
 
 func RegisterService(registry *boxService.Registry) {
@@ -60,7 +60,7 @@ func NewService(ctx context.Context, logger log.ContextLogger, tag string, optio
 			Listen:  options.ListenOptions,
 		}),
 		httpServer: &http.Server{
-			Handler: h2c.NewHandler(chiRouter, &http2.Server{}),
+			Handler: h2c.NewHandler(chiRouter, &http2.Server{}), //nolint:staticcheck // see import comment; keeping h2c to preserve cleartext HTTP/2 wire behaviour
 		},
 		traffics:  make(map[string]*TrafficManager),
 		users:     make(map[string]*UserManager),

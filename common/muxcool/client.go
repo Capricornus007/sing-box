@@ -42,10 +42,7 @@ func NewClientWithOptions(dialer N.Dialer, logger logger.Logger, options option.
 	if options.Protocol != "mux.cool" {
 		return nil, E.New("mux.cool: protocol must be \"mux.cool\", got ", options.Protocol)
 	}
-	maxConnections := options.MaxConnections
-	if maxConnections < 0 {
-		maxConnections = 0
-	}
+	maxConnections := max(options.MaxConnections, 0)
 	return &Client{
 		dialer:         dialer,
 		logger:         logger,

@@ -151,7 +151,7 @@ func (m *XmuxManager) retireExcessIdle() {
 		}
 	}
 	for idleCount > m.idleRetentionLimit() {
-		var retireIndex = -1
+		retireIndex := -1
 		var retireIdleSince time.Time
 		for index, xmuxClient := range m.xmuxClients {
 			idle, idleSince := xmuxClient.idleState()

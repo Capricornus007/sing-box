@@ -19,7 +19,6 @@ import (
 
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
-	N "github.com/sagernet/sing/common/network"
 )
 
 // Magic destination that signals "this connection is a mux.cool connection" to
@@ -104,7 +103,7 @@ func writeAddressPort(w io.Writer, dest M.Socksaddr) error {
 		return err
 	}
 	switch {
-	case dest.IsFqdn():
+	case dest.IsFqdn(): //nolint:staticcheck // 協議位址類型必須區分 FQDN 與 IP，deprecated 的 IsFqdn 是唯一對的寫法
 		if len(dest.Fqdn) > 255 {
 			return E.New("mux.cool: domain too long: ", len(dest.Fqdn))
 		}
@@ -138,48 +137,6 @@ func writeAddressPort(w io.Writer, dest M.Socksaddr) error {
 		return E.New("mux.cool: invalid destination: ", dest)
 	}
 	return nil
-}
-
-// readAddressPort reads the port-first v2ray address encoding from r.
-func readAddressPort(r io.Reader) (M.Socksaddr, error) {
-	var portBuf [2]byte
-	if _, err := io.ReadFull(r, portBuf[:]); err != nil {
-		return M.Socksaddr{}, err
-	}
-	port := binary.BigEndian.Uint16(portBuf[:])
-
-	var typeByte [1]byte
-	if _, err := io.ReadFull(r, typeByte[:]); err != nil {
-		return M.Socksaddr{}, err
-	}
-	dest := M.Socksaddr{Port: port}
-	switch typeByte[0] {
-	case addressTypeIPv4:
-		var buf [4]byte
-		if _, err := io.ReadFull(r, buf[:]); err != nil {
-			return M.Socksaddr{}, err
-		}
-		dest.Addr = addrFromSlice(buf[:])
-	case addressTypeIPv6:
-		var buf [16]byte
-		if _, err := io.ReadFull(r, buf[:]); err != nil {
-			return M.Socksaddr{}, err
-		}
-		dest.Addr = addrFromSlice(buf[:])
-	case addressTypeDomain:
-		var lenByte [1]byte
-		if _, err := io.ReadFull(r, lenByte[:]); err != nil {
-			return M.Socksaddr{}, err
-		}
-		domain := make([]byte, lenByte[0])
-		if _, err := io.ReadFull(r, domain); err != nil {
-			return M.Socksaddr{}, err
-		}
-		dest.Fqdn = string(domain)
-	default:
-		return M.Socksaddr{}, E.New("mux.cool: unknown address type: ", typeByte[0])
-	}
-	return dest, nil
 }
 
 // writeMetaTo writes the metadata header (without the leading 2-byte length,
@@ -268,11 +225,10 @@ func parseMetaBody(body []byte) (*FrameMetadata, error) {
 		pos += 2
 		typeByte := body[pos]
 		pos++
-		dest, consumed, err := parseAddress(typeByte, body[pos:], port)
+		dest, _, err := parseAddress(typeByte, body[pos:], port)
 		if err != nil {
 			return nil, err
 		}
-		pos += consumed
 		f.Target = dest
 		if network != TargetNetworkTCP && network != TargetNetworkUDP {
 			return nil, E.New("mux.cool: unknown target network: ", byte(network))
@@ -304,17 +260,5 @@ func parseAddress(typeByte byte, rest []byte, port uint16) (M.Socksaddr, int, er
 		return M.Socksaddr{Fqdn: string(rest[1 : 1+domainLen]), Port: port}, 1 + domainLen, nil
 	default:
 		return M.Socksaddr{}, 0, E.New("mux.cool: unknown address type: ", typeByte)
-	}
-}
-
-// networkName converts an N.Network string to a TargetNetwork byte.
-func targetNetworkFor(network string) (TargetNetwork, error) {
-	switch N.NetworkName(network) {
-	case N.NetworkTCP:
-		return TargetNetworkTCP, nil
-	case N.NetworkUDP:
-		return TargetNetworkUDP, nil
-	default:
-		return 0, E.Extend(N.ErrUnknownNetwork, network)
 	}
 }

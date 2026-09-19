@@ -1,11 +1,12 @@
 package option
 
 import (
-	"github.com/goccy/go-json"
 	"testing"
 	"time"
 
 	badjson "github.com/sagernet/sing/common/json"
+
+	"github.com/goccy/go-json"
 )
 
 func TestAdblockProtocolFilteringOptions(t *testing.T) {

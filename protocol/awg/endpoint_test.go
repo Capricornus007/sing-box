@@ -171,7 +171,7 @@ func TestResolveClientBindSinglePeerEndpoint(t *testing.T) {
 
 func TestResolveClientBindSinglePeerEndpointResolvesDetouredDomain(t *testing.T) {
 	options := option.AwgEndpointOptions{
-		DialerOptions: option.DialerOptions{Detour: "proxy"},
+		Detour: "proxy",
 		Peers: []option.AwgPeerOptions{{
 			Address: "example.com",
 			Port:    2408,

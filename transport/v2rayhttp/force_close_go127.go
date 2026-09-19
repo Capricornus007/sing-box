@@ -24,7 +24,7 @@ type internalTransport struct {
 
 // net/http/internal/http2.clientConnPool
 type clientConnPool struct {
-	t     *internalTransport
+	t     *internalTransport //nolint:unused // layout placeholder for the mirrored net/http field; only connPool/conns are accessed by name here, but the field keeps the struct offsets matching the runtime type
 	mu    sync.Mutex
 	conns map[string][]unsafe.Pointer // key is host:port, value is []*ClientConn
 }

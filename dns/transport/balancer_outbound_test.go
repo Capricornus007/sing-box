@@ -21,6 +21,7 @@ func (t *balancerOutboundTestTransport) Reset()                         {}
 func (t *balancerOutboundTestTransport) Exchange(context.Context, *mDNS.Msg) (*mDNS.Msg, error) {
 	return nil, nil
 }
+
 func (t *balancerOutboundTestTransport) ExchangeAsync(_ context.Context, _ *mDNS.Msg, callback func(*mDNS.Msg, error)) {
 	callback(nil, nil)
 }
@@ -34,9 +35,7 @@ func TestBalancerDNSOutbound(t *testing.T) {
 					"udp",
 					tag,
 					option.RemoteDNSServerOptions{
-						RawLocalDNSServerOptions: option.RawLocalDNSServerOptions{
-							DialerOptions: option.DialerOptions{Detour: detour},
-						},
+						Detour: detour,
 					},
 				),
 			},

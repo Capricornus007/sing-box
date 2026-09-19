@@ -5,8 +5,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/miekg/dns"
 	N "github.com/sagernet/sing/common/network"
+
+	"github.com/miekg/dns"
 )
 
 type AdblockService interface {

@@ -8,13 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/antchfx/htmlquery"
-	"github.com/goccy/go-json"
-	"golang.org/x/net/html"
-
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/adblock/adblockrust"
 	"github.com/sagernet/sing-box/experimental/adblock/db"
+
+	"github.com/antchfx/htmlquery"
+	"github.com/goccy/go-json"
+	"golang.org/x/net/html"
 )
 
 func Test4PDASavedPageReplay(t *testing.T) {

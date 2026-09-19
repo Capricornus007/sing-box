@@ -11,9 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coder/websocket"
 	adblockctx "github.com/sagernet/sing-box/experimental/adblock/ctx"
 	"github.com/sagernet/sing-box/experimental/adblock/httpconn"
+
+	"github.com/coder/websocket"
 )
 
 func TestCronetForwardHTTPRequestWebSocketFallsBack(t *testing.T) {

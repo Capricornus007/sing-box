@@ -16,6 +16,7 @@ import (
 	"github.com/sagernet/sing-box/experimental/adblock/ctx"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/ntp"
+
 	"golang.org/x/net/http2"
 )
 

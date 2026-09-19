@@ -108,10 +108,7 @@ func (c *Config) GetPacketHeader() PacketHeader {
 }
 
 func (c *Config) GetSendingInFlightSize() uint32 {
-	size := c.GetUplinkCapacityValue() * 1024 * 1024 / c.GetMTUValue() / (1000 / c.GetTTIValue())
-	if size < 8 {
-		size = 8
-	}
+	size := max(c.GetUplinkCapacityValue()*1024*1024/c.GetMTUValue()/(1000/c.GetTTIValue()), 8)
 	return size
 }
 
@@ -120,10 +117,7 @@ func (c *Config) GetSendingBufferSize() uint32 {
 }
 
 func (c *Config) GetReceivingInFlightSize() uint32 {
-	size := c.GetDownlinkCapacityValue() * 1024 * 1024 / c.GetMTUValue() / (1000 / c.GetTTIValue())
-	if size < 8 {
-		size = 8
-	}
+	size := max(c.GetDownlinkCapacityValue()*1024*1024/c.GetMTUValue()/(1000/c.GetTTIValue()), 8)
 	return size
 }
 

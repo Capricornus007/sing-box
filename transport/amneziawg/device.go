@@ -5,11 +5,12 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/amnezia-vpn/amneziawg-go/device"
-	wgTun "github.com/amnezia-vpn/amneziawg-go/tun"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common/logger"
 	N "github.com/sagernet/sing/common/network"
+
+	"github.com/amnezia-vpn/amneziawg-go/device"
+	wgTun "github.com/amnezia-vpn/amneziawg-go/tun"
 )
 
 type Device interface {

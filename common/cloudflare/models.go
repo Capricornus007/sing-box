@@ -112,7 +112,7 @@ type DeviceUpdate struct {
 }
 
 type APIError struct {
-	Result   interface{} `json:"result"`
+	Result   any         `json:"result"`
 	Success  bool        `json:"success"`
 	Errors   []ErrorInfo `json:"errors"`
 	Messages []string    `json:"messages"`

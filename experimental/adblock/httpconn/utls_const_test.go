@@ -6,8 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	utls "github.com/metacubex/utls"
 	"github.com/sagernet/sing-box/experimental/adblock/consts"
+
+	utls "github.com/metacubex/utls"
 )
 
 func TestExtendedUTLSFingerprints(t *testing.T) {

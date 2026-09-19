@@ -3,12 +3,13 @@ package badoption
 import (
 	"bytes"
 	"fmt"
-	"github.com/goccy/go-json"
 	"strconv"
 	"strings"
 
 	"github.com/sagernet/sing-box/common/xray/crypto"
 	E "github.com/sagernet/sing/common/exceptions"
+
+	"github.com/goccy/go-json"
 )
 
 type Range struct {

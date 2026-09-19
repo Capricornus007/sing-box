@@ -21,7 +21,6 @@ import (
 	mierumodel "github.com/enfein/mieru/v3/apis/model"
 	mierutp "github.com/enfein/mieru/v3/apis/trafficpattern"
 	mierupb "github.com/enfein/mieru/v3/pkg/appctl/appctlpb"
-	"google.golang.org/protobuf/proto"
 )
 
 type Outbound struct {
@@ -186,27 +185,27 @@ func buildMieruClientConfig(options option.MieruOutboundOptions, dialer mieruDia
 	server := &mierupb.ServerEndpoint{}
 	if options.ServerPort != 0 {
 		server.PortBindings = append(server.PortBindings, &mierupb.PortBinding{
-			Port:     proto.Int32(int32(options.ServerPort)),
+			Port:     new(int32(options.ServerPort)),
 			Protocol: transportProtocol,
 		})
 	}
 	for _, portRange := range options.ServerPortRanges {
 		server.PortBindings = append(server.PortBindings, &mierupb.PortBinding{
-			PortRange: proto.String(portRange),
+			PortRange: new(portRange),
 			Protocol:  transportProtocol,
 		})
 	}
 	if M.IsDomainName(options.Server) {
-		server.DomainName = proto.String(options.Server)
+		server.DomainName = new(options.Server)
 	} else {
-		server.IpAddress = proto.String(options.Server)
+		server.IpAddress = new(options.Server)
 	}
 	config := &mieruclient.ClientConfig{
 		Profile: &mierupb.ClientProfile{
-			ProfileName: proto.String("sing-box"),
+			ProfileName: new("sing-box"),
 			User: &mierupb.User{
-				Name:     proto.String(options.UserName),
-				Password: proto.String(options.Password),
+				Name:     new(options.UserName),
+				Password: new(options.Password),
 			},
 			Servers: []*mierupb.ServerEndpoint{server},
 		},

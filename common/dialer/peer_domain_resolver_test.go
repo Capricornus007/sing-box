@@ -24,10 +24,12 @@ func (t *peerResolverTestTransport) Reset()                         {}
 func (t *peerResolverTestTransport) Exchange(context.Context, *mDNS.Msg) (*mDNS.Msg, error) {
 	return nil, nil
 }
+
 func (t *peerResolverTestTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(*mDNS.Msg, error)) {
 	response, err := t.Exchange(ctx, message)
 	callback(response, err)
 }
+
 func (t *peerResolverTestTransport) DNSOutbound() (string, bool) {
 	return t.outbound, true
 }
@@ -42,6 +44,7 @@ func (m *peerResolverTestManager) Close() error                   { return nil }
 func (m *peerResolverTestManager) Transports() []adapter.DNSTransport {
 	return m.transports
 }
+
 func (m *peerResolverTestManager) Transport(tag string) (adapter.DNSTransport, bool) {
 	for _, transport := range m.transports {
 		if transport.Tag() == tag {

@@ -38,16 +38,19 @@ func (h quicProxyNATHeap) Len() int { return len(h) }
 func (h quicProxyNATHeap) Less(i, j int) bool {
 	return h[i].expiresAt.Before(h[j].expiresAt)
 }
+
 func (h quicProxyNATHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 	h[i].index = i
 	h[j].index = j
 }
+
 func (h *quicProxyNATHeap) Push(value any) {
 	entry := value.(*quicProxyNATEntry)
 	entry.index = len(*h)
 	*h = append(*h, entry)
 }
+
 func (h *quicProxyNATHeap) Pop() any {
 	old := *h
 	last := len(old) - 1
@@ -367,6 +370,7 @@ func (c *quicProxyNATConn) LocalAddr() net.Addr { return c.entry.source.UDPAddr(
 func (c *quicProxyNATConn) SetDeadline(time.Time) error {
 	return os.ErrInvalid
 }
+
 func (c *quicProxyNATConn) SetReadDeadline(deadline time.Time) error {
 	c.readDeadline.Set(deadline)
 	return nil

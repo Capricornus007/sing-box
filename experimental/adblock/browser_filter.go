@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/goccy/go-json"
-
 	"github.com/sagernet/sing-box/common/adblock/adblockrust"
+
+	"github.com/goccy/go-json"
 )
 
 type browserFilterState struct {

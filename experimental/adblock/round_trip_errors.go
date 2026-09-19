@@ -15,8 +15,9 @@ import (
 	"strings"
 	"syscall"
 
-	mDNS "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/dns"
+
+	mDNS "github.com/miekg/dns"
 )
 
 const (
