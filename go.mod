@@ -221,7 +221,7 @@ replace github.com/amnezia-vpn/amneziawg-go/v3 => github.com/Capricornus007/amne
 
 replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.20260921052444-70199c7b2f36
 
-replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20260918085103-049f27400525
+replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20260920030852-2c97c522fbc2
 
 replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.0-20260920040250-1e18024e6a08
 
