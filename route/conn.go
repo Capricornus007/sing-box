@@ -76,9 +76,9 @@ func (m *ConnectionManager) Close() error {
 
 func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
 	tracked := &trackedConn{
-		Conn:     conn,
-		original: conn,
-		manager:  m,
+		Conn:        conn,
+		socketOwner: socketOwner{original: conn},
+		manager:     m,
 	}
 	m.access.Lock()
 	tracked.element = m.connections.PushBack(tracked)
@@ -89,7 +89,7 @@ func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
 func (m *ConnectionManager) TrackPacketConn(conn net.PacketConn) net.PacketConn {
 	tracked := &trackedPacketConn{
 		NetPacketConn: bufio.NewPacketConn(conn),
-		original:      conn,
+		socketOwner:   socketOwner{original: conn},
 		manager:       m,
 	}
 	m.access.Lock()
@@ -293,13 +293,17 @@ func (m *ConnectionManager) connectionCopy(ctx context.Context, source net.Conn,
 	_, err := bufio.CopyWithIncreateBuffer(destination, source, bufio.DefaultIncreaseBufferAfter, bufio.DefaultBatchSize)
 	if err != nil {
 		common.Close(source, destination)
-	} else if duplexDst, isDuplex := destination.(N.WriteCloser); isDuplex {
-		err = duplexDst.CloseWrite()
-		if err != nil {
-			common.Close(source, destination)
-		}
 	} else {
-		destination.Close()
+		destinationWriter, _ := N.UnwrapCountWriter(destination, nil)
+		duplexDst, isDuplex := N.UnwrapWriter(destinationWriter).(N.WriteCloser)
+		if isDuplex {
+			err = duplexDst.CloseWrite()
+			if err != nil {
+				common.Close(source, destination)
+			}
+		} else {
+			destination.Close()
+		}
 	}
 	if done.Swap(true) {
 		if onClose != nil {

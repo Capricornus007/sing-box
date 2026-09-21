@@ -223,7 +223,7 @@ replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.4-0.2026
 
 replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20260918085103-049f27400525
 
-replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.0-20260918094719-7493e4084c4e
+replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.0-20260920040250-1e18024e6a08
 
 replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.7.1-0.20260918084926-e743c09ab96d
 

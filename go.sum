@@ -22,8 +22,8 @@ github.com/Capricornus007/sing-quic v0.7.1-0.20260918084926-e743c09ab96d h1:1ZCt
 github.com/Capricornus007/sing-quic v0.7.1-0.20260918084926-e743c09ab96d/go.mod h1:c+/u9l1LnTZPExVP6GpU6/uaXAOucDW8WWzMzHsIOCk=
 github.com/Capricornus007/sing-snell v0.0.0-20260918085103-049f27400525 h1:9vGTS2MEhKaURoiGNx5nALRBzYzi4u0C5XWr+BPup5w=
 github.com/Capricornus007/sing-snell v0.0.0-20260918085103-049f27400525/go.mod h1:LBytgFmbtHFUAOVuBhBcGIOs0mCjuLwvgdNV02H+tpw=
-github.com/Capricornus007/sing-tun v0.0.0-20260918094719-7493e4084c4e h1:UMuXXi26hWl1aQ8RfuYRGGNRllBPjzAu5nxzcxGefTA=
-github.com/Capricornus007/sing-tun v0.0.0-20260918094719-7493e4084c4e/go.mod h1:liMb9HPIWcFWqF6VJ/ttIY8fTSRPdRltBeSeEcXt1Dk=
+github.com/Capricornus007/sing-tun v0.0.0-20260920040250-1e18024e6a08 h1:Jw4O4v+Ih1y7Pxc8Kh4kfComqXS4FcN2jClKnTDpBIY=
+github.com/Capricornus007/sing-tun v0.0.0-20260920040250-1e18024e6a08/go.mod h1:liMb9HPIWcFWqF6VJ/ttIY8fTSRPdRltBeSeEcXt1Dk=
 github.com/Capricornus007/sing-vmess v0.2.9-0.20260902104811-b3e975d5372a h1:7gYL/4QM1TKX8UjKfbaidez2wK703JceV5WEpVgeNt8=
 github.com/Capricornus007/sing-vmess v0.2.9-0.20260902104811-b3e975d5372a/go.mod h1:mZjljwCAsUOwEn1MRMEXtTJakcw4rbhEWfRmhbDRS1Q=
 github.com/Capricornus007/utls v0.0.0-20260918090442-912a23eb55ce h1:5VjnyO4Nk039csMZ0f73s9D3uwpJdtBgD6p0XEi/paU=
