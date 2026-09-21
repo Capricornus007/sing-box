@@ -89,8 +89,7 @@ func (s *datagramStream) SendDatagram(payload []byte) error {
 	if err == nil {
 		return nil
 	}
-	var tooLarge *quic.DatagramTooLargeError
-	if errors.As(err, &tooLarge) {
+	if _, ok := errors.AsType[*quic.DatagramTooLargeError](err); ok {
 		return transportHTTP.ErrDatagramUnsupported
 	}
 	return err
