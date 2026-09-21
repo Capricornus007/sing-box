@@ -1,7 +1,7 @@
 include Makefile
 
 ADBLOCK_RUST_REPO ?= https://github.com/brave/adblock-rust
-ADBLOCK_RUST_COMMIT ?= 886d45dcf5283ce8eddc6d961e7dd27966ab23f2
+ADBLOCK_RUST_COMMIT ?= 1c0740d27d531a2389c808212a8702592bb74138
 ADBLOCK_RUST_DIR ?= ../adblock-rust
 ADBLOCK_BRIDGE_DIR ?= common/adblock/bridge
 ADBLOCK_TAGS ?= $(TAGS),with_adblock
@@ -11,7 +11,7 @@ TEST_DOCKER_INTEGRATION_TAGS ?= with_adblock,with_adblock_cronet,with_quic,with_
 TEST_DOCKER_GO_TEST_ARGS ?= -count=1 -v
 TEST_DOCKER_ROOT_PACKAGES ?= ./...
 TEST_DOCKER_INTEGRATION_PACKAGES ?= .
-ADBLOCK_RUST_TOOLCHAIN ?= 1.97.0
+ADBLOCK_RUST_TOOLCHAIN ?= 1.98.0
 ADBLOCK_DOCKER_CACHE_DIR ?= $(HOME)/.cache/sing-box-adblock
 ADBLOCK_CRONET_DOCKERFILE ?= Dockerfile.adblock-cronet
 ADBLOCK_CRONET_DOCKER_IMAGE ?= sing-box-adblock-cronet:go1.26
