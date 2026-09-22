@@ -49,22 +49,6 @@ func requestIsUpgrade(request *http.Request) bool {
 	return request.Header.Get("Upgrade") != "" && headerHasToken(request.Header, "Connection", "upgrade")
 }
 
-func SourceAddress(request *http.Request) M.Socksaddr {
-	return forwardedSource(request, M.ParseSocksaddr(request.RemoteAddr))
-}
-
-func forwardedSource(request *http.Request, source M.Socksaddr) M.Socksaddr {
-	for _, value := range request.Header.Values("X-Forwarded-For") {
-		for from := range strings.SplitSeq(value, ",") {
-			address := M.ParseAddr(strings.TrimSpace(from))
-			if address.IsValid() {
-				return M.Socksaddr{Addr: address, Port: source.Port}.Unwrap()
-			}
-		}
-	}
-	return source
-}
-
 func parseAuthority(authority string, defaultPort uint16) M.Socksaddr {
 	destination := M.ParseSocksaddr(authority)
 	if destination.Port == 0 {

@@ -58,6 +58,7 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	inbound.server = http.NewServer(http.ServerOptions{
 		Authenticator: inbound.authenticator,
 		Logger:        logger,
+		HTTP1:         true,
 		HTTP2:         true,
 		UDP:           true,
 	})

@@ -7,7 +7,6 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
-	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -18,8 +17,6 @@ import (
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
-
-	"golang.org/x/net/http2"
 )
 
 func RegisterOutbound(registry *outbound.Registry) {
@@ -37,21 +34,16 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if err != nil {
 		return nil, err
 	}
-	tlsOptions := common.PtrValueOrDefault(options.TLS)
-	if tlsOptions.Enabled && len(tlsOptions.ALPN) == 0 {
-		tlsOptions.ALPN = []string{http2.NextProtoTLS, "http/1.1"}
-	}
-	detour, err := tls.NewDialerFromOptions(ctx, logger, outboundDialer, options.Server, tlsOptions)
-	if err != nil {
-		return nil, err
-	}
-	client, err := http.NewClient(http.ClientOptions{
-		Dialer:   detour,
-		Server:   options.ServerOptions.Build(),
-		Username: options.Username,
-		Password: options.Password,
-		Path:     options.Path,
-		Headers:  options.Headers.Build(),
+	headers := options.Headers.Build()
+	client, err := http.NewClientWithTLS(ctx, logger, outboundDialer, options.ServerOptions, common.PtrValueOrDefault(options.TLS), http.ClientOptions{
+		Username:               options.Username,
+		Password:               options.Password,
+		Path:                   options.Path,
+		Headers:                headers,
+		Version:                http.ResolveVersion(options.Version, options.Path, headers.Get("Host")),
+		DisableVersionFallback: options.DisableVersionFallback,
+		HTTP2Options:           options.HTTP2Options,
+		HTTP3Options:           options.HTTP3Options,
 	})
 	if err != nil {
 		return nil, err
@@ -61,6 +53,10 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		logger:  logger,
 		client:  client,
 	}, nil
+}
+
+func (h *Outbound) InterfaceUpdated(ctx context.Context) {
+	h.client.ResetConnections()
 }
 
 func (h *Outbound) Close() error {

@@ -4,24 +4,11 @@ import (
 	std_bufio "bufio"
 	"io"
 	"net"
-	"net/http"
-	"net/url"
-	"os"
-	_ "unsafe"
 
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
 )
-
-//go:linkname ReadRequest net/http.readRequest
-func ReadRequest(b *std_bufio.Reader) (req *http.Request, err error)
-
-//go:linkname URLSetPath net/url.(*URL).setPath
-func URLSetPath(u *url.URL, p string) error
-
-//go:linkname ParseBasicAuth net/http.parseBasicAuth
-func ParseBasicAuth(auth string) (username, password string, ok bool)
 
 var errHeaderTooLarge = E.New("request header too large")
 
@@ -76,7 +63,3 @@ func (r *readLimiter) Read(p []byte) (int, error) {
 }
 
 var _ io.Reader = (*readLimiter)(nil)
-
-func isTimeout(err error) bool {
-	return os.IsTimeout(err)
-}

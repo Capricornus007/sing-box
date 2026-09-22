@@ -2,6 +2,7 @@ package main
 
 import (
 	std_bufio "bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"io"
@@ -62,6 +63,17 @@ func newForwardOrigin(t *testing.T) *forwardOrigin {
 			writer.Write([]byte("chunk"))
 			flusher.Flush()
 		}
+	})
+	mux.HandleFunc("/trailer", func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Trailer", "X-Checksum")
+		writer.Write([]byte("hello"))
+		writer.Header().Set("X-Checksum", "5d41402a")
+	})
+	mux.HandleFunc("/stream", func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+		writer.(http.Flusher).Flush()
+		time.Sleep(2 * time.Second)
+		writer.Write([]byte("late"))
 	})
 	mux.HandleFunc("/hints", func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Link", "</style.css>; rel=preload")
@@ -218,6 +230,23 @@ func TestHTTPForwardEarlyHints(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "body", string(body))
 	require.Equal(t, int32(1), hints.Load())
+
+	conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(int(serverPort)))
+	require.NoError(t, err)
+	defer conn.Close()
+	_, err = conn.Write([]byte("GET " + origin.url("/hints") + " HTTP/1.1\r\nHost: " + origin.host() + "\r\nProxy-Authorization: " + proxyAuthorization + "\r\n\r\n"))
+	require.NoError(t, err)
+	reader := std_bufio.NewReader(conn)
+	interim, err := http.ReadResponse(reader, nil)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusEarlyHints, interim.StatusCode)
+	require.Empty(t, interim.Header.Values("Content-Length"))
+	require.Empty(t, interim.Header.Values("Transfer-Encoding"))
+	final, err := http.ReadResponse(reader, nil)
+	require.NoError(t, err)
+	body, err = io.ReadAll(final.Body)
+	require.NoError(t, err)
+	require.Equal(t, "body", string(body))
 }
 
 func TestHTTPForwardWebSocket(t *testing.T) {
@@ -334,4 +363,164 @@ func TestHTTPForwardAuthRetry(t *testing.T) {
 	response.Body.Close()
 	require.NoError(t, err)
 	require.Equal(t, "hello", string(body))
+}
+
+func TestHTTPForwardCloseOnError(t *testing.T) {
+	startForwardProxy(t)
+	conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(int(serverPort)))
+	require.NoError(t, err)
+	defer conn.Close()
+	_, err = conn.Write([]byte("GET http://127.0.0.1:1/ HTTP/1.1\r\nHost: 127.0.0.1:1\r\nConnection: close\r\nProxy-Authorization: " + proxyAuthorization + "\r\n\r\n"))
+	require.NoError(t, err)
+	reader := std_bufio.NewReader(conn)
+	response, err := http.ReadResponse(reader, nil)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadGateway, response.StatusCode)
+	require.True(t, response.Close)
+	_, err = io.ReadAll(response.Body)
+	require.NoError(t, err)
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_, err = reader.ReadByte()
+	require.ErrorIs(t, err, io.EOF)
+}
+
+func TestHTTPForwardUserIsolation(t *testing.T) {
+	startInstance(t, option.Options{
+		Inbounds: []option.Inbound{
+			{
+				Type: C.TypeHTTP,
+				Options: &option.HTTPInboundOptions{
+					ListenOptions: option.ListenOptions{
+						Listen:     common.Ptr(badoption.Addr(netip.IPv4Unspecified())),
+						ListenPort: serverPort,
+					},
+					Users: []auth.User{
+						{Username: "sekai", Password: "password"},
+						{Username: "blocked", Password: "password"},
+					},
+				},
+			},
+		},
+		Outbounds: []option.Outbound{
+			{Type: C.TypeDirect},
+			{Type: C.TypeBlock, Tag: "block"},
+		},
+		Route: &option.RouteOptions{
+			Rules: []option.Rule{
+				{
+					Type: C.RuleTypeDefault,
+					DefaultOptions: option.DefaultRule{
+						RawDefaultRule: option.RawDefaultRule{
+							AuthUser: []string{"blocked"},
+						},
+						RuleAction: option.RuleAction{
+							Action:       C.RuleActionTypeRoute,
+							RouteOptions: option.RouteActionOptions{Outbound: "block"},
+						},
+					},
+				},
+			},
+		},
+	})
+	origin := newForwardOrigin(t)
+	conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(int(serverPort)))
+	require.NoError(t, err)
+	defer conn.Close()
+	reader := std_bufio.NewReader(conn)
+	for _, authorization := range []string{proxyAuthorization, "Basic YmxvY2tlZDpwYXNzd29yZA==", proxyAuthorization} {
+		_, err = conn.Write([]byte("GET " + origin.url("/hello") + " HTTP/1.1\r\nHost: " + origin.host() + "\r\nUser-Agent: \r\nProxy-Authorization: " + authorization + "\r\n\r\n"))
+		require.NoError(t, err)
+		response, err := http.ReadResponse(reader, nil)
+		require.NoError(t, err)
+		_, err = io.ReadAll(response.Body)
+		require.NoError(t, err)
+		response.Body.Close()
+		if authorization == proxyAuthorization {
+			require.Equal(t, http.StatusOK, response.StatusCode)
+		} else {
+			require.Equal(t, http.StatusBadGateway, response.StatusCode)
+		}
+		require.False(t, response.Close)
+	}
+	require.Equal(t, int32(2), origin.connections.Load())
+}
+
+func startEarlyResponseOrigin(t *testing.T) *net.TCPAddr {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	stop := make(chan struct{})
+	t.Cleanup(func() {
+		close(stop)
+		listener.Close()
+	})
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer conn.Close()
+				reader := std_bufio.NewReader(conn)
+				_, err := reader.ReadString('\n')
+				if err == nil {
+					_, err = textproto.NewReader(reader).ReadMIMEHeader()
+				}
+				if err != nil {
+					return
+				}
+				_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"))
+				if err != nil {
+					return
+				}
+				<-stop
+			}()
+		}
+	}()
+	return listener.Addr().(*net.TCPAddr)
+}
+
+func startHugeHeaderOrigin(t *testing.T) *net.TCPAddr {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		listener.Close()
+	})
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer conn.Close()
+				_, err := http.ReadRequest(std_bufio.NewReader(conn))
+				if err != nil {
+					return
+				}
+				_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\nX-Padding: "))
+				if err != nil {
+					return
+				}
+				padding := bytes.Repeat([]byte("a"), 64<<10)
+				for {
+					_, err = conn.Write(padding)
+					if err != nil {
+						return
+					}
+				}
+			}()
+		}
+	}()
+	return listener.Addr().(*net.TCPAddr)
+}
+
+func TestHTTPForwardHugeUpstreamHeader(t *testing.T) {
+	startForwardProxy(t)
+	origin := startHugeHeaderOrigin(t)
+	client := proxyClient(t, clientPort)
+	response, err := client.Get("http://" + origin.String() + "/")
+	require.NoError(t, err)
+	response.Body.Close()
+	require.Equal(t, http.StatusBadGateway, response.StatusCode)
 }

@@ -2,20 +2,26 @@ package http
 
 import (
 	std_bufio "bufio"
+	"bytes"
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"time"
 
+	"github.com/sagernet/sing/common/auth"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
+	F "github.com/sagernet/sing/common/format"
 	M "github.com/sagernet/sing/common/metadata"
 )
 
 type upstreamConn struct {
 	net.Conn
 	reader      *std_bufio.Reader
+	limiter     *readLimiter
+	user        string
 	source      M.Socksaddr
 	destination M.Socksaddr
 	done        chan struct{}
@@ -31,6 +37,13 @@ func (c *upstreamConn) closed() bool {
 	}
 }
 
+func (c *upstreamConn) readResponse(request *http.Request) (*http.Response, error) {
+	c.limiter.remaining = maxHeaderBytes
+	response, err := http.ReadResponse(c.reader, request)
+	c.limiter.remaining = -1
+	return response, err
+}
+
 func (c *upstreamConn) closeErr() error {
 	select {
 	case <-c.done:
@@ -41,20 +54,22 @@ func (c *upstreamConn) closeErr() error {
 }
 
 func (c *serverConn) openUpstream(ctx context.Context, source M.Socksaddr, destination M.Socksaddr) *upstreamConn {
+	user, _ := auth.UserFromContext[string](ctx)
 	if c.upstream != nil {
-		if c.upstream.source == source && c.upstream.destination == destination && !c.upstream.closed() {
+		if c.upstream.user == user && c.upstream.source == source && c.upstream.destination == destination && !c.upstream.closed() {
 			return c.upstream
 		}
 		c.closeUpstream()
 	}
 	c.upstream = newUpstreamConn(ctx, c.handler, source, destination)
+	c.upstream.user = user
 	return c.upstream
 }
 
 func (c *serverConn) serveForward(ctx context.Context, request *http.Request, source M.Socksaddr, upgrade bool) (requestResult, error) {
 	destination, valid := forwardDestination(request)
 	if !valid {
-		return c.reject(request, http.StatusBadRequest, E.New("invalid forward target: ", request.URL.String()))
+		return c.reject(request, requestKeepAlive(request), http.StatusBadRequest, nil, E.New("invalid forward target: ", request.URL.String()))
 	}
 	keepAlive := requestKeepAlive(request)
 	upgradeProtocol := request.Header.Get("Upgrade")
@@ -81,15 +96,16 @@ func (c *serverConn) serveForward(ctx context.Context, request *http.Request, so
 	var response *http.Response
 	for {
 		var err error
-		response, err = http.ReadResponse(upstream.reader, request)
+		response, err = upstream.readResponse(request)
 		if err != nil {
 			c.closeUpstream()
 			writeErr := c.finishRequestWrite(writeDone)
 			err = E.Errors(upstream.closeErr(), E.Cause(err, "read upstream response"))
-			if writeErr == nil || request.Body == http.NoBody || c.discardBody(request.Body) {
-				return c.reject(request, http.StatusBadGateway, err)
+			if !keepAlive || (writeErr != nil && request.Body != http.NoBody) {
+				return c.rejectAndClose(request, http.StatusBadGateway, err)
 			}
-			return c.rejectAndClose(request, http.StatusBadGateway, err)
+			request.Body = http.NoBody
+			return c.reject(request, true, http.StatusBadGateway, nil, err)
 		}
 		if response.StatusCode >= 200 || response.StatusCode == http.StatusSwitchingProtocols {
 			break
@@ -97,11 +113,8 @@ func (c *serverConn) serveForward(ctx context.Context, request *http.Request, so
 		if request.ProtoMajor == 1 && request.ProtoMinor == 0 {
 			continue
 		}
-		response.ProtoMajor = request.ProtoMajor
-		response.ProtoMinor = request.ProtoMinor
-		response.Close = false
 		removeHopByHopHeaders(response.Header)
-		err = response.Write(c.conn)
+		err = writeInterimResponse(c.conn, request, response)
 		if err != nil {
 			c.closeUpstream()
 			c.finishRequestWrite(writeDone)
@@ -135,12 +148,13 @@ func (c *serverConn) serveForward(ctx context.Context, request *http.Request, so
 		response.Header.Set("Proxy-Connection", "keep-alive")
 	}
 	err := response.Write(c.conn)
-	response.Body.Close()
 	if err != nil {
 		c.closeUpstream()
+		response.Body.Close()
 		c.finishRequestWrite(writeDone)
 		return requestClose, E.Cause(err, "write response")
 	}
+	response.Body.Close()
 	writeErr := c.finishRequestWrite(writeDone)
 	if writeErr != nil {
 		c.closeUpstream()
@@ -171,6 +185,9 @@ func (c *serverConn) finishRequestWrite(writeDone chan error) error {
 	case <-timer.C:
 		c.closeUpstream()
 		err = <-writeDone
+		if err == nil {
+			err = E.New("request body timeout")
+		}
 	}
 	c.conn.SetReadDeadline(time.Time{})
 	return err
@@ -214,4 +231,16 @@ func responseHasBody(request *http.Request, response *http.Response) bool {
 		return false
 	}
 	return true
+}
+
+func writeInterimResponse(writer io.Writer, request *http.Request, response *http.Response) error {
+	var buffer bytes.Buffer
+	buffer.WriteString(F.ToString("HTTP/", request.ProtoMajor, ".", request.ProtoMinor, " ", response.StatusCode, " ", http.StatusText(response.StatusCode), "\r\n"))
+	err := response.Header.Write(&buffer)
+	if err != nil {
+		return err
+	}
+	buffer.WriteString("\r\n")
+	_, err = writer.Write(buffer.Bytes())
+	return err
 }

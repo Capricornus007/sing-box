@@ -14,17 +14,18 @@ import (
 
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
+	F "github.com/sagernet/sing/common/format"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 )
 
 const (
-	capsuleTypeDatagram = 0
-	capsuleHeadroom     = 1 + 4 + 1
-	maxCapsuleLength    = 1 << 20
+	CapsuleTypeDatagram = 0
+	CapsuleHeadroom     = 1 + 4 + 1
+	MaxCapsuleLength    = 1 << 20
 )
 
-func readVarint(reader *std_bufio.Reader) (uint64, int, error) {
+func ReadVarint(reader *std_bufio.Reader) (uint64, int, error) {
 	first, err := reader.ReadByte()
 	if err != nil {
 		return 0, 0, err
@@ -42,7 +43,22 @@ func readVarint(reader *std_bufio.Reader) (uint64, int, error) {
 	return value, length, nil
 }
 
-func varintLen(value uint64) int {
+func DecodeVarint(b []byte) (uint64, int, bool) {
+	if len(b) == 0 {
+		return 0, 0, false
+	}
+	length := 1 << (b[0] >> 6)
+	if len(b) < length {
+		return 0, 0, false
+	}
+	value := uint64(b[0] & 0x3f)
+	for i := 1; i < length; i++ {
+		value = value<<8 | uint64(b[i])
+	}
+	return value, length, true
+}
+
+func VarintLen(value uint64) int {
 	switch {
 	case value < 1<<6:
 		return 1
@@ -55,8 +71,8 @@ func varintLen(value uint64) int {
 	}
 }
 
-func putVarint(b []byte, value uint64) int {
-	switch varintLen(value) {
+func PutVarint(b []byte, value uint64) int {
+	switch VarintLen(value) {
 	case 1:
 		b[0] = byte(value)
 		return 1
@@ -74,25 +90,25 @@ func putVarint(b []byte, value uint64) int {
 
 func readDatagramCapsule(reader *std_bufio.Reader, buffer *buf.Buffer) error {
 	for {
-		capsuleType, _, err := readVarint(reader)
+		capsuleType, _, err := ReadVarint(reader)
 		if err != nil {
 			return err
 		}
-		length, _, err := readVarint(reader)
+		length, _, err := ReadVarint(reader)
 		if err != nil {
 			return err
 		}
-		if length > maxCapsuleLength {
+		if length > MaxCapsuleLength {
 			return E.New("capsule too large: ", length)
 		}
-		if capsuleType != capsuleTypeDatagram {
+		if capsuleType != CapsuleTypeDatagram {
 			_, err = reader.Discard(int(length))
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		contextID, contextLength, err := readVarint(reader)
+		contextID, contextLength, err := ReadVarint(reader)
 		if err != nil {
 			return err
 		}
@@ -112,7 +128,7 @@ func readDatagramCapsule(reader *std_bufio.Reader, buffer *buf.Buffer) error {
 	}
 }
 
-func prependContextID(buffer *buf.Buffer) *buf.Buffer {
+func PrependContextID(buffer *buf.Buffer) *buf.Buffer {
 	if buffer.Start() >= 1 {
 		buffer.ExtendHeader(1)[0] = 0
 		return buffer
@@ -124,20 +140,20 @@ func prependContextID(buffer *buf.Buffer) *buf.Buffer {
 	return datagram
 }
 
-func writeDatagramCapsule(writer io.Writer, datagram *buf.Buffer) error {
+func WriteDatagramCapsule(writer io.Writer, datagram *buf.Buffer) error {
 	length := uint64(datagram.Len())
-	headerLength := 1 + varintLen(length)
+	headerLength := 1 + VarintLen(length)
 	var capsule *buf.Buffer
 	if datagram.Start() >= headerLength {
 		header := datagram.ExtendHeader(headerLength)
-		header[0] = capsuleTypeDatagram
-		putVarint(header[1:], length)
+		header[0] = CapsuleTypeDatagram
+		PutVarint(header[1:], length)
 		capsule = datagram
 	} else {
 		capsule = buf.NewSize(headerLength + datagram.Len())
 		header := capsule.Extend(headerLength)
-		header[0] = capsuleTypeDatagram
-		putVarint(header[1:], length)
+		header[0] = CapsuleTypeDatagram
+		PutVarint(header[1:], length)
 		capsule.Write(datagram.Bytes())
 		datagram.Release()
 	}
@@ -174,7 +190,7 @@ func (c *capsuleConn) ReadPacket(buffer *buf.Buffer) (M.Socksaddr, error) {
 func (c *capsuleConn) WritePacket(buffer *buf.Buffer, destination M.Socksaddr) error {
 	c.writeAccess.Lock()
 	defer c.writeAccess.Unlock()
-	return writeDatagramCapsule(c.writer, prependContextID(buffer))
+	return WriteDatagramCapsule(c.writer, PrependContextID(buffer))
 }
 
 func (c *capsuleConn) Close() error {
@@ -197,8 +213,12 @@ func (c *capsuleConn) SetWriteDeadline(t time.Time) error {
 	return c.upstream.SetWriteDeadline(t)
 }
 
+func (c *capsuleConn) NeedAdditionalReadDeadline() bool {
+	return true
+}
+
 func (c *capsuleConn) FrontHeadroom() int {
-	return capsuleHeadroom
+	return CapsuleHeadroom
 }
 
 func (c *capsuleConn) Upstream() any {
@@ -214,9 +234,21 @@ type DatagramStream interface {
 }
 
 var (
-	HTTP3StreamFunc        func(writer http.ResponseWriter) (DatagramStream, bool)
+	HTTP3StreamFunc        func(ctx context.Context, writer http.ResponseWriter) (DatagramStream, bool)
 	ErrDatagramUnsupported = E.New("datagram unsupported")
 )
+
+type DatagramTooLargeError struct {
+	MaxPayloadSize int
+}
+
+func (e *DatagramTooLargeError) Error() string {
+	return F.ToString("datagram too large, maximum payload size is ", e.MaxPayloadSize)
+}
+
+func (e *DatagramTooLargeError) Unwrap() error {
+	return ErrDatagramUnsupported
+}
 
 type http3PacketConn struct {
 	stream      DatagramStream
@@ -227,6 +259,7 @@ type http3PacketConn struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	closeOnce   sync.Once
+	waitGroup   sync.WaitGroup
 	writeAccess sync.Mutex
 	err         error
 }
@@ -242,23 +275,26 @@ func newHTTP3PacketConn(stream DatagramStream, destination M.Socksaddr, localAdd
 		ctx:         ctx,
 		cancel:      cancel,
 	}
+	conn.waitGroup.Add(2)
 	go conn.loopDatagram()
 	go conn.loopCapsule()
 	return conn
 }
 
 func (c *http3PacketConn) loopDatagram() {
+	defer c.waitGroup.Done()
 	for {
 		datagram, err := c.stream.ReceiveDatagram(c.ctx)
 		if err != nil {
 			c.closeWithError(err)
 			return
 		}
-		if len(datagram) == 0 || datagram[0] != 0 {
+		contextID, contextLength, valid := DecodeVarint(datagram)
+		if !valid || contextID != 0 {
 			continue
 		}
-		buffer := buf.NewSize(len(datagram) - 1)
-		buffer.Write(datagram[1:])
+		buffer := buf.NewSize(len(datagram) - contextLength)
+		buffer.Write(datagram[contextLength:])
 		select {
 		case c.packets <- buffer:
 		case <-c.ctx.Done():
@@ -269,6 +305,7 @@ func (c *http3PacketConn) loopDatagram() {
 }
 
 func (c *http3PacketConn) loopCapsule() {
+	defer c.waitGroup.Done()
 	for {
 		buffer := buf.NewPacket()
 		err := readDatagramCapsule(c.reader, buffer)
@@ -287,21 +324,24 @@ func (c *http3PacketConn) loopCapsule() {
 }
 
 func (c *http3PacketConn) ReadPacket(buffer *buf.Buffer) (M.Socksaddr, error) {
-	select {
-	case packet := <-c.packets:
-		_, err := buffer.Write(packet.Bytes())
-		packet.Release()
-		if err != nil {
-			return M.Socksaddr{}, err
+	for {
+		select {
+		case packet := <-c.packets:
+			if packet.Len() > buffer.FreeLen() {
+				packet.Release()
+				continue
+			}
+			buffer.Write(packet.Bytes())
+			packet.Release()
+			return c.destination, nil
+		case <-c.ctx.Done():
+			return M.Socksaddr{}, c.err
 		}
-		return c.destination, nil
-	case <-c.ctx.Done():
-		return M.Socksaddr{}, c.err
 	}
 }
 
 func (c *http3PacketConn) WritePacket(buffer *buf.Buffer, destination M.Socksaddr) error {
-	datagram := prependContextID(buffer)
+	datagram := PrependContextID(buffer)
 	err := c.stream.SendDatagram(datagram.Bytes())
 	if err == nil {
 		datagram.Release()
@@ -313,7 +353,7 @@ func (c *http3PacketConn) WritePacket(buffer *buf.Buffer, destination M.Socksadd
 	}
 	c.writeAccess.Lock()
 	defer c.writeAccess.Unlock()
-	return writeDatagramCapsule(c.stream, datagram)
+	return WriteDatagramCapsule(c.stream, datagram)
 }
 
 func (c *http3PacketConn) closeWithError(err error) {
@@ -321,6 +361,17 @@ func (c *http3PacketConn) closeWithError(err error) {
 		c.err = err
 		c.cancel()
 		c.stream.Close()
+		go func() {
+			c.waitGroup.Wait()
+			for {
+				select {
+				case packet := <-c.packets:
+					packet.Release()
+				default:
+					return
+				}
+			}
+		}()
 	})
 }
 
@@ -334,14 +385,6 @@ func (c *http3PacketConn) wait(ctx context.Context) {
 	case <-c.ctx.Done():
 	case <-ctx.Done():
 		c.Close()
-	}
-	for {
-		select {
-		case packet := <-c.packets:
-			packet.Release()
-		default:
-			return
-		}
 	}
 }
 
@@ -361,8 +404,12 @@ func (c *http3PacketConn) SetWriteDeadline(t time.Time) error {
 	return os.ErrInvalid
 }
 
+func (c *http3PacketConn) NeedAdditionalReadDeadline() bool {
+	return true
+}
+
 func (c *http3PacketConn) FrontHeadroom() int {
-	return capsuleHeadroom
+	return CapsuleHeadroom
 }
 
 var _ N.PacketConn = (*http3PacketConn)(nil)
