@@ -12,7 +12,6 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
-	qtls "github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing-quic/hysteria"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/auth"
@@ -78,15 +77,9 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		ReceiveBPS:    receiveBps,
 		XPlusPassword: options.Obfs,
 		TLSConfig:     tlsConfig,
+		QUICOptions:   buildInboundQUICOptions(options),
 		UDPTimeout:    udpTimeout,
 		Handler:       inbound,
-
-		QUICOptions: qtls.QUICOptions{
-			ConnectionReceiveWindow: options.ReceiveWindowConn,
-			StreamReceiveWindow:     options.ReceiveWindowClient,
-			MaxConcurrentStreams:    options.MaxConnClient,
-			DisablePathMTUDiscovery: options.DisableMTUDiscovery,
-		},
 	})
 	if err != nil {
 		return nil, err

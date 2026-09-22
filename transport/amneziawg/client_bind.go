@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/amnezia-vpn/amneziawg-go/conn"
+	"github.com/amnezia-vpn/amneziawg-go/v3/conn"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -34,6 +34,7 @@ type ClientBind struct {
 	isConnect           bool
 	connectAddr         netip.AddrPort
 	reserved            [3]uint8
+	rewriteReserved     bool
 }
 
 func NewClientBind(ctx context.Context, logger logger.Logger, dialer N.Dialer, isConnect bool, connectAddr netip.AddrPort, reserved [3]uint8) *ClientBind {
@@ -47,19 +48,11 @@ func NewClientBind(ctx context.Context, logger logger.Logger, dialer N.Dialer, i
 		isConnect:           isConnect,
 		connectAddr:         connectAddr,
 		reserved:            reserved,
+		rewriteReserved:     reserved != [3]uint8{},
 	}
 }
 
 func (c *ClientBind) connect() (*wireConn, error) {
-	serverConn := c.conn
-	if serverConn != nil {
-		select {
-		case <-serverConn.done:
-			serverConn = nil
-		default:
-			return serverConn, nil
-		}
-	}
 	c.connAccess.Lock()
 	defer c.connAccess.Unlock()
 	select {
@@ -67,7 +60,7 @@ func (c *ClientBind) connect() (*wireConn, error) {
 		return nil, net.ErrClosed
 	default:
 	}
-	serverConn = c.conn
+	serverConn := c.conn
 	if serverConn != nil {
 		select {
 		case <-serverConn.done:
@@ -134,7 +127,7 @@ func (c *ClientBind) receive(packets [][]byte, sizes []int, eps []conn.Endpoint)
 		return
 	}
 	sizes[0] = n
-	if n > 3 {
+	if n > 3 && c.rewriteReserved {
 		b := packets[0]
 		common.ClearArray(b[1:4])
 	}
@@ -171,7 +164,7 @@ func (c *ClientBind) Send(bufs [][]byte, ep conn.Endpoint) error {
 	}
 	destination := netip.AddrPort(ep.(remoteEndpoint))
 	for _, b := range bufs {
-		if len(b) > 3 {
+		if len(b) > 3 && c.rewriteReserved {
 			reserved, loaded := c.reservedForEndpoint[destination]
 			if !loaded {
 				reserved = c.reserved
@@ -201,6 +194,9 @@ func (c *ClientBind) BatchSize() int {
 
 func (c *ClientBind) SetReservedForEndpoint(destination netip.AddrPort, reserved [3]byte) {
 	c.reservedForEndpoint[destination] = reserved
+	if reserved != [3]byte{} {
+		c.rewriteReserved = true
+	}
 }
 
 type wireConn struct {

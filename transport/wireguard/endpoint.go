@@ -8,13 +8,10 @@ import (
 	"net"
 	"net/netip"
 	"os"
-	"reflect"
 	"strings"
-	"time"
-	"unsafe"
 
-	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/dialer"
+	"github.com/sagernet/sing-box/service/powerreport"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -35,9 +32,10 @@ type Endpoint struct {
 	ipcConf        string
 	allowedAddress []netip.Prefix
 	tunDevice      Device
-	natDevice      NatDevice
+	returnDevice   *returnDeviceWrapper
 	device         *device.Device
 	allowedIPs     *device.AllowedIPs
+	egressPool     *tun.UDPEgressPool
 	pause          pause.Manager
 	pauseCallback  *list.Element[pause.Callback]
 }
@@ -49,6 +47,9 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	privateKeyBytes, err := base64.StdEncoding.DecodeString(options.PrivateKey)
 	if err != nil {
 		return nil, E.Cause(err, "decode private key")
+	}
+	if len(privateKeyBytes) != 32 {
+		return nil, E.New("invalid private key length")
 	}
 	privateKey := hex.EncodeToString(privateKeyBytes)
 	ipcConf := "private_key=" + privateKey
@@ -70,11 +71,17 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 		if err != nil {
 			return nil, E.Cause(err, "decode public key for peer ", peerIndex)
 		}
+		if len(publicKeyBytes) != 32 {
+			return nil, E.New("invalid public key length for peer ", peerIndex)
+		}
 		peer.publicKeyHex = hex.EncodeToString(publicKeyBytes)
 		if rawPeer.PreSharedKey != "" {
 			preSharedKeyBytes, err := base64.StdEncoding.DecodeString(rawPeer.PreSharedKey)
 			if err != nil {
 				return nil, E.Cause(err, "decode pre shared key for peer ", peerIndex)
+			}
+			if len(preSharedKeyBytes) != 32 {
+				return nil, E.New("invalid pre shared key length for peer ", peerIndex)
 			}
 			peer.preSharedKeyHex = hex.EncodeToString(preSharedKeyBytes)
 		}
@@ -104,25 +111,25 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 		options.MTU = 1408
 	}
 	deviceOptions := DeviceOptions{
-		Context:        options.Context,
-		Logger:         options.Logger,
-		System:         options.System,
-		Handler:        options.Handler,
-		UDPTimeout:     options.UDPTimeout,
-		ICMPTimeout:    options.ICMPTimeout,
-		CreateDialer:   options.CreateDialer,
-		Name:           options.Name,
-		MTU:            options.MTU,
-		Address:        options.Address,
-		AllowedAddress: allowedAddresses,
+		Context:         options.Context,
+		Logger:          options.Logger,
+		System:          options.System,
+		Handler:         options.Handler,
+		UDPTimeout:      options.UDPTimeout,
+		ICMPTimeout:     options.ICMPTimeout,
+		UDPMapping:      options.UDPMapping,
+		UDPFiltering:    options.UDPFiltering,
+		UDPNATMax:       options.UDPNATMax,
+		InterfaceFinder: options.InterfaceFinder,
+		CreateDialer:    options.CreateDialer,
+		Name:            options.Name,
+		MTU:             options.MTU,
+		Address:         options.Address,
+		AllowedAddress:  allowedAddresses,
 	}
 	tunDevice, err := NewDevice(deviceOptions)
 	if err != nil {
 		return nil, E.Cause(err, "create WireGuard device")
-	}
-	natDevice, isNatDevice := tunDevice.(NatDevice)
-	if !isNatDevice {
-		natDevice = NewNATDevice(options.Context, options.Logger, tunDevice)
 	}
 	return &Endpoint{
 		options:        options,
@@ -130,50 +137,62 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 		ipcConf:        ipcConf,
 		allowedAddress: allowedAddresses,
 		tunDevice:      tunDevice,
-		natDevice:      natDevice,
+		returnDevice:   &returnDeviceWrapper{Device: tunDevice},
 	}, nil
 }
 
-func (e *Endpoint) Start(resolve bool) error {
-	if common.Any(e.peers, func(peer peerConfig) bool {
-		return !peer.endpoint.IsValid() && peer.destination.IsDomain()
-	}) {
-		if !resolve {
-			return nil
-		}
-		for peerIndex, peer := range e.peers {
-			if peer.endpoint.IsValid() || !peer.destination.IsDomain() {
-				continue
-			}
-			destinationAddress, err := e.options.ResolvePeer(peer.destination.Fqdn)
-			if err != nil {
-				return E.Cause(err, "resolve endpoint domain for peer[", peerIndex, "]: ", peer.destination)
-			}
-			e.peers[peerIndex].endpoint = netip.AddrPortFrom(destinationAddress, peer.destination.Port)
-		}
-	} else if resolve {
+func (e *Endpoint) Start(postStart bool) error {
+	hasDomainPeer := common.Any(e.peers, func(peer peerConfig) bool {
+		return peer.destination.IsDomain()
+	})
+	if postStart != hasDomainPeer {
 		return nil
 	}
 	var bind conn.Bind
-	wgListener, isWgListener := common.Cast[dialer.WireGuardListener](e.options.Dialer)
-	if isWgListener {
-		bind = conn.NewStdNetBind(wgListener.WireGuardControl())
+	udpListener, isUDPListener := common.Cast[dialer.UDPListener](e.options.Dialer)
+	if isUDPListener {
+		listenerControl, egressEnabled := udpListener.UDPListenerControl()
+		standardBind := conn.NewStdNetBind(listenerControl).(*conn.StdNetBind)
+		if e.options.ListenPort == 0 && len(e.peers) == 1 && e.peers[0].endpoint.IsValid() {
+			standardBind.SetSinglePeerMode()
+		}
+		if egressEnabled {
+			egressPoolOptions := e.options.EgressPoolOptions
+			egressPoolOptions.Control = listenerControl
+			e.egressPool = tun.NewUDPEgressPool(egressPoolOptions)
+			standardBind.SetEgressProvider(e.egressPool)
+		}
+		powerManager := service.FromContext[*powerreport.Manager](e.options.Context)
+		if powerManager != nil {
+			recorder := powerManager.Recorder()
+			if recorder != nil {
+				attribution := &powerreport.Attribution{Endpoint: e.options.Tag}
+				standardBind.SetIOActivityFuncs(func(size int) {
+					recorder.Touch(powerreport.DirectionInbound, size, attribution)
+				}, func(size int) {
+					recorder.Touch(powerreport.DirectionOutbound, size, attribution)
+				})
+			}
+		}
+		bind = standardBind
 	} else {
 		var (
 			isConnect   bool
 			connectAddr netip.AddrPort
 			reserved    [3]uint8
 		)
-		if len(e.peers) == 1 && e.peers[0].endpoint.IsValid() {
-			isConnect = true
-			connectAddr = e.peers[0].endpoint
+		if len(e.peers) == 1 {
 			reserved = e.peers[0].reserved
+			if e.peers[0].endpoint.IsValid() {
+				isConnect = true
+				connectAddr = e.peers[0].endpoint
+			}
 		}
 		bind = NewClientBind(e.options.Context, e.options.Logger, e.options.Dialer, isConnect, connectAddr, reserved)
 	}
-	if isWgListener || len(e.peers) > 1 {
+	if isUDPListener || len(e.peers) > 1 {
 		for _, peer := range e.peers {
-			if peer.reserved != [3]uint8{} {
+			if peer.endpoint.IsValid() && peer.reserved != [3]uint8{} {
 				bind.SetReservedForEndpoint(peer.endpoint, peer.reserved)
 			}
 		}
@@ -190,31 +209,75 @@ func (e *Endpoint) Start(resolve bool) error {
 			e.options.Logger.Error(fmt.Sprintf(strings.ToLower(format), args...))
 		},
 	}
-	var deviceInput Device
-	if e.natDevice != nil {
-		deviceInput = e.natDevice
-	} else {
-		deviceInput = e.tunDevice
-	}
-	wgDevice := device.NewDevice(e.options.Context, deviceInput, bind, logger, e.options.Workers)
+	wgDevice := device.NewDevice(e.options.Context, e.returnDevice, bind, logger, e.options.Workers)
 	e.tunDevice.SetDevice(wgDevice)
 	var ipcConf strings.Builder
 	ipcConf.WriteString(e.ipcConf)
 	for _, peer := range e.peers {
 		ipcConf.WriteString(peer.GenerateIpcLines())
 	}
+	resolver, err := e.endpointResolver(bind)
+	if err != nil {
+		wgDevice.Close()
+		return err
+	}
+	// IpcSet can initiate a handshake while creating a peer.
+	wgDevice.SetEndpointResolverFunc(resolver)
 	err = wgDevice.IpcSet(ipcConf.String())
 	if err != nil {
 		wgDevice.Close()
-		return E.Cause(err, "setup wireguard: \n", ipcConf.String())
+		return E.New("invalid WireGuard device configuration")
 	}
 	e.device = wgDevice
 	e.pause = service.FromContext[pause.Manager](e.options.Context)
 	if e.pause != nil {
 		e.pauseCallback = e.pause.RegisterCallback(e.onPauseUpdated)
 	}
-	e.allowedIPs = (*device.AllowedIPs)(unsafe.Pointer(reflect.Indirect(reflect.ValueOf(wgDevice)).FieldByName("allowedips").UnsafeAddr()))
+	e.allowedIPs = wgDevice.AllowedIPs()
 	return nil
+}
+
+func (e *Endpoint) endpointResolver(bind conn.Bind) (device.PeerEndpointResolverFunc, error) {
+	peers := make(map[device.NoisePublicKey]peerConfig)
+	for _, peer := range e.peers {
+		if !peer.destination.IsDomain() {
+			continue
+		}
+		var key device.NoisePublicKey
+		if err := key.FromHex(peer.publicKeyHex); err != nil {
+			return nil, E.New("invalid peer public key")
+		}
+		peers[key] = peer
+	}
+	if len(peers) == 0 {
+		return nil, nil
+	}
+	if e.options.ResolvePeer == nil {
+		return nil, E.New("missing peer domain resolver")
+	}
+	return func(key device.NoisePublicKey) ([]conn.Endpoint, error) {
+		peer, found := peers[key]
+		if !found {
+			return nil, nil
+		}
+		addresses, err := e.options.ResolvePeer(peer.destination.Fqdn)
+		if err != nil {
+			return nil, err
+		}
+		endpoints := make([]conn.Endpoint, 0, len(addresses))
+		for _, address := range addresses {
+			destination := netip.AddrPortFrom(address, peer.destination.Port)
+			if peer.reserved != [3]uint8{} {
+				bind.SetReservedForEndpoint(destination, peer.reserved)
+			}
+			endpoint, err := bind.ParseEndpoint(destination.String())
+			if err != nil {
+				return nil, err
+			}
+			endpoints = append(endpoints, endpoint)
+		}
+		return endpoints, nil
+	}, nil
 }
 
 func (e *Endpoint) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
@@ -236,33 +299,38 @@ func (e *Endpoint) Close() error {
 		e.pause.UnregisterCallback(e.pauseCallback)
 		e.pauseCallback = nil
 	}
+	if e.egressPool != nil {
+		e.egressPool.Close()
+		e.egressPool = nil
+	}
 	if e.device != nil {
 		e.device.Down()
 		e.device.Close()
 		e.device = nil
+		return nil
 	}
-	return nil
+	return e.tunDevice.Close()
 }
 
 func (e *Endpoint) Lookup(address netip.Addr) *device.Peer {
 	if e.allowedIPs == nil {
 		return nil
 	}
-	return e.allowedIPs.Lookup(address.AsSlice())
+	return e.allowedIPs.LookupFromPacket(netip.Addr{}, address, nil)
 }
 
-func (e *Endpoint) NewDirectRouteConnection(metadata adapter.InboundContext, routeContext tun.DirectRouteContext, timeout time.Duration) (tun.DirectRouteDestination, error) {
-	if e.natDevice == nil {
-		return nil, os.ErrInvalid
+func (e *Endpoint) BindUpdate() error {
+	if e.device == nil {
+		return nil
 	}
-	return e.natDevice.CreateDestination(metadata, routeContext, timeout)
+	return e.device.BindUpdate()
 }
 
 func (e *Endpoint) onPauseUpdated(event int) {
 	switch event {
-	case pause.EventDevicePaused, pause.EventNetworkPause:
+	case pause.EventNetworkPause:
 		e.device.Down()
-	case pause.EventDeviceWake, pause.EventNetworkWake:
+	case pause.EventNetworkWake:
 		e.device.Up()
 	}
 }

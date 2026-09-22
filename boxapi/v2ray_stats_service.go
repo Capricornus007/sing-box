@@ -5,17 +5,18 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
 	N "github.com/sagernet/sing/common/network"
 )
 
+var _ adapter.ConnectionTracker = (*SbStatsService)(nil)
+
 type SbStatsService struct {
-	createdAt time.Time
 	inbounds  map[string]bool
 	outbounds map[string]bool
 	users     map[string]bool
@@ -27,92 +28,84 @@ func NewSbStatsService(options option.V2RayStatsServiceOptions) *SbStatsService 
 	if !options.Enabled {
 		return nil
 	}
-	inbounds := make(map[string]bool)
-	outbounds := make(map[string]bool)
-	users := make(map[string]bool)
-	for _, inbound := range options.Inbounds {
-		inbounds[inbound] = true
+	s := &SbStatsService{inbounds: make(map[string]bool), outbounds: make(map[string]bool), users: make(map[string]bool), counters: make(map[string]*atomic.Int64)}
+	for _, tag := range options.Inbounds {
+		s.inbounds[tag] = true
 	}
-	for _, outbound := range options.Outbounds {
-		outbounds[outbound] = true
+	for _, tag := range options.Outbounds {
+		s.outbounds[tag] = true
 	}
-	for _, user := range options.Users {
-		users[user] = true
+	for _, tag := range options.Users {
+		s.users[tag] = true
 	}
-	return &SbStatsService{
-		createdAt: time.Now(),
-		inbounds:  inbounds,
-		outbounds: outbounds,
-		users:     users,
-		counters:  make(map[string]*atomic.Int64),
+	return s
+}
+
+func (s *SbStatsService) flowCounters(inbound, outbound, user string) ([]*atomic.Int64, []*atomic.Int64) {
+	var up, down []*atomic.Int64
+	s.access.Lock()
+	defer s.access.Unlock()
+	for _, scope := range []struct {
+		prefix  string
+		enabled bool
+	}{
+		{"inbound>>>" + inbound, inbound != "" && s.inbounds[inbound]},
+		{"outbound>>>" + outbound, outbound != "" && s.outbounds[outbound]},
+		{"user>>>" + user, user != "" && s.users[user]},
+	} {
+		if scope.enabled {
+			up = append(up, s.loadOrCreateCounter(scope.prefix+">>>traffic>>>uplink"))
+			down = append(down, s.loadOrCreateCounter(scope.prefix+">>>traffic>>>downlink"))
+		}
 	}
+	return up, down
 }
 
 func (s *SbStatsService) RoutedConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, matchedRule adapter.Rule, matchOutbound adapter.Outbound) net.Conn {
-	inbound := metadata.Inbound
-	user := metadata.User
-	outbound := matchOutbound.Tag()
-	return s.RoutedConnectionInternal(inbound, outbound, user, conn, true)
+	return s.RoutedConnectionInternal(metadata.Inbound, matchOutbound.Tag(), metadata.User, conn, true)
 }
 
-func (s *SbStatsService) RoutedConnectionInternal(inbound string, outbound string, user string, conn net.Conn, directIn bool) net.Conn {
-	var readCounter []*atomic.Int64
-	var writeCounter []*atomic.Int64
-	countInbound := inbound != "" && s.inbounds[inbound]
-	countOutbound := outbound != "" && s.outbounds[outbound]
-	countUser := user != "" && s.users[user]
-	if !countInbound && !countOutbound && !countUser {
+func (s *SbStatsService) RoutedConnectionInternal(inbound, outbound, user string, conn net.Conn, directIn bool) net.Conn {
+	up, down := s.flowCounters(inbound, outbound, user)
+	if len(up) == 0 {
 		return conn
 	}
-	s.access.Lock()
-	if countInbound {
-		readCounter = append(readCounter, s.loadOrCreateCounter("inbound>>>"+inbound+">>>traffic>>>uplink"))
-		writeCounter = append(writeCounter, s.loadOrCreateCounter("inbound>>>"+inbound+">>>traffic>>>downlink"))
-	}
-	if countOutbound {
-		readCounter = append(readCounter, s.loadOrCreateCounter("outbound>>>"+outbound+">>>traffic>>>uplink"))
-		writeCounter = append(writeCounter, s.loadOrCreateCounter("outbound>>>"+outbound+">>>traffic>>>downlink"))
-	}
-	if countUser {
-		readCounter = append(readCounter, s.loadOrCreateCounter("user>>>"+user+">>>traffic>>>uplink"))
-		writeCounter = append(writeCounter, s.loadOrCreateCounter("user>>>"+user+">>>traffic>>>downlink"))
-	}
-	s.access.Unlock()
 	if directIn {
-		conn = bufio.NewInt64CounterConn(conn, readCounter, writeCounter)
-	} else {
-		conn = bufio.NewInt64CounterConn(conn, writeCounter, readCounter)
+		return bufio.NewInt64CounterConn(conn, up, down)
 	}
-	return conn
+	return bufio.NewInt64CounterConn(conn, down, up)
 }
 
 func (s *SbStatsService) RoutedPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext, matchedRule adapter.Rule, matchOutbound adapter.Outbound) N.PacketConn {
-	inbound := metadata.Inbound
-	user := metadata.User
-	outbound := matchOutbound.Tag()
-	var readCounter []*atomic.Int64
-	var writeCounter []*atomic.Int64
-	countInbound := inbound != "" && s.inbounds[inbound]
-	countOutbound := outbound != "" && s.outbounds[outbound]
-	countUser := user != "" && s.users[user]
-	if !countInbound && !countOutbound && !countUser {
+	up, down := s.flowCounters(metadata.Inbound, matchOutbound.Tag(), metadata.User)
+	if len(up) == 0 {
 		return conn
 	}
-	s.access.Lock()
-	if countInbound {
-		readCounter = append(readCounter, s.loadOrCreateCounter("inbound>>>"+inbound+">>>traffic>>>uplink"))
-		writeCounter = append(writeCounter, s.loadOrCreateCounter("inbound>>>"+inbound+">>>traffic>>>downlink"))
+	return bufio.NewInt64CounterPacketConn(conn, up, nil, down, nil)
+}
+
+func (s *SbStatsService) RoutedFlow(ctx context.Context, metadata adapter.InboundContext, matchedRule adapter.Rule, matchOutbound adapter.Outbound) tun.FlowTracker {
+	up, down := s.flowCounters(metadata.Inbound, matchOutbound.Tag(), metadata.User)
+	if len(up) == 0 {
+		return nil
 	}
-	if countOutbound {
-		readCounter = append(readCounter, s.loadOrCreateCounter("outbound>>>"+outbound+">>>traffic>>>uplink"))
-		writeCounter = append(writeCounter, s.loadOrCreateCounter("outbound>>>"+outbound+">>>traffic>>>downlink"))
+	return &statsFlowTracker{up: up, down: down}
+}
+
+type statsFlowTracker struct{ up, down []*atomic.Int64 }
+
+func (*statsFlowTracker) AttachFlow(tun.FlowHandle)     {}
+func (*statsFlowTracker) FlowEstablished()              {}
+func (*statsFlowTracker) CloseFlow(tun.FlowCloseReason) {}
+func (t *statsFlowTracker) CountForward(n int) {
+	for _, counter := range t.up {
+		counter.Add(int64(n))
 	}
-	if countUser {
-		readCounter = append(readCounter, s.loadOrCreateCounter("user>>>"+user+">>>traffic>>>uplink"))
-		writeCounter = append(writeCounter, s.loadOrCreateCounter("user>>>"+user+">>>traffic>>>downlink"))
+}
+func (t *statsFlowTracker) CountReverse(n int) {
+	for _, counter := range t.down {
+		counter.Add(int64(n))
 	}
-	s.access.Unlock()
-	return bufio.NewInt64CounterPacketConn(conn, readCounter, nil, writeCounter, nil)
 }
 
 func (s *SbStatsService) GetStats(ctx context.Context, name string, reset bool) (int64, error) {
@@ -122,26 +115,17 @@ func (s *SbStatsService) GetStats(ctx context.Context, name string, reset bool) 
 	if !loaded {
 		return 0, E.New(name, " not found.")
 	}
-	var value int64
 	if reset {
-		value = counter.Swap(0)
-	} else {
-		value = counter.Load()
+		return counter.Swap(0), nil
 	}
-	return value, nil
+	return counter.Load(), nil
 }
 
-// QueryStats
-
-// GetSysStats
-
-//nolint:staticcheck
 func (s *SbStatsService) loadOrCreateCounter(name string) *atomic.Int64 {
-	counter, loaded := s.counters[name]
-	if loaded {
-		return counter
+	counter := s.counters[name]
+	if counter == nil {
+		counter = &atomic.Int64{}
+		s.counters[name] = counter
 	}
-	counter = &atomic.Int64{}
-	s.counters[name] = counter
 	return counter
 }

@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/amnezia-vpn/amneziawg-go/device"
+	"github.com/amnezia-vpn/amneziawg-go/v3/device"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
@@ -41,6 +41,14 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	if err != nil {
 		return nil, E.Cause(err, "decode private key")
 	}
+	if len(privateKeyBytes) != 32 {
+		return nil, E.New("invalid private key length")
+	}
+	for _, value := range []string{options.InitPacketMagicHeader, options.ResponsePacketMagicHeader, options.UnderloadPacketMagicHeader, options.TransportPacketMagicHeader, options.SpecialJunk1, options.SpecialJunk2, options.SpecialJunk3, options.SpecialJunk4, options.SpecialJunk5} {
+		if strings.ContainsAny(value, "\r\n") {
+			return nil, E.New("invalid line break in AmneziaWG parameter")
+		}
+	}
 	privateKey := hex.EncodeToString(privateKeyBytes)
 	ipcConf := "private_key=" + privateKey
 	if options.ListenPort != 0 {
@@ -62,11 +70,17 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 		if err != nil {
 			return nil, E.Cause(err, "decode public key for peer ", peerIndex)
 		}
+		if len(publicKeyBytes) != 32 {
+			return nil, E.New("invalid public key length for peer ", peerIndex)
+		}
 		peer.publicKeyHex = hex.EncodeToString(publicKeyBytes)
 		if rawPeer.PreSharedKey != "" {
 			preSharedKeyBytes, err := base64.StdEncoding.DecodeString(rawPeer.PreSharedKey)
 			if err != nil {
 				return nil, E.Cause(err, "decode pre shared key for peer ", peerIndex)
+			}
+			if len(preSharedKeyBytes) != 32 {
+				return nil, E.New("invalid pre shared key length for peer ", peerIndex)
 			}
 			peer.preSharedKeyHex = hex.EncodeToString(preSharedKeyBytes)
 		}
@@ -78,6 +92,9 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 				return nil, E.New("invalid reserved value for peer ", peerIndex, ", required 3 bytes, got ", len(peer.reserved))
 			}
 			copy(peer.reserved[:], rawPeer.Reserved[:])
+			if peer.reserved != [3]uint8{} && generateAmneziaWGIpcLines(options) != "" {
+				return nil, E.New("reserved bytes cannot be combined with AmneziaWG obfuscation")
+			}
 		}
 		peers = append(peers, peer)
 	}
@@ -178,7 +195,8 @@ func (e *Endpoint) Start(resolve bool) error {
 	}
 	err = wgDevice.IpcSet(ipcConf)
 	if err != nil {
-		return E.Cause(err, "setup wireguard: \n", ipcConf)
+		wgDevice.Close()
+		return E.New("invalid AmneziaWG device configuration")
 	}
 	e.device = wgDevice
 	e.pause = service.FromContext[pause.Manager](e.options.Context)
@@ -203,11 +221,13 @@ func (e *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 }
 
 func (e *Endpoint) Close() error {
-	if e.device != nil {
-		e.device.Close()
-	}
 	if e.pauseCallback != nil {
 		e.pause.UnregisterCallback(e.pauseCallback)
+	}
+	if e.device != nil {
+		e.device.Close()
+	} else if e.tunDevice != nil {
+		return e.tunDevice.Close()
 	}
 	return nil
 }

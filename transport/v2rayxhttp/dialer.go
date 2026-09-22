@@ -11,9 +11,9 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-	"unsafe"
 
 	"github.com/sagernet/quic-go/http3"
+	"github.com/sagernet/sing-box/common/conntrack"
 	"github.com/sagernet/sing-box/common/vision"
 	common "github.com/sagernet/sing-box/common/xray"
 	"github.com/sagernet/sing-box/common/xray/buf"
@@ -36,6 +36,7 @@ type DialerClient interface {
 type DefaultDialerClient struct {
 	options     *option.V2RayXHTTPBaseOptions
 	client      *http.Client
+	connections *conntrack.Dialer
 	closed      bool
 	httpVersion string
 	// pool of net.Conn, created using dialUploadConn
@@ -45,20 +46,6 @@ type DefaultDialerClient struct {
 	mtx sync.RWMutex
 }
 
-type clientConnPool struct {
-	t     *http2.Transport
-	mu    sync.Mutex
-	conns map[string][]*http2.ClientConn
-}
-
-type efaceWords struct {
-	typ  unsafe.Pointer
-	data unsafe.Pointer
-}
-
-//go:linkname transportConnPool golang.org/x/net/http2.(*Transport).connPool
-func transportConnPool(t *http2.Transport) http2.ClientConnPool
-
 func (c *DefaultDialerClient) Close() {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
@@ -66,19 +53,12 @@ func (c *DefaultDialerClient) Close() {
 		return
 	}
 	c.closed = true
+	c.connections.Close()
 	switch transport := c.client.Transport.(type) {
 	case *http.Transport:
 		transport.CloseIdleConnections()
 	case *http2.Transport:
-		connPool := transportConnPool(transport)
-		p := (*clientConnPool)((*efaceWords)(unsafe.Pointer(&connPool)).data)
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		for _, vv := range p.conns {
-			for _, cc := range vv {
-				cc.Close()
-			}
-		}
+		transport.CloseIdleConnections()
 	case *http3.Transport:
 		transport.Close()
 	default:

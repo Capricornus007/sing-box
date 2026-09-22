@@ -14,7 +14,6 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/tuic"
-	qtls "github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing-quic/hysteria"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/bufio"
@@ -82,12 +81,8 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		XPlusPassword: options.Obfs,
 		Password:      password,
 		TLSConfig:     tlsConfig,
+		QUICOptions:   buildOutboundQUICOptions(options),
 		UDPDisabled:   !common.Contains(networkList, N.NetworkUDP),
-		QUICOptions: qtls.QUICOptions{
-			ConnectionReceiveWindow: options.ReceiveWindowConn,
-			StreamReceiveWindow:     options.ReceiveWindow,
-			DisablePathMTUDiscovery: options.DisableMTUDiscovery,
-		},
 	})
 	if err != nil {
 		return nil, err
@@ -120,7 +115,7 @@ func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 	return h.client.ListenPacket(ctx, destination)
 }
 
-func (h *Outbound) InterfaceUpdated() {
+func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 	h.client.CloseWithError(E.New("network changed"))
 }
 

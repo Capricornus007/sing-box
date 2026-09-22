@@ -18,6 +18,7 @@ import (
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/http3"
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/conntrack"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/common/vision"
 	"github.com/sagernet/sing-box/common/xray/buf"
@@ -29,7 +30,6 @@ import (
 	"github.com/sagernet/sing-box/option"
 	qtls "github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing/common"
-	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -48,6 +48,7 @@ type Client struct {
 	baseRequestURL2 url.URL
 	getHTTPClient   func() (DialerClient, *XmuxClient)
 	getHTTPClient2  func() (DialerClient, *XmuxClient)
+	managers        []*XmuxManager
 }
 
 func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, options option.V2RayXHTTPOptions, tlsConfig tls.Config) (adapter.V2RayClientTransport, error) {
@@ -93,6 +94,7 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 	xmuxManager := NewXmuxManager(xmuxOptions, func() XmuxConn {
 		return createHTTPClient(dest, dialer, &options.V2RayXHTTPBaseOptions, tlsConfig)
 	})
+	managers := []*XmuxManager{xmuxManager}
 	getHTTPClient := func() (DialerClient, *XmuxClient) {
 		xmuxClient := xmuxManager.GetXmuxClient(ctx)
 		return xmuxClient.XmuxConn.(DialerClient), xmuxClient
@@ -139,6 +141,7 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 		xmuxManager2 := NewXmuxManager(xmuxOptions2, func() XmuxConn {
 			return createHTTPClient(dest2, dialer2, &options2.V2RayXHTTPBaseOptions, tlsConfig2)
 		})
+		managers = append(managers, xmuxManager2)
 		getHTTPClient2 = func() (DialerClient, *XmuxClient) {
 			xmuxClient2 := xmuxManager2.GetXmuxClient(ctx)
 			return xmuxClient2.XmuxConn.(DialerClient), xmuxClient2
@@ -147,6 +150,7 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 	return &Client{
 		ctx:             ctx,
 		options:         &options,
+		managers:        managers,
 		dest:            dest,
 		downloadDest:    downloadDest,
 		logger:          clientLogger,
@@ -326,6 +330,9 @@ func (c *Client) DialContext(ctx context.Context) (net.Conn, error) {
 }
 
 func (c *Client) Close() error {
+	for _, manager := range c.managers {
+		manager.Reset()
+	}
 	return nil
 }
 
@@ -403,6 +410,8 @@ func formatDestWithNetwork(client DialerClient, dest M.Socksaddr) string {
 }
 
 func createHTTPClient(dest M.Socksaddr, dialer N.Dialer, options *option.V2RayXHTTPBaseOptions, tlsConfig tls.Config) DialerClient {
+	connections := &conntrack.Dialer{Dialer: dialer}
+	dialer = connections
 	httpVersion := decideHTTPVersion(tlsConfig)
 	dialContext := func(ctxInner context.Context) (net.Conn, error) {
 		conn, err := dialer.DialContext(ctxInner, N.NetworkTCP, dest)
@@ -450,7 +459,7 @@ func createHTTPClient(dest M.Socksaddr, dialer N.Dialer, options *option.V2RayXH
 				if dErr != nil {
 					return nil, dErr
 				}
-				return qtls.DialEarly(ctx, bufio.NewUnbindPacketConn(udpConn), udpConn.RemoteAddr(), tlsConfig, cfg)
+				return qtls.DialEarly(ctx, udpConn, tlsConfig, cfg)
 			},
 		}
 	case "2":
@@ -481,7 +490,8 @@ func createHTTPClient(dest M.Socksaddr, dialer N.Dialer, options *option.V2RayXH
 		}
 	}
 	client := &DefaultDialerClient{
-		options: options,
+		options:     options,
+		connections: connections,
 		client: &http.Client{
 			Transport: transport,
 		},

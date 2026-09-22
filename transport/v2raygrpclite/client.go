@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/conntrack"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing-box/transport/v2rayhttp"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -28,12 +28,13 @@ var defaultClientHeader = http.Header{
 }
 
 type Client struct {
-	ctx        context.Context
-	serverAddr M.Socksaddr
-	transport  *http2.Transport
-	options    option.V2RayGRPCOptions
-	url        *url.URL
-	host       string
+	ctx         context.Context
+	serverAddr  M.Socksaddr
+	transport   *http2.Transport
+	connections *conntrack.Dialer
+	options     option.V2RayGRPCOptions
+	url         *url.URL
+	host        string
 }
 
 func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, options option.V2RayGRPCOptions, tlsConfig tls.Config) adapter.V2RayClientTransport {
@@ -43,10 +44,12 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 	} else {
 		host = serverAddr.String()
 	}
+	connections := &conntrack.Dialer{Dialer: dialer}
 	client := &Client{
-		ctx:        ctx,
-		serverAddr: serverAddr,
-		options:    options,
+		ctx:         ctx,
+		connections: connections,
+		serverAddr:  serverAddr,
+		options:     options,
 		transport: &http2.Transport{
 			ReadIdleTimeout:    time.Duration(options.IdleTimeout),
 			PingTimeout:        time.Duration(options.PingTimeout),
@@ -62,13 +65,13 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 	}
 	if tlsConfig == nil {
 		client.transport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.STDConfig) (net.Conn, error) {
-			return dialer.DialContext(ctx, network, M.ParseSocksaddr(addr))
+			return connections.DialContext(ctx, network, M.ParseSocksaddr(addr))
 		}
 	} else {
 		if len(tlsConfig.NextProtos()) == 0 {
 			tlsConfig.SetNextProtos([]string{http2.NextProtoTLS})
 		}
-		tlsDialer := tls.NewDialer(dialer, tlsConfig)
+		tlsDialer := tls.NewDialer(connections, tlsConfig)
 		client.transport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.STDConfig) (net.Conn, error) {
 			return tlsDialer.DialTLSContext(ctx, M.ParseSocksaddr(addr))
 		}
@@ -103,6 +106,7 @@ func (c *Client) DialContext(ctx context.Context) (net.Conn, error) {
 }
 
 func (c *Client) Close() error {
-	v2rayhttp.ResetTransport(c.transport)
+	c.connections.Reset()
+	c.transport.CloseIdleConnections()
 	return nil
 }

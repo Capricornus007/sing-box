@@ -5,8 +5,8 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/amnezia-vpn/amneziawg-go/device"
-	wgTun "github.com/amnezia-vpn/amneziawg-go/tun"
+	"github.com/amnezia-vpn/amneziawg-go/v3/device"
+	wgTun "github.com/amnezia-vpn/amneziawg-go/v3/tun"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common/logger"
 	N "github.com/sagernet/sing/common/network"

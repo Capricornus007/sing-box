@@ -140,7 +140,7 @@ func (h *Inbound) Close() error {
 	return h.listener.Close()
 }
 
-func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	switch h.obfsMode {
 	case "http":
 		conn = obfs.NewHTTPObfsServer(conn)
@@ -200,11 +200,11 @@ func (h *Inbound) preparePacketConnection(source M.Socksaddr, destination M.Sock
 		ctx = auth.ContextWithUser(ctx, qsess.UserIndex)
 	}
 	return true, ctx, &quicProxyResponseWriter{
-			writer:     h.listener.PacketWriter(),
-			clientAddr: source,
-		}, func(err error) {
-			h.quicSessions.Delete(source.AddrPort())
-		}
+		writer:     h.listener.PacketWriter(),
+		clientAddr: source,
+	}, func(err error) {
+		h.quicSessions.Delete(source.AddrPort())
+	}
 }
 
 // quicProxyResponseWriter rewrites the destination to the original client
@@ -224,7 +224,7 @@ func (w *quicProxyResponseWriter) WritePacket(buffer *buf.Buffer, _ M.Socksaddr)
 // routing rules, domain sniffing and detour all apply normally.
 type inboundPacketHandler Inbound
 
-func (h *inboundPacketHandler) NewPacketEx(buffer *buf.Buffer, source M.Socksaddr) {
+func (h *inboundPacketHandler) NewPacket(buffer *buf.Buffer, source M.Socksaddr) {
 	defer buffer.Release()
 	if h.udpNat == nil {
 		return

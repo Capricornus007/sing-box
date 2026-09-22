@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/conntrack"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/option"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -25,7 +26,7 @@ var _ adapter.V2RayClientTransport = (*Client)(nil)
 
 type Client struct {
 	ctx        context.Context
-	dialer     N.Dialer
+	dialer     *conntrack.Dialer
 	serverAddr M.Socksaddr
 	transport  http.RoundTripper
 	http2      bool
@@ -36,18 +37,19 @@ type Client struct {
 }
 
 func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, options option.V2RayHTTPOptions, tlsConfig tls.Config) (adapter.V2RayClientTransport, error) {
+	connections := &conntrack.Dialer{Dialer: dialer}
 	var transport http.RoundTripper
 	if tlsConfig == nil {
 		transport = &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return dialer.DialContext(ctx, network, M.ParseSocksaddr(addr))
+				return connections.DialContext(ctx, network, M.ParseSocksaddr(addr))
 			},
 		}
 	} else {
 		if len(tlsConfig.NextProtos()) == 0 {
 			tlsConfig.SetNextProtos([]string{http2.NextProtoTLS})
 		}
-		tlsDialer := tls.NewDialer(dialer, tlsConfig)
+		tlsDialer := tls.NewDialer(connections, tlsConfig)
 		transport = &http2.Transport{
 			ReadIdleTimeout: time.Duration(options.IdleTimeout),
 			PingTimeout:     time.Duration(options.PingTimeout),
@@ -76,7 +78,7 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 	}
 	return &Client{
 		ctx:        ctx,
-		dialer:     dialer,
+		dialer:     connections,
 		serverAddr: serverAddr,
 		requestURL: requestURL,
 		host:       options.Host,
@@ -152,6 +154,7 @@ func (c *Client) dialHTTP2(ctx context.Context) (net.Conn, error) {
 }
 
 func (c *Client) Close() error {
-	c.transport = ResetTransport(c.transport)
+	c.dialer.Reset()
+	CloseIdleConnections(c.transport)
 	return nil
 }

@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/amnezia-vpn/amneziawg-go/device"
-	wgTun "github.com/amnezia-vpn/amneziawg-go/tun"
+	"github.com/amnezia-vpn/amneziawg-go/v3/device"
+	wgTun "github.com/amnezia-vpn/amneziawg-go/v3/tun"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
@@ -149,8 +149,14 @@ func (w *systemDevice) Events() <-chan wgTun.Event {
 }
 
 func (w *systemDevice) Close() error {
-	close(w.events)
-	return w.device.Close()
+	var err error
+	w.closeOnce.Do(func() {
+		close(w.events)
+		if w.device != nil {
+			err = w.device.Close()
+		}
+	})
+	return err
 }
 
 func (w *systemDevice) BatchSize() int {

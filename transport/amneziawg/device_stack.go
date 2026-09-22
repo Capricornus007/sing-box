@@ -6,9 +6,10 @@ import (
 	"context"
 	"net"
 	"os"
+	"sync"
 
-	"github.com/amnezia-vpn/amneziawg-go/device"
-	wgTun "github.com/amnezia-vpn/amneziawg-go/tun"
+	"github.com/amnezia-vpn/amneziawg-go/v3/device"
+	wgTun "github.com/amnezia-vpn/amneziawg-go/v3/tun"
 	"github.com/sagernet/gvisor/pkg/buffer"
 	"github.com/sagernet/gvisor/pkg/tcpip"
 	"github.com/sagernet/gvisor/pkg/tcpip/adapters/gonet"
@@ -27,14 +28,16 @@ import (
 var _ Device = (*stackDevice)(nil)
 
 type stackDevice struct {
-	stack      *stack.Stack
-	mtu        uint32
-	events     chan wgTun.Event
-	outbound   chan *stack.PacketBuffer
-	done       chan struct{}
-	dispatcher stack.NetworkDispatcher
-	addr4      tcpip.Address
-	addr6      tcpip.Address
+	stack        *stack.Stack
+	mtu          uint32
+	events       chan wgTun.Event
+	outbound     chan *stack.PacketBuffer
+	done         chan struct{}
+	dispatcher   stack.NetworkDispatcher
+	addr4        tcpip.Address
+	addr6        tcpip.Address
+	udpForwarder *tun.UDPForwarder
+	closeOnce    sync.Once
 }
 
 func newStackDevice(options DeviceOptions) (*stackDevice, error) {
@@ -71,7 +74,8 @@ func newStackDevice(options DeviceOptions) (*stackDevice, error) {
 	tunDevice.stack = ipStack
 	if options.Handler != nil {
 		ipStack.SetTransportProtocolHandler(tcp.ProtocolNumber, tun.NewTCPForwarder(options.Context, ipStack, options.Handler).HandlePacket)
-		ipStack.SetTransportProtocolHandler(udp.ProtocolNumber, tun.NewUDPForwarder(options.Context, ipStack, options.Handler, options.UDPTimeout).HandlePacket)
+		tunDevice.udpForwarder = tun.NewUDPForwarder(options.Context, ipStack, options.Handler, tun.UDPNatOptions{Timeout: options.UDPTimeout})
+		ipStack.SetTransportProtocolHandler(udp.ProtocolNumber, tunDevice.udpForwarder.HandlePacket)
 	}
 	return tunDevice, nil
 }
@@ -134,6 +138,11 @@ func (w *stackDevice) SetDevice(device *device.Device) {
 }
 
 func (w *stackDevice) Start() error {
+	if w.udpForwarder != nil {
+		if err := w.udpForwarder.Start(); err != nil {
+			return err
+		}
+	}
 	w.events <- wgTun.EventUp
 	return nil
 }
@@ -203,13 +212,18 @@ func (w *stackDevice) Events() <-chan wgTun.Event {
 }
 
 func (w *stackDevice) Close() error {
-	close(w.done)
-	close(w.events)
-	w.stack.Close()
-	for _, endpoint := range w.stack.CleanupEndpoints() {
-		endpoint.Abort()
-	}
-	w.stack.Wait()
+	w.closeOnce.Do(func() {
+		close(w.done)
+		close(w.events)
+		if w.udpForwarder != nil {
+			_ = w.udpForwarder.Close()
+		}
+		w.stack.Close()
+		for _, endpoint := range w.stack.CleanupEndpoints() {
+			endpoint.Abort()
+		}
+		w.stack.Wait()
+	})
 	return nil
 }
 
