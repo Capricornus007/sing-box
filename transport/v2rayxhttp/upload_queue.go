@@ -6,7 +6,6 @@ package xhttp
 import (
 	"container/heap"
 	"io"
-	"runtime"
 	"sync"
 
 	E "github.com/sagernet/sing/common/exceptions"
@@ -23,6 +22,8 @@ type uploadQueue struct {
 	nomore          bool
 	pushedPackets   chan Packet
 	writeCloseMutex sync.Mutex
+	closeSignal     chan struct{}
+	closeOnce       sync.Once
 	heap            uploadHeap
 	nextSeq         uint64
 	closed          bool
@@ -32,6 +33,7 @@ type uploadQueue struct {
 func NewUploadQueue(maxPackets int) *uploadQueue {
 	return &uploadQueue{
 		pushedPackets: make(chan Packet, maxPackets),
+		closeSignal:   make(chan struct{}),
 		heap:          uploadHeap{},
 		nextSeq:       0,
 		closed:        false,
@@ -51,16 +53,20 @@ func (h *uploadQueue) Push(p Packet) error {
 	if p.Reader != nil {
 		h.nomore = true
 	}
-	h.pushedPackets <- p
-	return nil
+	select {
+	case h.pushedPackets <- p:
+		return nil
+	case <-h.closeSignal:
+		return E.New("packet queue closed")
+	}
 }
 
 func (h *uploadQueue) Close() error {
+	h.closeOnce.Do(func() { close(h.closeSignal) })
 	h.writeCloseMutex.Lock()
 	defer h.writeCloseMutex.Unlock()
 	if !h.closed {
 		h.closed = true
-		runtime.Gosched() // hope Read() gets the packet
 	f:
 		for {
 			select {
@@ -82,10 +88,13 @@ func (h *uploadQueue) Close() error {
 
 func (h *uploadQueue) Read(b []byte) (int, error) {
 	for {
-		if h.reader != nil {
-			return h.reader.Read(b)
+		h.writeCloseMutex.Lock()
+		reader, closed := h.reader, h.closed
+		h.writeCloseMutex.Unlock()
+		if reader != nil {
+			return reader.Read(b)
 		}
-		if h.closed {
+		if closed {
 			return 0, io.EOF
 		}
 		if len(h.heap) == 0 {
@@ -94,8 +103,15 @@ func (h *uploadQueue) Read(b []byte) (int, error) {
 				return 0, io.EOF
 			}
 			if packet.Reader != nil {
+				h.writeCloseMutex.Lock()
+				if h.closed {
+					h.writeCloseMutex.Unlock()
+					packet.Reader.Close()
+					return 0, io.EOF
+				}
 				h.reader = packet.Reader
-				return h.reader.Read(b)
+				h.writeCloseMutex.Unlock()
+				return packet.Reader.Read(b)
 			}
 			heap.Push(&h.heap, packet)
 		}

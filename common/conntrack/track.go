@@ -17,6 +17,8 @@ func Count() int {
 	if !Enabled {
 		return 0
 	}
+	connAccess.RLock()
+	defer connAccess.RUnlock()
 	return openConnection.Len()
 }
 

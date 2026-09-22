@@ -17,13 +17,21 @@ func NewSbV2rayServer(options option.V2RayStatsServiceOptions) *SbV2rayServer {
 	}
 }
 
-func (s *SbV2rayServer) Start() error                            { return nil }
-func (s *SbV2rayServer) Close() error                            { return nil }
-func (s *SbV2rayServer) StatsService() adapter.ConnectionTracker { return s.ss }
+func (s *SbV2rayServer) Start() error { return nil }
+func (s *SbV2rayServer) Close() error { return nil }
+func (s *SbV2rayServer) StatsService() adapter.ConnectionTracker {
+	if s.ss == nil {
+		return nil
+	}
+	return s.ss
+}
 
 // NekoRay style API
 
 func (s *SbV2rayServer) QueryStats(name string) int64 {
+	if s.ss == nil {
+		return 0
+	}
 	value, err := s.ss.GetStats(context.TODO(), name, true)
 	if err == nil {
 		return value

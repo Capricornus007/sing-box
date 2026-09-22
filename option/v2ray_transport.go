@@ -452,7 +452,7 @@ func (c *V2RayXHTTPBaseOptions) GetNormalizedSeqPlacement() string {
 
 func (c *V2RayXHTTPBaseOptions) GetNormalizedUplinkDataPlacement() string {
 	if c.UplinkDataPlacement == "" {
-		return PlacementBody
+		return PlacementAuto
 	}
 	return c.UplinkDataPlacement
 }
@@ -492,6 +492,29 @@ type V2RayXHTTPXmuxOptions struct {
 	HMaxRequestTimes Xbadoption.Range `json:"h_max_request_times"`
 	HMaxReusableSecs Xbadoption.Range `json:"h_max_reusable_secs"`
 	HKeepAlivePeriod int64            `json:"h_keep_alive_period"`
+	explicit         bool
+}
+
+func (m *V2RayXHTTPXmuxOptions) UnmarshalJSON(content []byte) error {
+	type plain V2RayXHTTPXmuxOptions
+	value := plain{
+		MaxConcurrency:   Xbadoption.Range{From: 1, To: 1},
+		HMaxRequestTimes: Xbadoption.Range{From: 600, To: 900},
+		HMaxReusableSecs: Xbadoption.Range{From: 1800, To: 3000},
+		explicit:         true,
+	}
+	if err := json.Unmarshal(content, &value); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(content, &fields); err != nil {
+		return err
+	}
+	if _, present := fields["max_concurrency"]; !present && value.MaxConnections.To > 0 {
+		value.MaxConcurrency = Xbadoption.Range{}
+	}
+	*m = V2RayXHTTPXmuxOptions(value)
+	return m.Validate()
 }
 
 func (m V2RayXHTTPXmuxOptions) isZero() bool {

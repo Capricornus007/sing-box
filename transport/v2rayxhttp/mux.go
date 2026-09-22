@@ -77,6 +77,10 @@ func (m *XmuxManager) Reset() {
 	m.xmuxClients = nil
 	m.mtx.Unlock()
 	for _, client := range clients {
+		client.mtx.Lock()
+		client.closed = true
+		client.mtx.Unlock()
+		// Reset closes active streams too; Close alone waits for openUsage to reach zero.
 		client.XmuxConn.Close()
 	}
 }

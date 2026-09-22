@@ -78,6 +78,9 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 		}
 	}
 	options.Mode = mode
+	if mode == "packet-up" && options.GetNormalizedScMaxEachPostBytes().From <= 0 {
+		return nil, E.New("sc_max_each_post_bytes must be positive")
+	}
 	baseRequestURL, err := getBaseRequestURL(
 		&options.V2RayXHTTPBaseOptions, dest, tlsConfig,
 	)
@@ -215,6 +218,11 @@ func (c *Client) DialContext(ctx context.Context) (net.Conn, error) {
 		},
 	}
 	var err error
+	defer func() {
+		if err != nil {
+			conn.Close()
+		}
+	}()
 	if mode == "stream-one" {
 		requestURL.Path = options.GetNormalizedPath()
 		if xmuxClient != nil {
@@ -246,9 +254,6 @@ func (c *Client) DialContext(ctx context.Context) (net.Conn, error) {
 	}
 	scMaxEachPostBytes := options.GetNormalizedScMaxEachPostBytes()
 	scMinPostsIntervalMs := options.GetNormalizedScMinPostsIntervalMs()
-	if scMaxEachPostBytes.From <= 0 {
-		panic("`scMaxEachPostBytes` should be bigger than 0")
-	}
 	maxUploadSize := scMaxEachPostBytes.Rand()
 	uploadPipeReader, uploadPipeWriter := pipe.New(pipe.WithSizeLimit(max(0, maxUploadSize-buf.Size)))
 	conn.writer = uploadWriter{

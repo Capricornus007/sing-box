@@ -265,7 +265,7 @@ type v5LazyPacketConn struct {
 	// It takes priority over the first-byte heuristic.
 	sniffQUIC bool
 
-	once           sync.Once
+	initStarted    atomic.Bool
 	initCh         chan struct{} // closed once conn is ready
 	conn           net.PacketConn
 	connErr        error
@@ -330,10 +330,10 @@ func (c *v5LazyPacketConn) initConn(p []byte, addr net.Addr) {
 
 func (c *v5LazyPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 	var firstWriteQUIC bool
-	c.once.Do(func() {
+	if c.initStarted.CompareAndSwap(false, true) {
 		c.initConn(p, addr)
 		firstWriteQUIC = c.firstWriteQUIC
-	})
+	}
 	<-c.initCh
 	if c.connErr != nil {
 		return 0, c.connErr
@@ -388,6 +388,10 @@ func (c *v5LazyPacketConn) Close() error {
 	// Signal intent before the select so initConn's post-close check is
 	// guaranteed to observe it if initCh is not yet closed.
 	c.closeRequested.Store(true)
+	if c.initStarted.CompareAndSwap(false, true) {
+		c.connErr = net.ErrClosed
+		close(c.initCh)
+	}
 	select {
 	case <-c.initCh:
 		// initConn has finished; close the underlying conn exactly once.

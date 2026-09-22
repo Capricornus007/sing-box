@@ -32,7 +32,7 @@ func (tos *TLSObfsServer) read(b []byte, discardN int) (int, error) {
 	sizeBuf := make([]byte, 2)
 	_, err = io.ReadFull(tos.Conn, sizeBuf)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	length := int(binary.BigEndian.Uint16(sizeBuf))

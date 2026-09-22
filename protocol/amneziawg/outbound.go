@@ -89,6 +89,9 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			if lookupErr != nil {
 				return netip.Addr{}, lookupErr
 			}
+			if len(endpointAddresses) == 0 {
+				return netip.Addr{}, E.New("no addresses for peer endpoint")
+			}
 			return endpointAddresses[0], nil
 		},
 		Peers: peers,

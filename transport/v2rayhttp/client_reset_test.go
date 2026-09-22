@@ -14,6 +14,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/transport/v2raygrpclite"
 	"github.com/sagernet/sing-box/transport/v2rayhttp"
+	xhttp "github.com/sagernet/sing-box/transport/v2rayxhttp"
 	M "github.com/sagernet/sing/common/metadata"
 )
 
@@ -27,7 +28,7 @@ func (*loopbackDialer) ListenPacket(context.Context, M.Socksaddr) (net.PacketCon
 }
 
 func TestResetClosesActiveHTTP2StreamsAndAllowsReconnect(t *testing.T) {
-	for _, protocol := range []string{"http", "grpc"} {
+	for _, protocol := range []string{"http", "grpc", "xhttp"} {
 		t.Run(protocol, func(t *testing.T) {
 			requests := make(chan (<-chan struct{}), 2)
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -55,8 +56,13 @@ func TestResetClosesActiveHTTP2StreamsAndAllowsReconnect(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-			} else {
+			} else if protocol == "grpc" {
 				transport = v2raygrpclite.NewClient(ctx, &loopbackDialer{}, address, option.V2RayGRPCOptions{}, tlsConfig)
+			} else {
+				transport, err = xhttp.NewClient(ctx, &loopbackDialer{}, address, option.V2RayXHTTPOptions{V2RayXHTTPBaseOptions: option.V2RayXHTTPBaseOptions{Mode: "stream-one"}}, tlsConfig)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 			defer transport.Close()
 			for range 2 {

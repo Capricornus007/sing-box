@@ -2,6 +2,7 @@ package conntrack
 
 import (
 	runtimeDebug "runtime/debug"
+	"sync"
 	"time"
 
 	E "github.com/sagernet/sing/common/exceptions"
@@ -11,6 +12,7 @@ import (
 var (
 	KillerEnabled   bool
 	MemoryLimit     uint64
+	killerAccess    sync.Mutex
 	killerLastCheck time.Time
 )
 
@@ -18,11 +20,14 @@ func KillerCheck() error {
 	if !KillerEnabled {
 		return nil
 	}
-	nowTime := time.Now()
-	if nowTime.Sub(killerLastCheck) < 3*time.Second {
+	killerAccess.Lock()
+	now := time.Now()
+	if now.Sub(killerLastCheck) < 3*time.Second {
+		killerAccess.Unlock()
 		return nil
 	}
-	killerLastCheck = nowTime
+	killerLastCheck = now
+	killerAccess.Unlock()
 	if memory.Total() > MemoryLimit {
 		Close()
 		go func() {

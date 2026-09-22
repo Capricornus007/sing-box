@@ -445,14 +445,11 @@ func (s *Server) upsertSession(sessionId string) *httpSession {
 		isFullyConnected: done.New(),
 	}
 	s.sessions.Store(sessionId, session)
-	shouldReap := done.New()
 	go func() {
-		time.Sleep(30 * time.Second)
-		shouldReap.Close()
-	}()
-	go func() {
+		timer := time.NewTimer(30 * time.Second)
+		defer timer.Stop()
 		select {
-		case <-shouldReap.Wait():
+		case <-timer.C:
 			s.sessions.Delete(sessionId)
 			session.uploadQueue.Close()
 		case <-session.isFullyConnected.Wait():

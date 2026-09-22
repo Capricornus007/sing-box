@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/netip"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -76,6 +77,35 @@ func TestClientBindPreservesMagicHeaders(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReservedUpdatesWhileSending(t *testing.T) {
+	server, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	address := server.LocalAddr().(*net.UDPAddr).AddrPort()
+	bind := NewClientBind(context.Background(), log.StdLogger(), testDialer{}, true, address, [3]byte{1, 2, 3})
+	if _, _, err := bind.Open(0); err != nil {
+		t.Fatal(err)
+	}
+	defer bind.Close()
+	var work sync.WaitGroup
+	work.Go(func() {
+		for range 200 {
+			bind.SetReservedForEndpoint(address, [3]byte{4, 5, 6})
+		}
+	})
+	work.Go(func() {
+		for range 200 {
+			if err := bind.Send([][]byte{{1, 0, 0, 0, 1}}, remoteEndpoint(address)); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	})
+	work.Wait()
 }
 
 func TestEndpointRejectsInvalidKeysAndParameterInjection(t *testing.T) {

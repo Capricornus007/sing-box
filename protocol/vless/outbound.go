@@ -310,11 +310,12 @@ func (h *vlessDialer) ListenPacket(ctx context.Context, destination M.Socksaddr)
 	}
 	// Apply encryption if configured
 	if h.encryption != nil {
-		conn, err = h.encryption.Handshake(conn)
-		if err != nil {
+		encrypted, handshakeErr := h.encryption.Handshake(conn)
+		if handshakeErr != nil {
 			common.Close(conn)
-			return nil, E.Cause(err, "encryption handshake")
+			return nil, E.Cause(handshakeErr, "encryption handshake")
 		}
+		conn = encrypted
 	}
 	if h.xudp {
 		return h.client.DialEarlyXUDPPacketConn(conn, destination)
@@ -377,9 +378,6 @@ func isVisionTLSConn(conn net.Conn) bool {
 		return false
 	}
 	if _, ok := conn.(interface{ ConnectionState() stdtls.ConnectionState }); ok {
-		return true
-	}
-	if _, ok := conn.(interface{ Handshake() error }); ok {
 		return true
 	}
 	connType := reflect.TypeOf(conn)

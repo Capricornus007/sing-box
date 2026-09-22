@@ -31,14 +31,12 @@ func NewPacketConn(conn net.PacketConn) (net.PacketConn, error) {
 }
 
 func (c *PacketConn) Close() error {
+	connAccess.Lock()
 	if c.element.Value != nil {
-		connAccess.Lock()
-		if c.element.Value != nil {
-			openConnection.Remove(c.element)
-			c.element.Value = nil
-		}
-		connAccess.Unlock()
+		openConnection.Remove(c.element)
+		c.element.Value = nil
 	}
+	connAccess.Unlock()
 	return c.PacketConn.Close()
 }
 

@@ -61,7 +61,6 @@ func (c *CommonConn) Write(b []byte) (int, error) {
 		if len(b) > 8192 {
 			b = b[:8192] // for avoiding another copy() in peer's Read()
 		}
-		n += len(b)
 		headerAndData := outBytes[:5+len(b)+16]
 		EncodeHeader(headerAndData, len(b)+16)
 		max := false
@@ -76,8 +75,14 @@ func (c *CommonConn) Write(b []byte) (int, error) {
 			headerAndData = append(c.PreWrite, headerAndData...)
 			c.PreWrite = nil
 		}
-		if _, err := c.Conn.Write(headerAndData); err != nil {
-			return 0, err
+		written, err := c.Conn.Write(headerAndData)
+		if written == len(headerAndData) {
+			n += len(b)
+		} else if err == nil {
+			err = io.ErrShortWrite
+		}
+		if err != nil {
+			return n, err
 		}
 	}
 	return len(b), nil

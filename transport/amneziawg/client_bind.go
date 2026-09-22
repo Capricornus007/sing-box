@@ -127,7 +127,10 @@ func (c *ClientBind) receive(packets [][]byte, sizes []int, eps []conn.Endpoint)
 		return
 	}
 	sizes[0] = n
-	if n > 3 && c.rewriteReserved {
+	c.connAccess.Lock()
+	rewriteReserved := c.rewriteReserved
+	c.connAccess.Unlock()
+	if n > 3 && rewriteReserved {
 		b := packets[0]
 		common.ClearArray(b[1:4])
 	}
@@ -163,12 +166,15 @@ func (c *ClientBind) Send(bufs [][]byte, ep conn.Endpoint) error {
 		return err
 	}
 	destination := netip.AddrPort(ep.(remoteEndpoint))
+	c.connAccess.Lock()
+	rewriteReserved := c.rewriteReserved
+	reserved, loaded := c.reservedForEndpoint[destination]
+	if !loaded {
+		reserved = c.reserved
+	}
+	c.connAccess.Unlock()
 	for _, b := range bufs {
-		if len(b) > 3 && c.rewriteReserved {
-			reserved, loaded := c.reservedForEndpoint[destination]
-			if !loaded {
-				reserved = c.reserved
-			}
+		if len(b) > 3 && rewriteReserved {
 			copy(b[1:4], reserved[:])
 		}
 		_, err = udpConn.WriteToUDPAddrPort(b, destination)
@@ -193,6 +199,8 @@ func (c *ClientBind) BatchSize() int {
 }
 
 func (c *ClientBind) SetReservedForEndpoint(destination netip.AddrPort, reserved [3]byte) {
+	c.connAccess.Lock()
+	defer c.connAccess.Unlock()
 	c.reservedForEndpoint[destination] = reserved
 	if reserved != [3]byte{} {
 		c.rewriteReserved = true
