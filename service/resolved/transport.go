@@ -246,7 +246,7 @@ func (t *Transport) PreferredDomain(domain string) bool {
 			if linkDomain.Domain == "." {
 				continue
 			}
-			if mDNS.IsSubDomain(linkDomain.Domain, domain) {
+			if mDNS.IsSubDomain(mDNS.Fqdn(linkDomain.Domain), domain) {
 				return true
 			}
 		}
@@ -278,7 +278,7 @@ func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callba
 			if domain.Domain == "." && domain.RoutingOnly && !t.acceptDefaultResolvers {
 				continue
 			}
-			if mDNS.IsSubDomain(domain.Domain, question.Name) {
+			if mDNS.IsSubDomain(mDNS.Fqdn(domain.Domain), question.Name) {
 				selectedLink = link
 			}
 		}
