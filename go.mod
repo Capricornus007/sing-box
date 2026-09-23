@@ -225,6 +225,8 @@ replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v
 
 replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.0.0-20260922095141-5ad792bd1882
 
+replace github.com/sagernet/quic-go => github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.8
+
 replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.7.1-0.20260918084926-e743c09ab96d
 
 replace github.com/sagernet/sing-mux => github.com/Capricornus007/sing-mux v0.3.7-0.20260921045647-bf2f24b1beeb
