@@ -120,7 +120,7 @@ func (o SnellInboundOptions) DescribeSchema(builder schema.Builder) (*schema.Nod
 }
 
 type _SnellOutboundOptions struct {
-	Version int `json:"version" enum:"4,6"`
+	Version int `json:"version" enum:"4,5,6"`
 	AbstractSnellOutboundOptions
 	ObfsOptions SnellObfsClientOptions `json:"-"`
 	V6Options   SnellV6Options         `json:"-"`
@@ -170,6 +170,7 @@ func (o SnellOutboundOptions) MarshalJSON() ([]byte, error) {
 func (o SnellOutboundOptions) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
 	return schema.DiscriminatedUnion(builder, "version", true, []schema.UnionVariant{
 		{Value: 4, StructType: reflect.TypeFor[SnellObfsClientOptions]()},
+		{Value: 5, StructType: reflect.TypeFor[SnellObfsClientOptions]()},
 		{Value: 6, StructType: reflect.TypeFor[SnellV6Options]()},
 	}, func(variant *schema.Node) error {
 		return builder.FlattenStruct(variant, reflect.TypeFor[AbstractSnellOutboundOptions]())
