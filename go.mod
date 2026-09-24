@@ -217,19 +217,19 @@ require (
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )
 
-replace github.com/amnezia-vpn/amneziawg-go/v3 => github.com/Capricornus007/amneziawg-go/v3 v3.1.20260828-mod.1
+replace github.com/amnezia-vpn/amneziawg-go/v3 => github.com/Capricornus007/amneziawg-go/v3 v3.1.20260828-mod.2
 
-replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.0.0-20260922095057-ede6c68abc28
+replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.20260924041329-d6cd7fde8449
 
 replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20260920030852-2c97c522fbc2
 
-replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.9.4-0.20260924034839-83016afa46e1
+replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.9.4-0.20260924053801-79dae2566f99
 
-replace github.com/sagernet/quic-go => github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.8
+replace github.com/sagernet/quic-go => github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.9
 
 replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.7.1-0.20260918084926-e743c09ab96d
 
-replace github.com/sagernet/sing-mux => github.com/Capricornus007/sing-mux v0.3.7-0.20260921045647-bf2f24b1beeb
+replace github.com/sagernet/sing-mux => github.com/Capricornus007/sing-mux v0.3.7-0.20260924041331-2cbd52d50a66
 
 replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.2.9-0.20260902104811-b3e975d5372a
 
