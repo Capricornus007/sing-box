@@ -61,6 +61,10 @@ see [DERP Service](/configuration/service/derp/#verify_client_inbound).
 
 * Fixes and improvements
 
+#### 1.14.2
+
+* Fixes and improvements
+
 #### 1.14.1
 
 * Fixes and improvements
