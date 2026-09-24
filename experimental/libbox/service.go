@@ -136,13 +136,16 @@ func (w *platformInterfaceWrapper) NetworkInterfaces() ([]adapter.NetworkInterfa
 		isDefault := netInterface.Name != w.myTunName && w.defaultInterface != nil && int(netInterface.Index) == w.defaultInterface.Index
 		w.defaultInterfaceAccess.Unlock()
 		interfaces = append(interfaces, adapter.NetworkInterface{
-			Index:      int(netInterface.Index),
-			MTU:        int(netInterface.MTU),
-			Name:       netInterface.Name,
-			Addresses:  common.Map(iteratorToArray[string](netInterface.Addresses), netip.MustParsePrefix),
-			Flags:      linkFlags(uint32(netInterface.Flags)),
-			Type:       C.InterfaceType(netInterface.Type),
-			DNSServers: iteratorToArray[string](netInterface.DNSServer),
+			Interface: control.Interface{
+				Index:     int(netInterface.Index),
+				MTU:       int(netInterface.MTU),
+				Name:      netInterface.Name,
+				Addresses: common.Map(iteratorToArray[string](netInterface.Addresses), netip.MustParsePrefix),
+				Flags:     linkFlags(uint32(netInterface.Flags)),
+			},
+			Type:             C.InterfaceType(netInterface.Type),
+			DNSServers:       iteratorToArray[string](netInterface.DNSServer),
+			DNSSearchDomains: iteratorToArray[string](netInterface.DNSSearchDomain),
 			Gateways: common.Filter(common.Map(iteratorToArray[string](netInterface.Gateway), func(it string) netip.Addr {
 				gateway, _ := netip.ParseAddr(it)
 				return gateway.Unmap().WithZone("")
