@@ -191,11 +191,11 @@ func (g *generator) defNameFor(fieldType reflect.Type) string {
 }
 
 func pathBase(packagePath string) string {
-	index := strings.LastIndexByte(packagePath, '/')
-	if index < 0 {
+	_, base, found := strings.CutLast(packagePath, "/")
+	if !found {
 		return packagePath
 	}
-	return packagePath[index+1:]
+	return base
 }
 
 // FlattenStruct merges the JSON fields of structType into node, following the

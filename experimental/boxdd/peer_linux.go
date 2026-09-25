@@ -121,11 +121,11 @@ func linuxProcessStartTime(processID uint32) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	commandEnd := bytes.LastIndexByte(content, ')')
-	if commandEnd < 0 {
+	_, commandRest, commandFound := bytes.CutLast(content, []byte{')'})
+	if !commandFound {
 		return 0, E.New("invalid process stat")
 	}
-	fields := strings.Fields(string(content[commandEnd+1:]))
+	fields := strings.Fields(string(commandRest))
 	if len(fields) <= 19 {
 		return 0, E.New("incomplete process stat")
 	}
