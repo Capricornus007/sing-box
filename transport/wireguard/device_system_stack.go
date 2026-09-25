@@ -92,11 +92,11 @@ func (w *systemStackDevice) isLocalDestination(packet []byte) bool {
 	return false
 }
 
-func (w *systemStackDevice) inputPackets(packets []*buf.Buffer) error {
+func (w *systemStackDevice) inputPackets(packets []*buf.Buffer) {
 	defer buf.ReleaseMulti(packets)
 	wgDevice := w.device.Load()
 	if wgDevice == nil {
-		return nil
+		return
 	}
 	references := make([]*device.InputPacketRef, 0, len(packets))
 	for _, packet := range packets {
@@ -112,7 +112,6 @@ func (w *systemStackDevice) inputPackets(packets []*buf.Buffer) error {
 		references = append(references, &device.InputPacketRef{Destination: destination, PacketSlices: [][]byte{packet.Bytes()}})
 	}
 	wgDevice.InputPackets(references)
-	return nil
 }
 
 func (w *systemStackDevice) Close() error {

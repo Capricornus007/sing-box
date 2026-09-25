@@ -37,7 +37,7 @@ func newStackDevice(options Options) (*stackDevice, error) {
 		MTU:       int(options.MTU),
 		Headroom:  options.PacketHeadroom,
 		RearSpace: systemDevicePacketRearSpace,
-		Outbound:  device.writeOutbound,
+		Outbound:  device.outboundHandler,
 	})
 	var err error
 	device.stack, err = newStack(options, device.memoryTun)
@@ -45,6 +45,13 @@ func newStackDevice(options Options) (*stackDevice, error) {
 		return nil, err
 	}
 	return device, nil
+}
+
+func (d *stackDevice) outboundHandler(packetBuffers []*buf.Buffer) {
+	err := d.writeOutbound(packetBuffers)
+	if err != nil {
+		d.options.Logger.Error(E.Cause(err, "write outbound packet"))
+	}
 }
 
 func (d *stackDevice) Start() error {
