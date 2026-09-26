@@ -235,7 +235,7 @@ replace github.com/sagernet/tailscale => github.com/Capricornus007/tailscale v1.
 
 replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.2.9-0.20260902104811-b3e975d5372a
 
-replace github.com/sagernet/wireguard-go => github.com/Capricornus007/wireguard-go v0.0.8-0.20260918084926-1eabb449181d
+replace github.com/sagernet/wireguard-go => github.com/Capricornus007/wireguard-go v0.0.8-0.20260926043953-aceae72d2393
 
 replace github.com/metacubex/utls => github.com/Capricornus007/utls v0.0.0-20260918090442-912a23eb55ce
 

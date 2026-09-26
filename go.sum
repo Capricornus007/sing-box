@@ -32,8 +32,8 @@ github.com/Capricornus007/tailscale v1.102.1-sing-box-1.14-mod.5.0.2026092513352
 github.com/Capricornus007/tailscale v1.102.1-sing-box-1.14-mod.5.0.20260925133528-77f97f370ead/go.mod h1:rHT8x77ZqRNMI1pGicA8uZotxrZHidd+KstPk0lgNbg=
 github.com/Capricornus007/utls v0.0.0-20260918090442-912a23eb55ce h1:5VjnyO4Nk039csMZ0f73s9D3uwpJdtBgD6p0XEi/paU=
 github.com/Capricornus007/utls v0.0.0-20260918090442-912a23eb55ce/go.mod h1:VdT++SaMiWajp06FuL1kzmswLRK1ajiAjsJ3esXn/Ug=
-github.com/Capricornus007/wireguard-go v0.0.8-0.20260918084926-1eabb449181d h1:KjdyNoHp/OzY3bUJz9XOelqoghIc5rf1ZbfGmJZ2iz4=
-github.com/Capricornus007/wireguard-go v0.0.8-0.20260918084926-1eabb449181d/go.mod h1:sWOyMVxgGEbZy7uu/XGKKC/eo4x/bHU6FFnCx728GSo=
+github.com/Capricornus007/wireguard-go v0.0.8-0.20260926043953-aceae72d2393 h1:jeBsJ1JgzyEt5IJDtDlK5MlcDkj3NywHvZr8xFcMtng=
+github.com/Capricornus007/wireguard-go v0.0.8-0.20260926043953-aceae72d2393/go.mod h1:sWOyMVxgGEbZy7uu/XGKKC/eo4x/bHU6FFnCx728GSo=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=
 github.com/RyuaNerin/go-krypto v1.3.0/go.mod h1:9R9TU936laAIqAmjcHo/LsaXYOZlymudOAxjaBf62UM=
 github.com/RyuaNerin/testingutil v0.1.0 h1:IYT6JL57RV3U2ml3dLHZsVtPOP6yNK7WUVdzzlpNrss=
