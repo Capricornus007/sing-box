@@ -656,7 +656,7 @@ func (t *Endpoint) suspendLocked() {
 		return
 	}
 	_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶具名字段 WantRunningSet，Go 禁止位置與具名元素混用
-		Prefs:          ipn.Prefs{WantRunning: false},
+		Prefs:          ipn.Prefs{WantRunning: false}, //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶具名字段 WantRunningSet（CI 舊版把問題記在欄位行、本機新版記在 literal 起始行，兩邊都標才壓得住）
 		WantRunningSet: true,
 	})
 	if err != nil {
@@ -684,7 +684,7 @@ func (t *Endpoint) resume(ctx context.Context) error {
 			return E.New("Tailscale is not ready yet")
 		}
 		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶具名字段 WantRunningSet，Go 禁止位置與具名元素混用
-			Prefs:          ipn.Prefs{WantRunning: true},
+			Prefs:          ipn.Prefs{WantRunning: true}, //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶具名字段 WantRunningSet（CI 舊版把問題記在欄位行、本機新版記在 literal 起始行，兩邊都標才壓得住）
 			WantRunningSet: true,
 		})
 		if err != nil {
@@ -729,7 +729,7 @@ func (t *Endpoint) awaitRunning(localBackend *ipnlocal.LocalBackend, resumeDone 
 		}
 	} else {
 		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶具名字段 WantRunningSet，Go 禁止位置與具名元素混用
-			Prefs:          ipn.Prefs{WantRunning: false},
+			Prefs:          ipn.Prefs{WantRunning: false}, //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶具名字段 WantRunningSet（CI 舊版把問題記在欄位行、本機新版記在 literal 起始行，兩邊都標才壓得住）
 			WantRunningSet: true,
 		})
 		if err != nil {
