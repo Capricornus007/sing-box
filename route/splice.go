@@ -269,7 +269,7 @@ func (m *ConnectionManager) splicePacketConnection(ctx context.Context, conn N.P
 	nat.Unidirectional = !isFakeIP && metadata.UDPDisableDomainUnmapping && !metadata.Destination.IsIP()
 	cached := spliceSource.takeCached()
 	if spliceSource.natConn.Splice(target.socket, tun.SplicePacketOptions{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段，Go 禁止位置與具名元素混用
-		SpliceOptions: tun.SpliceOptions{
+		SpliceOptions: tun.SpliceOptions{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段（CI 的 v2.14 記在欄位行、本機 2.13 記在 literal 起始行，兩邊都標才壓得住）
 			ReadCounters:  append(spliceSource.readCounters, target.writeCounters...),
 			WriteCounters: append(target.readCounters, spliceSource.writeCounters...),
 			OnClose:       m.spliceClose(ctx, conn, remote.(io.Closer), onClose),

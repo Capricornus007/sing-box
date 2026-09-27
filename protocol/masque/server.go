@@ -78,7 +78,7 @@ func NewServerEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		options.HTTP3Options.InitialPacketSize = min(int(options.MTU)+masque.QUICPacketOverhead, math.MaxUint16)
 	}
 	serverEndpoint := &ServerEndpoint{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段，Go 禁止位置與具名元素混用
-		endpointBase: endpointBase{
+		endpointBase: endpointBase{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段（CI 的 v2.14 記在欄位行、本機 2.13 記在 literal 起始行，兩邊都標才壓得住）
 			Adapter: endpoint.NewAdapter(C.TypeMASQUEServer, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
 			router:  router,
 			logger:  logger,
