@@ -655,7 +655,7 @@ func (t *Endpoint) suspendLocked() {
 	if localBackend == nil || localBackend.State() != ipn.Running {
 		return
 	}
-	_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{
+	_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶具名字段 WantRunningSet，Go 禁止位置與具名元素混用
 		Prefs:          ipn.Prefs{WantRunning: false},
 		WantRunningSet: true,
 	})
@@ -683,7 +683,7 @@ func (t *Endpoint) resume(ctx context.Context) error {
 			t.suspendAccess.Unlock()
 			return E.New("Tailscale is not ready yet")
 		}
-		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{
+		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶具名字段 WantRunningSet，Go 禁止位置與具名元素混用
 			Prefs:          ipn.Prefs{WantRunning: true},
 			WantRunningSet: true,
 		})
@@ -728,7 +728,7 @@ func (t *Endpoint) awaitRunning(localBackend *ipnlocal.LocalBackend, resumeDone 
 			t.suspendLocked()
 		}
 	} else {
-		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{
+		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶具名字段 WantRunningSet，Go 禁止位置與具名元素混用
 			Prefs:          ipn.Prefs{WantRunning: false},
 			WantRunningSet: true,
 		})

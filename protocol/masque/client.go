@@ -120,7 +120,7 @@ func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 	if err != nil {
 		return nil, err
 	}
-	clientEndpoint := &ClientEndpoint{
+	clientEndpoint := &ClientEndpoint{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段，Go 禁止位置與具名元素混用
 		endpointBase: endpointBase{
 			Adapter: endpoint.NewAdapterWithDialerOptions(C.TypeMASQUEClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
 			router:  router,

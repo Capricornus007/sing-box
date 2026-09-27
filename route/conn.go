@@ -75,7 +75,7 @@ func (m *ConnectionManager) Close() error {
 }
 
 func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
-	tracked := &trackedConn{
+	tracked := &trackedConn{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段，Go 禁止位置與具名元素混用
 		Conn:        conn,
 		socketOwner: socketOwner{original: conn},
 		manager:     m,
@@ -87,7 +87,7 @@ func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
 }
 
 func (m *ConnectionManager) TrackPacketConn(conn net.PacketConn) net.PacketConn {
-	tracked := &trackedPacketConn{
+	tracked := &trackedPacketConn{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段，Go 禁止位置與具名元素混用
 		NetPacketConn: bufio.NewPacketConn(conn),
 		socketOwner:   socketOwner{original: conn},
 		manager:       m,

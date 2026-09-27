@@ -268,7 +268,7 @@ func (m *ConnectionManager) splicePacketConnection(ctx context.Context, conn N.P
 	}
 	nat.Unidirectional = !isFakeIP && metadata.UDPDisableDomainUnmapping && !metadata.Destination.IsIP()
 	cached := spliceSource.takeCached()
-	if spliceSource.natConn.Splice(target.socket, tun.SplicePacketOptions{
+	if spliceSource.natConn.Splice(target.socket, tun.SplicePacketOptions{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段，Go 禁止位置與具名元素混用
 		SpliceOptions: tun.SpliceOptions{
 			ReadCounters:  append(spliceSource.readCounters, target.writeCounters...),
 			WriteCounters: append(target.readCounters, spliceSource.writeCounters...),
