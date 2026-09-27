@@ -6,15 +6,12 @@ import (
 	"net/netip"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-tun"
-	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
-	"github.com/sagernet/wireguard-go/conn"
 	"github.com/sagernet/wireguard-go/device"
 	wgTun "github.com/sagernet/wireguard-go/tun"
 )
@@ -23,77 +20,32 @@ var _ Device = (*stackDevice)(nil)
 
 type stackDevice struct {
 	stack        *tun.Go
-	memoryTun    *tun.MemoryTun
+	router       *peerRouter
 	mtu          uint32
 	events       chan wgTun.Event
+	closed       chan struct{}
 	closeOnce    sync.Once
-	closed       atomic.Bool
-	closeSignal  chan struct{}
 	inet4Address netip.Addr
 	inet6Address netip.Addr
-	outbound     stackOutbound
-}
-
-// stackOutbound bridges sing-tun's push-style memory TUN outbound handler to the
-// pull-style batch read that wireguard-go's TUN device loop expects.
-type stackOutbound struct {
-	access   sync.Mutex
-	pending  []*buf.Buffer
-	wake     chan struct{}
-	capacity int
 }
 
 func newStackDevice(options DeviceOptions) (*stackDevice, error) {
-	device := &stackDevice{
-		mtu:         options.MTU,
-		events:      make(chan wgTun.Event, 1),
-		closeSignal: make(chan struct{}),
-		outbound: stackOutbound{
-			wake:     make(chan struct{}, 1),
-			capacity: conn.IdealBatchSize * memoryTunOutboundQueueBatches,
-		},
-	}
-	device.inet4Address, device.inet6Address = deviceAddresses(options.Address)
-	device.memoryTun = tun.NewMemoryTun(tun.MemoryTunOptions{
-		MTU:      int(options.MTU),
-		Outbound: device.enqueueOutbound,
-	})
-	var err error
-	device.stack, err = newStack(options, device.memoryTun)
+	router := newPeerRouter(options)
+	stack, err := newStack(options, router.memoryTun)
 	if err != nil {
+		router.close()
 		return nil, err
 	}
-	return device, nil
-}
-
-// memoryTunOutboundQueueBatches bounds how many batches may pile up while the
-// wireguard read loop is not draining; beyond it the oldest packets are dropped,
-// because sing-tun has already handed ownership of these buffers to us.
-const memoryTunOutboundQueueBatches = 4
-
-func (w *stackDevice) enqueueOutbound(packetBuffers []*buf.Buffer) {
-	w.outbound.access.Lock()
-	if w.closed.Load() {
-		w.outbound.access.Unlock()
-		buf.ReleaseMulti(packetBuffers)
-		return
-	}
-	available := w.outbound.capacity - len(w.outbound.pending)
-	if available <= 0 {
-		w.outbound.access.Unlock()
-		buf.ReleaseMulti(packetBuffers)
-		return
-	}
-	if len(packetBuffers) > available {
-		buf.ReleaseMulti(packetBuffers[available:])
-		packetBuffers = packetBuffers[:available]
-	}
-	w.outbound.pending = append(w.outbound.pending, packetBuffers...)
-	w.outbound.access.Unlock()
-	select {
-	case w.outbound.wake <- struct{}{}:
-	default:
-	}
+	inet4Address, inet6Address := deviceAddresses(options.Address)
+	return &stackDevice{
+		stack:        stack,
+		router:       router,
+		mtu:          options.MTU,
+		events:       make(chan wgTun.Event, 1),
+		closed:       make(chan struct{}),
+		inet4Address: inet4Address,
+		inet6Address: inet6Address,
+	}, nil
 }
 
 func (w *stackDevice) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
@@ -155,7 +107,8 @@ func (w *stackDevice) Inet6Address() netip.Addr {
 	return w.inet6Address
 }
 
-func (w *stackDevice) SetDevice(device *device.Device) {
+func (w *stackDevice) SetDevice(device *device.Device, peers []*device.Peer) {
+	w.router.setPeers(device.AllowedIPs(), peers)
 }
 
 func (w *stackDevice) Start() error {
@@ -172,37 +125,8 @@ func (w *stackDevice) File() *os.File {
 }
 
 func (w *stackDevice) Read(bufs [][]byte, sizes []int, offset int) (int, error) {
-	if len(bufs) == 0 {
-		return 0, nil
-	}
-	for {
-		w.outbound.access.Lock()
-		count := 0
-		for count < len(bufs) && len(w.outbound.pending) > 0 {
-			packetBuffer := w.outbound.pending[0]
-			w.outbound.pending = w.outbound.pending[1:]
-			packet := packetBuffer.Bytes()
-			target := bufs[count][offset:]
-			if len(packet) > len(target) {
-				packetBuffer.Release()
-				continue
-			}
-			sizes[count] = copy(target, packet)
-			packetBuffer.Release()
-			count++
-		}
-		w.outbound.access.Unlock()
-		if count > 0 {
-			return count, nil
-		}
-		if w.closed.Load() {
-			return 0, os.ErrClosed
-		}
-		select {
-		case <-w.outbound.wake:
-		case <-w.closeSignal:
-		}
-	}
+	<-w.closed
+	return 0, os.ErrClosed
 }
 
 func (w *stackDevice) Write(bufs [][]byte, offset int) (int, error) {
@@ -210,7 +134,7 @@ func (w *stackDevice) Write(bufs [][]byte, offset int) (int, error) {
 	for _, packet := range bufs {
 		packets = append(packets, packet[offset:])
 	}
-	return w.memoryTun.WritePackets(packets)
+	return w.router.memoryTun.WritePackets(packets)
 }
 
 func (w *stackDevice) Flush() error {
@@ -232,18 +156,13 @@ func (w *stackDevice) Events() <-chan wgTun.Event {
 func (w *stackDevice) Close() error {
 	var err error
 	w.closeOnce.Do(func() {
-		w.closed.Store(true)
 		close(w.events)
-		close(w.closeSignal)
-		w.outbound.access.Lock()
-		buf.ReleaseMulti(w.outbound.pending)
-		w.outbound.pending = nil
-		w.outbound.access.Unlock()
-		err = E.Errors(w.stack.Close(), w.memoryTun.Close())
+		close(w.closed)
+		err = E.Errors(w.stack.Close(), w.router.close())
 	})
 	return err
 }
 
 func (w *stackDevice) BatchSize() int {
-	return conn.IdealBatchSize
+	return 1
 }

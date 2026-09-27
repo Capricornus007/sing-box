@@ -15,6 +15,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing-box/transport/wireguard"
 	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
@@ -141,6 +142,8 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 
 func (w *Endpoint) Start(stage adapter.StartStage) error {
 	switch stage {
+	case adapter.StartStateInitialize:
+		return w.endpoint.Initialize(oomkiller.MemoryPressure(w.ctx))
 	case adapter.StartStateStart:
 		return w.endpoint.Start(w.resolveOnStart)
 	case adapter.StartStatePostStart:

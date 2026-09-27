@@ -656,7 +656,7 @@ func (t *Endpoint) suspendLocked() {
 		return
 	}
 	_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{
-		WantRunning:    false,
+		Prefs:          ipn.Prefs{WantRunning: false},
 		WantRunningSet: true,
 	})
 	if err != nil {
@@ -684,7 +684,7 @@ func (t *Endpoint) resume(ctx context.Context) error {
 			return E.New("Tailscale is not ready yet")
 		}
 		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{
-			WantRunning:    true,
+			Prefs:          ipn.Prefs{WantRunning: true},
 			WantRunningSet: true,
 		})
 		if err != nil {
@@ -726,6 +726,14 @@ func (t *Endpoint) awaitRunning(localBackend *ipnlocal.LocalBackend, resumeDone 
 		t.suspended.Store(false)
 		if t.idleRequested.Load() {
 			t.suspendLocked()
+		}
+	} else {
+		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{
+			Prefs:          ipn.Prefs{WantRunning: false},
+			WantRunningSet: true,
+		})
+		if err != nil {
+			t.logger.Error(E.Cause(err, "revert resume"))
 		}
 	}
 	t.suspendAccess.Unlock()

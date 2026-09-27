@@ -95,7 +95,8 @@ func (s *datagramStream) SendDatagram(payload []byte) error {
 	if err == nil {
 		return nil
 	}
-	if tooLarge, ok := errors.AsType[*quic.DatagramTooLargeError](err); ok {
+	var tooLarge *quic.DatagramTooLargeError
+	if errors.As(err, &tooLarge) {
 		return &DatagramTooLargeError{MaxPayloadSize: int(tooLarge.MaxDatagramPayloadSize) - VarintLen(uint64(s.Stream.StreamID()/4))}
 	}
 	return err

@@ -280,8 +280,7 @@ TUN 接口上 DNS 的处理方式。
 - 启用 `auto_redirect` 时：53 端口流量被直接重定向至
   [`dns_address`](#dns_address)。
 
-*Windows 启用 [`strict_route`](#strict_route) 时*：通过 WFP 过滤器阻止经由非
-TUN 接口的 53 端口流量。
+*Windows 启用 [`strict_route`](#strict_route) 时*：阻止经由非 TUN 接口的 53 端口流量。
 
 #### dns_address
 
@@ -289,13 +288,11 @@ TUN 接口的 53 端口流量。
 
 [`dns_mode`](#dns_mode) 使用的 DNS 服务器地址列表。
 
-未设置时，sing-box 会按地址族在 [`address`](#address) 的第一个 IPv4/IPv6
-条目后面取下一个 IP 作为 DNS 服务器地址，并将流向这些推导地址的连接额外劫持到
-sing-box DNS 模块，等价于一条
-[`hijack-dns`](/zh/configuration/route/rule_action/#hijack-dns) 路由动作；这与此选项加入之前的行为一致。
+未设置时，使用 [`address`](#address) 中第一个 IPv4 和 IPv6 条目的下一个地址，
+发往该地址的连接按 [`hijack-dns`](/zh/configuration/route/rule_action/#hijack-dns) 路由动作处理。
 
-设置后，将不再自动劫持；如仍需此行为，请显式配置
-[`hijack-dns`](/zh/configuration/route/rule_action/#hijack-dns) 路由规则。
+设置后，请配置 [`hijack-dns`](/zh/configuration/route/rule_action/#hijack-dns)
+路由规则以处理发往这些地址的 DNS 流量。
 
 #### gso
 
