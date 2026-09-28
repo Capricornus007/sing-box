@@ -153,17 +153,10 @@
               "$ref": "#/$defs/Duration"
             },
             "resolvers": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "override_domain": {
               "type": "string"
@@ -202,17 +195,10 @@
               "$ref": "#/$defs/Duration"
             },
             "resolvers": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "override_domain": {
               "type": "string"
@@ -245,17 +231,10 @@
               "$ref": "#/$defs/Duration"
             },
             "resolvers": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "override_domain": {
               "type": "string"
@@ -4433,17 +4412,10 @@
               "type": "string"
             },
             "data_ciphers": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "data_ciphers_fallback": {
               "type": "string"
@@ -4544,17 +4516,10 @@
               "type": "boolean"
             },
             "redirect_gateway_flags": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "redirect_private": {
               "type": "boolean"
@@ -4797,17 +4762,10 @@
               "type": "string"
             },
             "data_ciphers": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "data_ciphers_fallback": {
               "type": "string"
@@ -5012,17 +4970,10 @@
               "type": "boolean"
             },
             "advertise_tags": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "listen_port": {
               "type": "integer",
@@ -6078,17 +6029,10 @@
           "type": "string"
         },
         "stun_servers": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "ip_version": {
           "type": "integer",
@@ -6123,17 +6067,10 @@
           "type": "string"
         },
         "stun_servers": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "ip_version": {
           "type": "integer",
@@ -9138,44 +9075,23 @@
           ]
         },
         "cipher_suites": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "curve_preferences": {
-          "anyOf": [
-            {
-              "type": "string",
-              "enum": [
-                "P256",
-                "P384",
-                "P521",
-                "X25519",
-                "X25519MLKEM768"
-              ]
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "P256",
-                  "P384",
-                  "P521",
-                  "X25519",
-                  "X25519MLKEM768"
-                ]
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "P256",
+              "P384",
+              "P521",
+              "X25519",
+              "X25519MLKEM768"
+            ]
+          }
         },
         "certificate": {
           "anyOf": [
@@ -11446,30 +11362,16 @@
           "type": "integer"
         },
         "addresses": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "resolve_domains": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "dnssec": {
           "type": "string",
@@ -11529,46 +11431,25 @@
           }
         },
         "search_domains": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "dhcp_options": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "redirect_gateway": {
           "type": "boolean"
         },
         "redirect_gateway_flags": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "block_outside_dns": {
           "type": "boolean"
@@ -12208,17 +12089,10 @@
               "maximum": 65535
             },
             "server_ports": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "hop_interval": {
               "$ref": "#/$defs/Duration"
@@ -12456,17 +12330,10 @@
               "maximum": 65535
             },
             "server_ports": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "hop_interval": {
               "$ref": "#/$defs/Duration"
@@ -13843,17 +13710,10 @@
               ]
             },
             "host_key_algorithms": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "client_version": {
               "type": "string"
@@ -15139,44 +14999,23 @@
           ]
         },
         "cipher_suites": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "curve_preferences": {
-          "anyOf": [
-            {
-              "type": "string",
-              "enum": [
-                "P256",
-                "P384",
-                "P521",
-                "X25519",
-                "X25519MLKEM768"
-              ]
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "P256",
-                  "P384",
-                  "P521",
-                  "X25519",
-                  "X25519MLKEM768"
-                ]
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "P256",
+              "P384",
+              "P521",
+              "X25519",
+              "X25519MLKEM768"
+            ]
+          }
         },
         "certificate": {
           "anyOf": [
@@ -15398,17 +15237,10 @@
           "type": "boolean"
         },
         "dhcp_lease_files": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "auto_detect_interface": {
           "type": "boolean"
