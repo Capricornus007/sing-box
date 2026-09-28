@@ -237,6 +237,6 @@ replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v
 
 replace github.com/sagernet/wireguard-go => github.com/Capricornus007/wireguard-go v0.0.8-0.20260926043953-aceae72d2393
 
-replace github.com/metacubex/utls => github.com/Capricornus007/utls v0.0.0-20260926050627-c3856ce79ce4
+replace github.com/metacubex/utls => github.com/Capricornus007/utls v1.8.8-0.20260928121433-db7df0e7cabd
 
 replace gvisor.dev/gvisor => github.com/Capricornus007/gvisor-awg v0.0.0-20260902104837-6728272f3831
