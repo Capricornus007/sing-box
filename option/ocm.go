@@ -1,6 +1,9 @@
 package option
 
 import (
+	"reflect"
+
+	"github.com/sagernet/sing-box/schema"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badjson"
@@ -78,6 +81,21 @@ func (c *OCMCredential) UnmarshalJSON(bytes []byte) error {
 		return E.New("unknown credential type: ", c.Type)
 	}
 	return badjson.UnmarshallExcluded(bytes, (*_OCMCredential)(c), v)
+}
+
+func (c OCMCredential) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	return builder.Define("OCMCredential", func() (*schema.Node, error) {
+		return schema.DiscriminatedUnion(builder, "type", false, []schema.UnionVariant{
+			{Value: "default", TypeOptional: true, StructType: reflect.TypeFor[OCMDefaultCredentialOptions]()},
+			{Value: "external", StructType: reflect.TypeFor[OCMExternalCredentialOptions]()},
+			{Value: "balancer", StructType: reflect.TypeFor[OCMBalancerCredentialOptions]()},
+			{Value: "fallback", StructType: reflect.TypeFor[OCMFallbackCredentialOptions]()},
+		}, func(variant *schema.Node) error {
+			variant.Properties.Put("tag", schema.StringNode())
+			variant.Required = append(variant.Required, "tag")
+			return nil
+		})
+	})
 }
 
 type OCMDefaultCredentialOptions struct {

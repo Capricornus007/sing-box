@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sagernet/sing-box/schema"
 	"github.com/sagernet/sing/common/json/badoption"
 
 	"github.com/goccy/go-json"
@@ -55,6 +56,15 @@ func (r *AwgUint32Range) UnmarshalJSON(content []byte) error {
 	}
 	*r = AwgUint32Range(strconv.FormatUint(uint64(numberValue), 10))
 	return nil
+}
+
+func (r AwgUint32Range) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	return builder.Define("AwgUint32Range", func() (*schema.Node, error) {
+		return schema.AnyOf(
+			schema.UnsignedNode(32),
+			&schema.Node{Type: "string", Pattern: `^(?:\d+(?:-\d+)?)?$`},
+		), nil
+	})
 }
 
 func (r AwgUint32Range) Validate() error {

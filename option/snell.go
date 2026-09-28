@@ -216,6 +216,17 @@ func (u *SnellUser) UnmarshalJSON(content []byte) error {
 	return nil
 }
 
+func (u SnellUser) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	return builder.Define("SnellUser", func() (*schema.Node, error) {
+		node := schema.StrictObject()
+		err := builder.FlattenStruct(node, reflect.TypeFor[SnellUser]())
+		if err != nil {
+			return nil, err
+		}
+		return node, nil
+	})
+}
+
 type SnellObfsClientOptions struct {
 	ObfsMode string `json:"obfs_mode,omitempty" enum:"none,http,tls"`
 	ObfsHost string `json:"obfs_host,omitempty"`

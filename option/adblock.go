@@ -2,8 +2,10 @@ package option
 
 import (
 	"bytes"
+	"reflect"
 	"time"
 
+	"github.com/sagernet/sing-box/schema"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badoption"
@@ -108,6 +110,14 @@ func (a *AdblockConstraints) UnmarshalJSON(data []byte) error {
 	return E.New("adblock constraints must be an object or an array")
 }
 
+func (a AdblockConstraints) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	constraintNode, err := builder.Describe(reflect.TypeFor[AdblockConstraint]())
+	if err != nil {
+		return nil, err
+	}
+	return schema.ListableOf(constraintNode), nil
+}
+
 func (a AdblockConstraints) HasProcessRules() bool {
 	if len(a) == 0 {
 		return false
@@ -170,6 +180,10 @@ func (f *AdblockFilterFormat) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (f AdblockFilterFormat) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	return schema.StringEnum("", string(AdblockFilterFormatStandard), string(AdblockFilterFormatHosts)), nil
+}
+
 func (o *AdblockFilterList) UnmarshalJSON(data []byte) error {
 	if len(data) > 0 && data[0] == '"' {
 		var url string
@@ -185,6 +199,17 @@ func (o *AdblockFilterList) UnmarshalJSON(data []byte) error {
 	}
 	o.adblockFilterListBase = base
 	return nil
+}
+
+func (o AdblockFilterList) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	return builder.Define("AdblockFilterList", func() (*schema.Node, error) {
+		objectNode := schema.StrictObject()
+		err := builder.FlattenStruct(objectNode, reflect.TypeFor[adblockFilterListBase]())
+		if err != nil {
+			return nil, err
+		}
+		return schema.AnyOf(schema.StringNode(), objectNode), nil
+	})
 }
 
 type AdblockTLSOptions struct {
@@ -229,6 +254,10 @@ func (m *AdblockMode) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (m AdblockMode) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	return schema.StringEnum("", string(AdblockModeDefault), string(AdblockModeEmptyResponse)), nil
+}
+
 var validAdblockDNSBlockModes = map[AdblockDNSBlockMode]struct{}{
 	AdblockDNSBlockModeZeroIP:   {},
 	AdblockDNSBlockModeNXDOMAIN: {},
@@ -246,6 +275,10 @@ func (m *AdblockDNSBlockMode) UnmarshalJSON(data []byte) error {
 	}
 	*m = mode
 	return nil
+}
+
+func (m AdblockDNSBlockMode) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
+	return schema.StringEnum("", string(AdblockDNSBlockModeZeroIP), string(AdblockDNSBlockModeNXDOMAIN)), nil
 }
 
 func (f AdblockFiltering) DNSBlockTTLValue() uint32 {
