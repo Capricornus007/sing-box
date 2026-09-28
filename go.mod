@@ -52,6 +52,7 @@ require (
 	github.com/sagernet/fswatch v0.1.2
 	github.com/sagernet/gliderssh v0.3.4-0.20260531100337-2194faca5648
 	github.com/sagernet/gomobile v0.1.12
+	github.com/sagernet/gvisor v0.0.0-20260727.0-sing-box-mod.1
 	github.com/sagernet/netlink v0.0.0-20260814022025-64455d367bbf
 	github.com/sagernet/nftables v0.3.0-mod.4
 	github.com/sagernet/quic-go v0.61.0-sing-box-mod.7
@@ -183,7 +184,7 @@ require (
 	github.com/sagernet/cronet-go/lib/tvos_arm64_simulator v0.0.0-20260926100742-df0c319e1c07 // indirect
 	github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20260926100742-df0c319e1c07 // indirect
 	github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20260926100742-df0c319e1c07 // indirect
-	github.com/sagernet/gvisor v0.0.0-20260727.0-sing-box-mod.1 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/smallstep/pkcs7 v0.1.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d // indirect
@@ -205,6 +206,7 @@ require (
 	gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.47.0 // indirect
@@ -217,7 +219,7 @@ require (
 
 replace github.com/amnezia-vpn/amneziawg-go/v3 => github.com/Capricornus007/amneziawg-go/v3 v3.1.20260828-mod.2
 
-replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.20260925023042-72ce040d872e
+replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.20260928045111-76b7c496b147
 
 replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20260920030852-2c97c522fbc2
 
