@@ -223,20 +223,20 @@ replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.2026
 
 replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20260928042222-723b01c971dd
 
-replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.9.4-0.20260928095234-8e939c013edf
+replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.9.4-0.20260929040205-1f1dbb4170c5
 
-replace github.com/sagernet/quic-go => github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.9
+replace github.com/sagernet/quic-go => github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.9.0.20260929041602-4655e27b7002
 
-replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.7.1-0.20260928040840-ce128b6e1a04
+replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.7.1-0.20260929032814-0c4f8a863389
 
-replace github.com/sagernet/sing-mux => github.com/Capricornus007/sing-mux v0.3.7-0.20260928040855-6f936a848cd2
+replace github.com/sagernet/sing-mux => github.com/Capricornus007/sing-mux v0.3.7-0.20260929032806-ca99ccf9a52b
 
 replace github.com/sagernet/tailscale => github.com/Capricornus007/tailscale v1.102.1-sing-box-1.14-mod.5.0.20260928041336-0b9fafb0a134
 
-replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.2.9-0.20260925134622-eb38beec5e11
+replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.2.9-0.20260929032806-b6d843cb08eb
 
 replace github.com/sagernet/wireguard-go => github.com/Capricornus007/wireguard-go v0.0.8-0.20260926043953-aceae72d2393
 
-replace github.com/metacubex/utls => github.com/Capricornus007/utls v1.8.8-0.20260928121433-db7df0e7cabd
+replace github.com/metacubex/utls => github.com/Capricornus007/utls v1.8.8-0.20260929041425-17f78e340ecb
 
 replace gvisor.dev/gvisor => github.com/Capricornus007/gvisor-awg v0.0.0-20260902104837-6728272f3831
