@@ -4446,17 +4446,10 @@
               "type": "boolean"
             },
             "advertise_routes": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/IPPrefix"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/$defs/IPPrefix"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/IPPrefix"
+              }
             },
             "udp_timeout": {
               "$ref": "#/$defs/Duration"
@@ -4654,17 +4647,10 @@
               ]
             },
             "advertise_routes": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/IPPrefix"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/$defs/IPPrefix"
-                  }
-                }
-              ]
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/IPPrefix"
+              }
             },
             "idle_timeout": {
               "$ref": "#/$defs/Duration"
@@ -8695,81 +8681,42 @@
               "type": "integer"
             },
             "derp_servers": {
-              "anyOf": [
-                {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "host": {
-                          "type": "string"
-                        },
-                        "ipv4": {
-                          "type": "string"
-                        },
-                        "ipv6": {
-                          "type": "string"
-                        },
-                        "derp_port": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 65535
-                        },
-                        "stun_port": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 65535
-                        },
-                        "cert_name": {
-                          "type": "string"
-                        }
-                      },
-                      "additionalProperties": false
-                    }
-                  ]
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "host": {
                         "type": "string"
                       },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "host": {
-                            "type": "string"
-                          },
-                          "ipv4": {
-                            "type": "string"
-                          },
-                          "ipv6": {
-                            "type": "string"
-                          },
-                          "derp_port": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "maximum": 65535
-                          },
-                          "stun_port": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "maximum": 65535
-                          },
-                          "cert_name": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": false
+                      "ipv4": {
+                        "type": "string"
+                      },
+                      "ipv6": {
+                        "type": "string"
+                      },
+                      "derp_port": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 65535
+                      },
+                      "stun_port": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 65535
+                      },
+                      "cert_name": {
+                        "type": "string"
                       }
-                    ]
+                    },
+                    "additionalProperties": false
                   }
-                }
-              ]
+                ]
+              }
             },
             "http_client": {
               "$ref": "#/$defs/HTTPClientReference"
@@ -15947,81 +15894,42 @@
               "type": "integer"
             },
             "derp_servers": {
-              "anyOf": [
-                {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "host": {
-                          "type": "string"
-                        },
-                        "ipv4": {
-                          "type": "string"
-                        },
-                        "ipv6": {
-                          "type": "string"
-                        },
-                        "derp_port": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 65535
-                        },
-                        "stun_port": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 65535
-                        },
-                        "cert_name": {
-                          "type": "string"
-                        }
-                      },
-                      "additionalProperties": false
-                    }
-                  ]
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "host": {
                         "type": "string"
                       },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "host": {
-                            "type": "string"
-                          },
-                          "ipv4": {
-                            "type": "string"
-                          },
-                          "ipv6": {
-                            "type": "string"
-                          },
-                          "derp_port": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "maximum": 65535
-                          },
-                          "stun_port": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "maximum": 65535
-                          },
-                          "cert_name": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": false
+                      "ipv4": {
+                        "type": "string"
+                      },
+                      "ipv6": {
+                        "type": "string"
+                      },
+                      "derp_port": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 65535
+                      },
+                      "stun_port": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 65535
+                      },
+                      "cert_name": {
+                        "type": "string"
                       }
-                    ]
+                    },
+                    "additionalProperties": false
                   }
-                }
-              ]
+                ]
+              }
             },
             "http_client": {
               "$ref": "#/$defs/HTTPClientReference"

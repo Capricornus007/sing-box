@@ -355,8 +355,7 @@ The path to server certificate chain, in PEM format.
 
 List of SHA-256 hashes of server certificates, in base64 format.
 
-The hash is computed over the whole DER-encoded certificate, so it changes whenever the certificate is renewed,
-even when the key stays the same. Use `certificate_public_key_sha256` when only the key should be pinned.
+The hash is computed over the whole DER-encoded certificate. Use `certificate_public_key_sha256` to pin only the public key.
 
 To generate the SHA-256 hash for a certificate, use the following commands:
 

@@ -618,9 +618,7 @@ func (t *Endpoint) SetKeepIdleConnections(keep bool) {
 		t.suspendAccess.Unlock()
 		return
 	}
-	if t.systemInterface {
-		t.requestResume()
-	}
+	t.requestResume()
 }
 
 func (t *Endpoint) requestResume() {
