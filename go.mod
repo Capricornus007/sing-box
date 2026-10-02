@@ -221,21 +221,21 @@ replace github.com/amnezia-vpn/amneziawg-go/v3 => github.com/Capricornus007/amne
 
 replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.20260930040615-6fa792f31fbf
 
-replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20260928042222-723b01c971dd
+replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20261001053801-d9bd2c6eb6a0
 
-replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.9.4-0.20261002220536-6adf22421694
+replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.9.4-0.20261002221502-6d9728b2edd9
 
-replace github.com/sagernet/quic-go => github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.9.0.20260929041602-4655e27b7002
+replace github.com/sagernet/quic-go => github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.9.0.20261001054000-283264781fe5
 
-replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.7.1-0.20260929032814-0c4f8a863389
+replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.7.1-0.20261002195826-1f4a0d0c6d9f
 
 replace github.com/sagernet/sing-mux => github.com/Capricornus007/sing-mux v0.3.7-0.20260929032806-ca99ccf9a52b
 
 replace github.com/sagernet/tailscale => github.com/Capricornus007/tailscale v1.102.1-sing-box-1.14-mod.5.0.20260928041336-0b9fafb0a134
 
-replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.2.9-0.20260929032806-b6d843cb08eb
+replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v0.2.9-0.20260930034700-237367371d4f
 
-replace github.com/sagernet/wireguard-go => github.com/Capricornus007/wireguard-go v0.0.8-0.20260926043953-aceae72d2393
+replace github.com/sagernet/wireguard-go => github.com/Capricornus007/wireguard-go v0.0.8-0.20260930034700-5c8c2d946422
 
 replace github.com/metacubex/utls => github.com/Capricornus007/utls v1.8.8-0.20260929041425-17f78e340ecb
 
