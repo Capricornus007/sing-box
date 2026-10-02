@@ -65,12 +65,13 @@ func registerBalancerTestTransport(registry *dns.TransportRegistry, created map[
 	})
 }
 
-func (t *balancerTestTransport) Start(stage adapter.StartStage) error {
+func (t *balancerTestTransport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	t.starts.Add(1)
+	scope.Add(t.shutdown)
 	return nil
 }
 
-func (t *balancerTestTransport) Close() error {
+func (t *balancerTestTransport) shutdown() error {
 	t.closes.Add(1)
 	return nil
 }
@@ -143,11 +144,7 @@ type balancerTestManager struct {
 	transports map[string]adapter.DNSTransport
 }
 
-func (m balancerTestManager) Start(stage adapter.StartStage) error {
-	return nil
-}
-
-func (m balancerTestManager) Close() error {
+func (m balancerTestManager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	return nil
 }
 
@@ -391,11 +388,12 @@ func TestBalancerLifecycleForwardsToChildren(t *testing.T) {
 			{Type: testDNSType, Tag: "second", Options: &balancerTestOptions{Name: "second"}},
 		},
 	})
-	if err := balancer.Start(adapter.StartStateStart); err != nil {
+	scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
+	if err := balancer.Start(adapter.StartStateStart, scope); err != nil {
 		t.Fatal(err)
 	}
 	balancer.Reset()
-	if err := balancer.Close(); err != nil {
+	if err := scope.Close(); err != nil {
 		t.Fatal(err)
 	}
 	for name, child := range created {
@@ -443,7 +441,7 @@ func TestBalancerKeepsChildDependenciesLocal(t *testing.T) {
 	if len(balancer.Dependencies()) != 0 {
 		t.Fatalf("balancer dependencies = %v, want none", balancer.Dependencies())
 	}
-	if err := balancer.Start(adapter.StartStateStart); err != nil {
+	if err := balancer.Start(adapter.StartStateStart, adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -476,7 +474,7 @@ func TestBalancerExposesOuterChildDependency(t *testing.T) {
 	if dependencies := balancer.Dependencies(); len(dependencies) != 1 || dependencies[0] != "outer" {
 		t.Fatalf("balancer dependencies = %v, want [outer]", dependencies)
 	}
-	if err = balancer.Start(adapter.StartStateStart); err != nil {
+	if err = balancer.Start(adapter.StartStateStart, adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())); err != nil {
 		t.Fatal(err)
 	}
 }

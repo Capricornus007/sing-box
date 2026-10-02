@@ -150,22 +150,28 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	return inbound, nil
 }
 
-func (h *Inbound) Start(stage adapter.StartStage) error {
+func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	return h.listener.Start()
-}
-
-func (h *Inbound) Close() error {
-	listenerErr := h.listener.Close()
+	err := h.listener.Start()
+	if err != nil {
+		return err
+	}
+	scope.Add(h.listener.Close)
 	if h.quicAuth != nil {
-		h.quicAuth.Close()
+		scope.Add(func() error {
+			h.quicAuth.Close()
+			return nil
+		})
 	}
 	if h.udpNat != nil {
-		h.udpNat.Close()
+		scope.Add(func() error {
+			h.udpNat.Close()
+			return nil
+		})
 	}
-	return listenerErr
+	return nil
 }
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {

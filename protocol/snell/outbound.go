@@ -230,16 +230,6 @@ func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 	return h.dialUDPOverTCP(ctx)
 }
 
-func (h *Outbound) Close() error {
-	if h.quicDestCache != nil {
-		h.quicDestCache.Close()
-	}
-	if h.client == nil {
-		return nil
-	}
-	return h.client.Close()
-}
-
 type simpleObfsDialer struct {
 	N.Dialer
 	mode string
@@ -302,6 +292,20 @@ func (h *Outbound) SetKeepIdleConnections(keep bool) {
 
 func (h *Outbound) CloseIdleConnections() {
 	h.client.CloseIdleConnections()
+}
+
+func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	if stage != adapter.StartStateInitialize {
+		return nil
+	}
+	if h.quicDestCache != nil {
+		scope.Add(func() error {
+			h.quicDestCache.Close()
+			return nil
+		})
+	}
+	scope.Add(h.client.Close)
+	return nil
 }
 
 func (h *Outbound) isRecentQUICDest(source M.Socksaddr, destination M.Socksaddr) bool {
