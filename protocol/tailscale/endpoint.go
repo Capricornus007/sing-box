@@ -950,6 +950,11 @@ func (t *Endpoint) PreferredDomain(metadata *adapter.InboundContext, domain stri
 	if routeDomains == nil {
 		return false
 	}
+	// A sniffed IP literal is not a name; without this an IPv6 address would pass the
+	// single-label search-domain check below.
+	if M.ParseAddr(domain).IsValid() {
+		return false
+	}
 	domain = strings.ToLower(domain)
 	if routeDomains[domain] {
 		return true
