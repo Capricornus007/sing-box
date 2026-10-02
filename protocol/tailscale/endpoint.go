@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -46,6 +47,7 @@ import (
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/filemanager"
 	tailscaleroot "github.com/sagernet/tailscale"
+	"github.com/sagernet/tailscale/envknob"
 	_ "github.com/sagernet/tailscale/feature/relayserver"
 	"github.com/sagernet/tailscale/ipn"
 	"github.com/sagernet/tailscale/ipn/ipnlocal"
@@ -173,6 +175,11 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	} else {
 		udpTimeout = C.UDPTimeout
 	}
+	// OnlyTCP443 stops every UDP send, but magicsock still reports the local
+	// interface addresses to the coordination server, where every peer can
+	// read them. Omit them too. The knob is process-wide; the last endpoint
+	// created decides.
+	envknob.Setenv("TS_DEBUG_OMIT_LOCAL_ADDRS", strconv.FormatBool(options.OnlyTCP443))
 	outboundDialer, err := dialer.NewWithOptions(dialer.Options{
 		Context:          ctx,
 		Options:          options.DialerOptions,
@@ -214,6 +221,7 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 			ControlURL:    options.ControlURL,
 			Port:          options.ListenPort,
 			AdvertiseTags: options.AdvertiseTags,
+			OnlyTCP443:    options.OnlyTCP443,
 			Dialer:        &endpointDialer{Dialer: outboundDialer, logger: logger},
 			LookupHook: func(ctx context.Context, host string) ([]netip.Addr, error) {
 				return dnsRouter.Lookup(ctx, host, dialerQueryOptions)

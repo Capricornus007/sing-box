@@ -43,6 +43,7 @@ icon: material/new-box
   "system_interface_name": "",
   "system_interface_mtu": 0,
   "udp_timeout": "5m",
+  "only_tcp_443": false,
   "ssh_server": false,
   "taildrop_directory": "",
 
@@ -168,6 +169,15 @@ Override the TUN MTU. By default, Tailscale's own MTU is used.
 UDP NAT expiration time.
 
 `5m` will be used by default.
+
+#### only_tcp_443
+
+Relay all peer traffic through DERP over TCP port 443. Sends no UDP: no direct peer
+connections, STUN, ICMP probes or port mapping, and the local interface addresses are
+not reported to the coordination server.
+
+Use it when the endpoint dials through `detour`; direct peer connections would
+otherwise leave from the local network interface.
 
 #### ssh_server
 
