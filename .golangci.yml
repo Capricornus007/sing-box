@@ -24,6 +24,7 @@ linters:
     modernize:
       disable:
         - omitzero # nested struct omitempty -> omitzero changes JSON output semantics
+        - embedlit # 可省略嵌入欄位型別；與已停用的 QF1008 同類，且上游大量使用顯式嵌入欄位寫法
     staticcheck:
       checks:
         - all

@@ -13,8 +13,10 @@ import (
 	"time"
 
 	q "github.com/sagernet/quic-go"
+	"github.com/sagernet/sing-box/adapter"
 	boxTLS "github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/dns/transport"
+	"github.com/sagernet/sing-box/log"
 	M "github.com/sagernet/sing/common/metadata"
 
 	mDNS "github.com/miekg/dns"
@@ -156,8 +158,12 @@ func TestQUICExchangeStopsAfterUnderlyingStreamError(t *testing.T) {
 			},
 		}),
 	}
+	scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
+	if err := dnsTransport.Start(adapter.StartStateStart, scope); err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
-		if err := dnsTransport.Close(); err != nil {
+		if err := scope.Close(); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -191,8 +197,12 @@ func TestHTTP3ExchangeStopsAfterUnderlyingStreamError(t *testing.T) {
 		tlsConfig:   tlsConfig.config,
 	}
 	dnsTransport.transport = dnsTransport.newTransport()
+	scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
+	if err := dnsTransport.Start(adapter.StartStateStart, scope); err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
-		if err := dnsTransport.Close(); err != nil {
+		if err := scope.Close(); err != nil {
 			t.Error(err)
 		}
 	}()

@@ -250,10 +250,11 @@ func resolveTransportOptions(options option.MASQUEOutboundOptions) (string, uint
 	return transport, mtu, fallbackTimeout, nil
 }
 
-func (w *Outbound) Start(stage adapter.StartStage) error {
+func (w *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStatePostStart {
 		return nil
 	}
+	scope.Add(w.Close)
 	go w.startHandler()
 	return nil
 }

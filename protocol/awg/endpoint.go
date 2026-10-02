@@ -496,7 +496,7 @@ func formatAWGEndpoint(host string, port uint16) string {
 	return net.JoinHostPort(unwrappedHost, strconv.Itoa(int(port)))
 }
 
-func (e *Endpoint) Start(stage adapter.StartStage) error {
+func (e *Endpoint) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	e.deviceAccess.Lock()
 	defer e.deviceAccess.Unlock()
 	if e.deferredDevice != nil {
@@ -513,15 +513,21 @@ func (e *Endpoint) Start(stage adapter.StartStage) error {
 		}
 		e.device = device
 		e.deferredDevice = nil
+		scope.Add(e.closeDevice)
 		return nil
 	}
 	if e.device == nil {
 		return E.New("AmneziaWG device is not initialized")
 	}
-	return e.device.Start(stage)
+	err := e.device.Start(stage)
+	if err != nil {
+		return err
+	}
+	scope.Add(e.closeDevice)
+	return nil
 }
 
-func (e *Endpoint) Close() error {
+func (e *Endpoint) closeDevice() error {
 	e.deviceAccess.Lock()
 	device := e.device
 	e.device = nil

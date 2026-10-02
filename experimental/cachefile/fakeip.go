@@ -40,17 +40,13 @@ func (c *CacheFile) FakeIPMetadata() *adapter.FakeIPMetadata {
 }
 
 func (c *CacheFile) FakeIPSaveMetadata(metadata *adapter.FakeIPMetadata) error {
-	c.FakeIPSaveMetadataAsync(metadata)
-	c.Flush()
-	return nil
-}
-
-func (c *CacheFile) FakeIPSaveMetadataAsync(metadata *adapter.FakeIPMetadata) {
 	c.pendingAccess.Lock()
-	defer c.pendingAccess.Unlock()
 	added := c.pending.fakeIPMetadata == nil
 	c.pending.fakeIPMetadata = metadata
 	c.enqueueLocked(added, 0)
+	c.pendingAccess.Unlock()
+	c.Flush()
+	return nil
 }
 
 func putFakeIPMetadata(tx *bbolt.Tx, metadata *adapter.FakeIPMetadata) error {

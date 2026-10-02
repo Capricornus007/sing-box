@@ -46,27 +46,24 @@ var (
 
 type Endpoint struct {
 	endpointBase
-	loopContext             context.Context
-	cancelLoop              context.CancelFunc
-	dnsRouter               adapter.DNSRouter
-	client                  *openconnect.Client
-	deviceOptions           *device.Options
-	device                  device.Device
-	onDemand                bool
-	server                  string
-	flavor                  string
-	stateAccess             sync.Mutex
-	state                   atomic.Pointer[clientState]
-	dnsTransportAccess      sync.Mutex
-	dnsTransport            *DNSTransport
-	deviceStarted           bool
-	readLoopDone            chan struct{}
-	statusAccess            sync.Mutex
-	statusUpdated           chan struct{}
-	terminalError           string
-	authFormLoopDone        chan struct{}
-	activeTransportLoopDone chan struct{}
-	hotpCounter             atomic.Uint64
+	loopContext        context.Context
+	cancelLoop         context.CancelFunc
+	dnsRouter          adapter.DNSRouter
+	client             *openconnect.Client
+	deviceOptions      *device.Options
+	device             device.Device
+	onDemand           bool
+	server             string
+	flavor             string
+	stateAccess        sync.Mutex
+	state              atomic.Pointer[clientState]
+	dnsTransportAccess sync.Mutex
+	dnsTransport       *DNSTransport
+	deviceStarted      bool
+	statusAccess       sync.Mutex
+	statusUpdated      chan struct{}
+	terminalError      string
+	hotpCounter        atomic.Uint64
 }
 
 type clientState struct {
@@ -109,10 +106,12 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	options.UDPBindPort = options.DTLSLocalPort
 	loopContext, cancelLoop := context.WithCancel(ctx)
-	openConnectEndpoint := &Endpoint{
-		Adapter:       endpoint.NewAdapterWithDialerOptions(C.TypeOpenConnect, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
-		router:        router,
-		logger:        logger,
+	openConnectEndpoint := &Endpoint{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段，Go 禁止位置與具名元素混用
+		endpointBase: endpointBase{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段（CI 的 v2.14 記在欄位行、本機 2.13 記在 literal 起始行，兩邊都標才壓得住）
+			Adapter: endpoint.NewAdapterWithDialerOptions(C.TypeOpenConnect, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
+			router:  router,
+			logger:  logger,
+		},
 		loopContext:   loopContext,
 		cancelLoop:    cancelLoop,
 		dnsRouter:     service.FromContext[adapter.DNSRouter](ctx),
@@ -417,45 +416,68 @@ func (e *Endpoint) updateState(update func(state *clientState)) {
 	e.state.Store(&newState)
 }
 
-func (e *Endpoint) Start(stage adapter.StartStage) error {
-	if stage == adapter.StartStateInitialize {
+func (e *Endpoint) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	switch stage {
+	case adapter.StartStateInitialize:
+		scope.Add(func() error {
+			e.notifyStatusUpdated()
+			return nil
+		})
+		scope.Add(func() error {
+			e.cancelLoop()
+			return nil
+		})
 		e.deviceOptions.MemoryPressure = oomkiller.MemoryPressure(e.loopContext)
 		tunnelDevice, err := device.New(*e.deviceOptions)
 		if err != nil {
 			return err
 		}
+		scope.Add(tunnelDevice.Close)
 		tunnelDevice.SetPacketWriter(e.writePacketBuffers)
 		e.device = tunnelDevice
 		e.deviceOptions = nil
-		return nil
+	case adapter.StartStatePostStart:
+		var loopGroup sync.WaitGroup
+		scope.Add(func() error {
+			loopGroup.Wait()
+			return nil
+		})
+		err := e.client.Start()
+		if err != nil {
+			return err
+		}
+		scope.Add(e.client.Close)
+		e.stateAccess.Lock()
+		e.updateState(func(state *clientState) {
+			state.started = true
+		})
+		e.stateAccess.Unlock()
+		scope.Add(func() error {
+			e.stateAccess.Lock()
+			e.updateState(func(state *clientState) {
+				state.started = false
+			})
+			e.stateAccess.Unlock()
+			return nil
+		})
+		loopGroup.Go(func() {
+			e.readLoop(scope.Context())
+		})
+		loopGroup.Go(func() {
+			e.watchAuthForms(scope.Context())
+		})
+		loopGroup.Go(func() {
+			e.watchActiveTransport(scope.Context())
+		})
 	}
-	if stage != adapter.StartStatePostStart {
-		return nil
-	}
-	err := e.client.Start()
-	if err != nil {
-		return err
-	}
-	e.stateAccess.Lock()
-	e.updateState(func(state *clientState) {
-		state.started = true
-	})
-	e.readLoopDone = make(chan struct{})
-	e.authFormLoopDone = make(chan struct{})
-	e.activeTransportLoopDone = make(chan struct{})
-	e.stateAccess.Unlock()
-	go e.readLoop()
-	go e.watchAuthForms()
-	go e.watchActiveTransport()
 	return nil
 }
 
-func (e *Endpoint) readLoop() {
-	defer close(e.readLoopDone)
+func (e *Endpoint) readLoop(ctx context.Context) {
 	for {
-		packetBuffers, err := e.client.ReadDataPackets(e.loopContext)
+		packetBuffers, err := e.client.ReadDataPackets(ctx)
 		if err != nil {
-			if E.IsClosedOrCanceled(err) || e.loopContext.Err() != nil {
+			if E.IsClosedOrCanceled(err) || ctx.Err() != nil {
 				return
 			}
 			e.logger.Error(E.Cause(err, "client terminated"))
@@ -471,30 +493,6 @@ func (e *Endpoint) readLoop() {
 			return
 		}
 	}
-}
-
-func (e *Endpoint) Close() error {
-	e.stateAccess.Lock()
-	e.updateState(func(state *clientState) {
-		state.started = false
-	})
-	readLoopDone := e.readLoopDone
-	authFormLoopDone := e.authFormLoopDone
-	activeTransportLoopDone := e.activeTransportLoopDone
-	e.stateAccess.Unlock()
-	e.cancelLoop()
-	err := common.Close(e.client, e.device)
-	if readLoopDone != nil {
-		<-readLoopDone
-	}
-	if authFormLoopDone != nil {
-		<-authFormLoopDone
-	}
-	if activeTransportLoopDone != nil {
-		<-activeTransportLoopDone
-	}
-	e.notifyStatusUpdated()
-	return err
 }
 
 func (e *Endpoint) InterfaceUpdated(ctx context.Context) {
