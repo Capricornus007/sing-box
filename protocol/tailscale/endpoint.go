@@ -130,6 +130,7 @@ type Endpoint struct {
 	keyAuth             bool
 	serverStarted       bool
 	started             atomic.Bool
+	authPending         atomic.Bool
 	systemTun           tun.Tun
 	systemDialer        *dialer.DefaultDialer
 	fallbackTCPCloser   func()
@@ -556,6 +557,7 @@ func (t *Endpoint) watchState() {
 				reportedAuthURL = authURL
 				t.logger.Info("Waiting for authentication: ", authURL)
 				if t.platformInterface != nil && t.platformInterface.UsePlatformNotification() {
+					t.authPending.Store(true)
 					err := t.platformInterface.SendNotification(&adapter.Notification{
 						Identifier: "tailscale-authentication",
 						TypeName:   "Tailscale Authentication Notifications",
@@ -570,6 +572,7 @@ func (t *Endpoint) watchState() {
 				}
 			case ipn.Running.String():
 				reportedAuthURL = ""
+				t.cancelAuthNotification()
 				if exitNodePending {
 					tryApplyExitNode()
 				}
@@ -717,9 +720,21 @@ func (t *Endpoint) Logout(ctx context.Context) error {
 	return nil
 }
 
+func (t *Endpoint) cancelAuthNotification() {
+	if !t.authPending.Swap(false) {
+		return
+	}
+	err := t.platformInterface.CancelNotification("tailscale-authentication", 10)
+	if err != nil {
+		t.logger.Error("cancel authentication notification: ", err)
+	}
+}
+
 func (t *Endpoint) Close() error {
 	var err error
 	t.started.Store(false)
+	// A login that is still pending has nothing to complete once the node is gone.
+	t.cancelAuthNotification()
 	if t.localBackend != nil {
 		unregisterTaildropEndpoint(t.localBackend)
 		t.localBackend = nil
