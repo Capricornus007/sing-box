@@ -229,7 +229,7 @@ replace github.com/sagernet/quic-go => github.com/Capricornus007/quic-go v0.61.0
 
 replace github.com/sagernet/sing-quic => github.com/Capricornus007/sing-quic v0.7.1-0.20261002195826-1f4a0d0c6d9f
 
-replace github.com/sagernet/sing-mux => github.com/Capricornus007/sing-mux v0.3.7-0.20260929032806-ca99ccf9a52b
+replace github.com/sagernet/sing-mux => github.com/Capricornus007/sing-mux v0.3.7-0.20260930034700-6914b581bc52
 
 replace github.com/sagernet/tailscale => github.com/Capricornus007/tailscale v1.102.1-sing-box-1.14-mod.5.0.20260928041336-0b9fafb0a134
 
@@ -237,6 +237,8 @@ replace github.com/sagernet/sing-vmess => github.com/Capricornus007/sing-vmess v
 
 replace github.com/sagernet/wireguard-go => github.com/Capricornus007/wireguard-go v0.0.8-0.20260930034700-5c8c2d946422
 
-replace github.com/metacubex/utls => github.com/Capricornus007/utls v1.8.8-0.20260929041425-17f78e340ecb
+replace github.com/metacubex/utls => github.com/Capricornus007/utls v1.8.8-0.20261002220414-54ac95484371
 
 replace gvisor.dev/gvisor => github.com/Capricornus007/gvisor-awg v0.0.0-20260902104837-6728272f3831
+
+replace github.com/refraction-networking/utls => github.com/Capricornus007/utls v1.8.8-0.20261002220414-54ac95484371

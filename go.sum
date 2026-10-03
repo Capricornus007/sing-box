@@ -18,8 +18,8 @@ github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.9.0.20261001054000-283264
 github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.9.0.20261001054000-283264781fe5/go.mod h1:vRC49qsch3yxBruCnOIZ8HwmlgPUK/XvuPSEPgyVbrg=
 github.com/Capricornus007/sing v0.9.5-0.20260930040615-6fa792f31fbf h1:YY46yanUPWSXdGWcz1NJ1VDM3bJIUtp1zVfkbecIFRA=
 github.com/Capricornus007/sing v0.9.5-0.20260930040615-6fa792f31fbf/go.mod h1:2MSeAJrsIizbQuxaBEesWE364AugG3l0mFZRIO/PYYo=
-github.com/Capricornus007/sing-mux v0.3.7-0.20260929032806-ca99ccf9a52b h1:7O/jb6TGqEVyAFfIdL2j79yTqYSLrYjXkzxd6XWw50k=
-github.com/Capricornus007/sing-mux v0.3.7-0.20260929032806-ca99ccf9a52b/go.mod h1:WZ3/IJbxYZ5D3UubQaZ1hQNQNK1BcEQQHSmh+WH11pg=
+github.com/Capricornus007/sing-mux v0.3.7-0.20260930034700-6914b581bc52 h1:7/7Tlhqef2hFs1P0no2PXgOWknNkwx+GjU3+d/vC54Q=
+github.com/Capricornus007/sing-mux v0.3.7-0.20260930034700-6914b581bc52/go.mod h1:WZ3/IJbxYZ5D3UubQaZ1hQNQNK1BcEQQHSmh+WH11pg=
 github.com/Capricornus007/sing-quic v0.7.1-0.20261002195826-1f4a0d0c6d9f h1:jx+BSTpyTfqXkpqKZu/isJ9cYYR/kz/njv41rNZH2O0=
 github.com/Capricornus007/sing-quic v0.7.1-0.20261002195826-1f4a0d0c6d9f/go.mod h1:c+/u9l1LnTZPExVP6GpU6/uaXAOucDW8WWzMzHsIOCk=
 github.com/Capricornus007/sing-snell v0.0.0-20261001053801-d9bd2c6eb6a0 h1:1oYo9cSa/lqwqcdEwlSS3xLQXEDzfvBRxVh9G3zlNc8=
@@ -30,8 +30,8 @@ github.com/Capricornus007/sing-vmess v0.2.9-0.20260930034700-237367371d4f h1:Udf
 github.com/Capricornus007/sing-vmess v0.2.9-0.20260930034700-237367371d4f/go.mod h1:mZjljwCAsUOwEn1MRMEXtTJakcw4rbhEWfRmhbDRS1Q=
 github.com/Capricornus007/tailscale v1.102.1-sing-box-1.14-mod.5.0.20260928041336-0b9fafb0a134 h1:e4Rif1x6pLQUPeNMtZEXEaJH9iECN65VulXMlKmEAFc=
 github.com/Capricornus007/tailscale v1.102.1-sing-box-1.14-mod.5.0.20260928041336-0b9fafb0a134/go.mod h1:rHT8x77ZqRNMI1pGicA8uZotxrZHidd+KstPk0lgNbg=
-github.com/Capricornus007/utls v1.8.8-0.20260929041425-17f78e340ecb h1:nhYNiR1QgXkpucUaH7w3RF1JTMaHAF5BRy8xpWIEMSc=
-github.com/Capricornus007/utls v1.8.8-0.20260929041425-17f78e340ecb/go.mod h1:VdT++SaMiWajp06FuL1kzmswLRK1ajiAjsJ3esXn/Ug=
+github.com/Capricornus007/utls v1.8.8-0.20261002220414-54ac95484371 h1:m7ZcNtSLC3iDEiDhwm4VgbkCGmoCq6kep4KMKzgTSuY=
+github.com/Capricornus007/utls v1.8.8-0.20261002220414-54ac95484371/go.mod h1:VdT++SaMiWajp06FuL1kzmswLRK1ajiAjsJ3esXn/Ug=
 github.com/Capricornus007/wireguard-go v0.0.8-0.20260930034700-5c8c2d946422 h1:lbMMpKtsOtEwKyJ62dEELLdRpiJKdHR6BrC+jYqfYRI=
 github.com/Capricornus007/wireguard-go v0.0.8-0.20260930034700-5c8c2d946422/go.mod h1:sWOyMVxgGEbZy7uu/XGKKC/eo4x/bHU6FFnCx728GSo=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=
