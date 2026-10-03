@@ -559,7 +559,7 @@ func (t *Endpoint) watchState() {
 				if t.platformInterface != nil && t.platformInterface.UsePlatformNotification() {
 					t.authPending.Store(true)
 					err := t.platformInterface.SendNotification(&adapter.Notification{
-						Identifier: "tailscale-authentication",
+						Identifier: t.authNotificationID(),
 						TypeName:   "Tailscale Authentication Notifications",
 						TypeID:     10,
 						Title:      "Tailscale Authentication",
@@ -720,11 +720,17 @@ func (t *Endpoint) Logout(ctx context.Context) error {
 	return nil
 }
 
+// One notification per endpoint, so two nodes waiting for login do not replace or cancel
+// each other's prompt.
+func (t *Endpoint) authNotificationID() string {
+	return "tailscale-authentication:" + t.Tag()
+}
+
 func (t *Endpoint) cancelAuthNotification() {
 	if !t.authPending.Swap(false) {
 		return
 	}
-	err := t.platformInterface.CancelNotification("tailscale-authentication", 10)
+	err := t.platformInterface.CancelNotification(t.authNotificationID(), 10)
 	if err != nil {
 		t.logger.Error("cancel authentication notification: ", err)
 	}
