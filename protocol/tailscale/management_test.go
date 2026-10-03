@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/netip"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -54,7 +55,7 @@ type managementTestNotifications struct {
 	adapter.PlatformInterface
 	entered chan struct{}
 	release chan struct{}
-	cancelled chan struct{}
+	cancellations atomic.Int32
 }
 
 func (p *managementTestNotifications) UsePlatformNotification() bool { return true }
@@ -66,7 +67,7 @@ func (p *managementTestNotifications) SendNotification(*adapter.Notification) er
 }
 
 func (p *managementTestNotifications) CancelNotification(string, int32) error {
-	close(p.cancelled)
+	p.cancellations.Add(1)
 	return nil
 }
 
@@ -76,7 +77,6 @@ func TestManagementCloseDoesNotWaitForNotificationCallback(t *testing.T) {
 	platform := &managementTestNotifications{
 		entered: make(chan struct{}),
 		release: make(chan struct{}),
-		cancelled: make(chan struct{}),
 	}
 	endpoint.platformInterface = platform
 	watcher := &managementTestStateWatcher{status: ipnstate.Status{
@@ -94,6 +94,7 @@ func TestManagementCloseDoesNotWaitForNotificationCallback(t *testing.T) {
 		close(platform.release)
 		t.Fatal("management teardown waited on notification callback")
 	}
+	endpoint.cancelAuthNotification()
 	close(platform.release)
 	select {
 	case <-done:
@@ -103,10 +104,8 @@ func TestManagementCloseDoesNotWaitForNotificationCallback(t *testing.T) {
 	if backend.editCount != 0 || endpoint.started.Load() {
 		t.Fatal("late notification return mutated or restarted the endpoint")
 	}
-	select {
-	case <-platform.cancelled:
-	default:
-		t.Fatal("late notification was not cancelled")
+	if platform.cancellations.Load() != 2 {
+		t.Fatal("late notification was not cancelled again after delivery")
 	}
 }
 

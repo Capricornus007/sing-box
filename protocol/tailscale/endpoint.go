@@ -598,6 +598,9 @@ func (t *Endpoint) watchState(localBackend tailscaleStateWatcher) {
 						t.logger.Error("send authentication notification: ", err)
 					}
 					if t.ctx.Err() != nil {
+						// Close may have cancelled before SendNotification returned.
+						// Cancel again now that the late notification has been delivered.
+						t.authPending.Store(true)
 						t.cancelAuthNotification()
 						return false
 					}
