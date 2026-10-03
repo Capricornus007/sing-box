@@ -12,18 +12,25 @@ import (
 	"github.com/sagernet/tailscale/tailcfg"
 )
 
+// The callback runs inline and must return promptly. Endpoint Close cancels the
+// request but does not wait for a potentially blocking foreign callback.
 func (t *Endpoint) StartTailscalePing(ctx context.Context, peerIP string, fn func(*adapter.TailscalePingResult)) error {
 	ip, err := netip.ParseAddr(peerIP)
 	if err != nil {
 		return err
 	}
-	localClient, err := t.server.LocalClient()
+	ctx, cancel, _, err := t.managementContext(ctx)
 	if err != nil {
 		return err
 	}
+	defer cancel()
+	localClient := t.managementClient
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		result, pingErr := localClient.Ping(ctx, ip, tailcfg.PingDisco)
 		if ctx.Err() != nil {
 			return ctx.Err()
