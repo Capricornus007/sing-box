@@ -106,7 +106,7 @@ func TestManagementCloseDoesNotWaitForNotificationCallback(t *testing.T) {
 	endpoint.platformInterface = platform
 	watcher := &managementTestStateWatcher{status: ipnstate.Status{
 		BackendState: ipn.NeedsLogin.String(),
-		AuthURL: "https://example.invalid/login",
+		AuthURL:      "https://example.invalid/login",
 	}}
 	done := make(chan struct{})
 	go func() { endpoint.watchState(watcher); close(done) }()

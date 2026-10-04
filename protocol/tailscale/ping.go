@@ -10,6 +10,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/tailscale/ipn/ipnstate"
 	"github.com/sagernet/tailscale/tailcfg"
+	"github.com/sagernet/tailscale/tsconst"
 )
 
 // The callback runs inline and must return promptly. Endpoint Close cancels the
@@ -31,7 +32,11 @@ func (t *Endpoint) StartTailscalePing(ctx context.Context, peerIP string, fn fun
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		result, pingErr := localClient.Ping(ctx, ip, tailcfg.PingDisco)
+		// Expired disco transactions do not complete the local API callback.
+		// Bound each attempt so a lost reply cannot stall subsequent samples.
+		attemptCtx, cancelAttempt := context.WithTimeout(ctx, tsconst.DefaultPingTimeout)
+		result, pingErr := localClient.Ping(attemptCtx, ip, tailcfg.PingDisco)
+		cancelAttempt()
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}

@@ -20,11 +20,11 @@ func TestTailscaleStatusCurrentExitUsesPreferencesAndLivePeers(t *testing.T) {
 		},
 	}
 	for _, test := range []struct {
-		name string
-		prefs ipn.Prefs
+		name   string
+		prefs  ipn.Prefs
 		wantID string
 		wantIP string
-		live bool
+		live   bool
 	}{
 		{name: "cleared"},
 		{name: "selected", prefs: ipn.Prefs{ExitNodeID: "A"}, wantID: "A", live: true},

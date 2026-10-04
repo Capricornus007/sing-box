@@ -640,7 +640,7 @@ func (t *Endpoint) editPrefs(sshEnabled bool) error {
 			RunSSH:          sshEnabled,
 		},
 		RouteAllSet:                   true,
-		ExitNodeIDSet:                  true,
+		ExitNodeIDSet:                 true,
 		ExitNodeIPSet:                 true,
 		AdvertiseRoutesSet:            true,
 		RunSSHSet:                     true,

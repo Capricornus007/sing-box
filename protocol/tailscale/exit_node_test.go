@@ -19,12 +19,12 @@ import (
 )
 
 type exitTestBackend struct {
-	prefs       ipn.Prefs
-	status      ipnstate.Status
-	editErr     error
-	editHook    func(*ipn.MaskedPrefs) (ipn.PrefsView, error)
-	statusHook  func()
-	editCount   int
+	prefs      ipn.Prefs
+	status     ipnstate.Status
+	editErr    error
+	editHook   func(*ipn.MaskedPrefs) (ipn.PrefsView, error)
+	statusHook func()
+	editCount  int
 }
 
 func (b *exitTestBackend) Status() *ipnstate.Status {
@@ -73,7 +73,7 @@ func newExitTestEndpoint(t *testing.T, desired string) (*Endpoint, *exitTestBack
 	backend := &exitTestBackend{
 		status: ipnstate.Status{
 			BackendState: ipn.Running.String(),
-			Peer: exitTestPeers(exitTestPeer("B", "100.64.0.2")),
+			Peer:         exitTestPeers(exitTestPeer("B", "100.64.0.2")),
 		},
 	}
 	endpoint := &Endpoint{
