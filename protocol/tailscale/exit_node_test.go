@@ -301,6 +301,7 @@ func TestExitNodeFinalizationAndFailures(t *testing.T) {
 }
 
 func TestBeginTailscaleExitNodeChangeReconciliationFailure(t *testing.T) {
+	restoreErr := errors.New("restoration rejected")
 	for _, restoration := range []string{"failed", "mismatched", "restored"} {
 		t.Run(restoration, func(t *testing.T) {
 			endpoint, backend := newExitTestEndpoint(t, "100.64.0.1")
@@ -323,7 +324,7 @@ func TestBeginTailscaleExitNodeChangeReconciliationFailure(t *testing.T) {
 						t.Fatal("restoration did not request the prior exit preferences")
 					}
 					if restoration == "failed" {
-						return ipn.PrefsView{}, errors.New("restoration rejected")
+						return ipn.PrefsView{}, restoreErr
 					}
 					backend.prefs.ApplyEdits(prefs)
 					if restoration == "mismatched" {
@@ -351,6 +352,12 @@ func TestBeginTailscaleExitNodeChangeReconciliationFailure(t *testing.T) {
 				}
 			} else if !strings.HasPrefix(err.Error(), "tailscale:diverged:") || actual == before {
 				t.Fatalf("unrestored apply returned %v with exit prefs %+v", err, actual)
+			}
+			if restoration == "failed" && !errors.Is(err, restoreErr) {
+				t.Fatalf("divergence error lost the restoration cause: %v", err)
+			}
+			if restoration == "mismatched" && err.Error() != "tailscale:diverged: exit preferences diverged after backend reconciliation" {
+				t.Fatalf("mismatch-only divergence has an unexpected cause suffix: %v", err)
 			}
 		})
 	}
