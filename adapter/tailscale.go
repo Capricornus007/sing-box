@@ -57,6 +57,8 @@ type TailscaleEndpointStatus struct {
 	MagicDNSSuffix     string
 	Self               *TailscalePeer
 	ExitNode           *TailscalePeer
+	SelectedExitNodeID string
+	SelectedExitNodeIP string
 	UserGroups         []*TailscaleUserGroup
 	KeyAuth            bool
 	CanShareFiles      bool

@@ -434,20 +434,31 @@ func (t *DNSTransport) exchangeOnce(ctx context.Context, message *mDNS.Msg, allo
 		return
 	}
 	canonicalName := mDNS.CanonicalName(question.Name)
-	for domainSuffix, transports := range routes {
-		if matchDomainSuffix(canonicalName, domainSuffix) {
-			if len(transports) == 0 {
-				callback(&mDNS.Msg{
+	// 取「最長相符」的 route，而不是先撞到的那個：routes 是 map，Go 的迭代会次序
+	// 隨機，舊寫法在同一個 name 同時被兩個 suffix 命中時會隨機選到較不精確的
+	// resolver（我方原本就是這個寫法）。hawkff 這版是標準 DNS routing 語意，收。
+	var selectedResolvers []adapter.DNSTransport
+	longestSuffix := -1
+	for domainSuffix, resolvers := range routes {
+		if len(domainSuffix) > longestSuffix && matchDomainSuffix(canonicalName, domainSuffix) {
+			longestSuffix = len(domainSuffix)
+			selectedResolvers = resolvers
+		}
+	}
+	if longestSuffix >= 0 {
+		if len(selectedResolvers) == 0 {
+			callback(&mDNS.Msg{
+				MsgHdr: mDNS.MsgHdr{
 					Id:       message.Id,
 					Rcode:    mDNS.RcodeNameError,
 					Response: true,
-					Question: []mDNS.Question{question},
-				}, nil)
-				return
-			}
-			transport.ExchangeSequential(ctx, resolverExchangers(transports, message), nil, callback)
+				},
+				Question: []mDNS.Question{question},
+			}, nil)
 			return
 		}
+		transport.ExchangeSequential(ctx, resolverExchangers(selectedResolvers, message), nil, callback)
+		return
 	}
 	if allowDefaultResolvers {
 		if len(defaultResolvers) > 0 {

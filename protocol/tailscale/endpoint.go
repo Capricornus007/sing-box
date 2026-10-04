@@ -4,6 +4,7 @@ package tailscale
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -46,7 +47,6 @@ import (
 	tsDNS "github.com/sagernet/tailscale/net/dns"
 	"github.com/sagernet/tailscale/net/tsaddr"
 	tsTUN "github.com/sagernet/tailscale/net/tstun"
-	"github.com/sagernet/tailscale/tailcfg"
 	"github.com/sagernet/tailscale/tsnet"
 	"github.com/sagernet/tailscale/version"
 	"github.com/sagernet/tailscale/wgengine"
@@ -100,6 +100,15 @@ type Endpoint struct {
 
 	acceptRoutes               bool
 	exitNode                   string
+	exitNodeID                 string
+	exitNodePending            bool
+	exitGeneration             uint64
+	exitChange                 *ExitNodeChange
+	managementAccess           sync.Mutex // guards exit intent, preference edits and admission
+	managementBackend          exitNodeBackend
+	managementClient           tailscaleManagementClient
+	closed                     bool
+	cancel                     context.CancelFunc
 	exitNodeAllowLANAccess     bool
 	advertiseRoutes            []netip.Prefix
 	advertiseExitNode          bool
@@ -117,6 +126,10 @@ type Endpoint struct {
 	resumeDone        chan struct{}
 	resumePending     atomic.Bool
 	suspended         atomic.Bool
+
+	authNotificationOnce       sync.Once
+	authNotificationIdentifier string
+	authPending                atomic.Bool
 
 	systemInterface     bool
 	systemInterfaceName string
@@ -178,7 +191,9 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	taildropDirectory = filemanager.BasePath(ctx, os.ExpandEnv(taildropDirectory))
 	taildropDirectory, _ = filepath.Abs(taildropDirectory)
+	ctx, cancel := context.WithCancel(ctx)
 	tailscaleEndpoint := &Endpoint{
+		cancel:            cancel,
 		Adapter:           endpoint.NewAdapter(C.TypeTailscale, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
 		ctx:               ctx,
 		router:            router,
@@ -222,6 +237,7 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		},
 		acceptRoutes:               options.AcceptRoutes,
 		exitNode:                   options.ExitNode,
+		exitNodePending:            options.ExitNode != "",
 		exitNodeAllowLANAccess:     options.ExitNodeAllowLANAccess,
 		advertiseRoutes:            options.AdvertiseRoutes,
 		advertiseExitNode:          options.AdvertiseExitNode,
@@ -379,57 +395,77 @@ func (t *Endpoint) postStart(scope *adapter.Scope) error {
 		t.sshReconfigHook = sshServer.OnReconfig
 		t.sshServerInstance = sshServer
 	}
-	go t.watchState(scope.Context())
+	t.managementAccess.Lock()
+	if t.closed || t.ctx.Err() != nil {
+		t.managementAccess.Unlock()
+		return E.New("tailscale:closed")
+	}
+	localClient, err := t.server.LocalClient()
+	if err != nil {
+		t.managementAccess.Unlock()
+		return err
+	}
+	t.managementBackend = localBackend
+	t.managementClient = localClient
+	t.managementAccess.Unlock()
 	t.started.Store(true)
+	go t.watchState(localBackend)
 	scope.Add(func() error {
-		t.started.Store(false)
+		t.stopManagement()
 		return nil
 	})
 	return nil
 }
 
-func (t *Endpoint) watchState(ctx context.Context) {
-	localBackend := t.server.ExportLocalBackend()
+func (t *Endpoint) watchState(localBackend tailscaleStateWatcher) {
 	var reportedAuthURL string
-	exitNodePending := t.exitNode != ""
 	running := false
 	tryApplyExitNode := func() {
 		err := t.applyExitNode()
 		if err != nil {
 			t.logger.Error("set exit node: ", err)
-		} else {
-			exitNodePending = false
 		}
 	}
 	for {
+		if t.ctx.Err() != nil {
+			return
+		}
 		var busError string
-		localBackend.WatchNotifications(ctx, ipn.NotifyInitialState|ipn.NotifyPeerPatches, nil, func(roNotify *ipn.Notify) (keepGoing bool) {
+		localBackend.WatchNotifications(t.ctx, ipn.NotifyInitialState|ipn.NotifyPeerPatches, nil, func(roNotify *ipn.Notify) (keepGoing bool) {
+			if t.ctx.Err() != nil {
+				return false
+			}
 			if roNotify.ErrMessage != nil {
 				busError = *roNotify.ErrMessage
 				return false
 			}
-			if running && exitNodePending && len(roNotify.PeersChanged) > 0 {
+			if running && (len(roNotify.PeersChanged) > 0 || len(roNotify.PeerChangedPatch) > 0) {
 				tryApplyExitNode()
 			}
 			if roNotify.State == nil && roNotify.BrowseToURL == nil {
 				return true
 			}
+			t.managementAccess.Lock()
+			if t.checkManagementLocked(t.ctx) != nil {
+				t.managementAccess.Unlock()
+				return false
+			}
 			status := localBackend.StatusWithoutPeers()
+			t.managementAccess.Unlock()
 			running = status.BackendState == ipn.Running.String()
 			switch status.BackendState {
 			case ipn.NoState.String(), ipn.NeedsLogin.String():
-				if t.exitNode != "" {
-					exitNodePending = true
-				}
+				t.resetExitNodePending()
 				authURL := status.AuthURL
 				if authURL == "" || authURL == reportedAuthURL {
 					return true
 				}
 				reportedAuthURL = authURL
-				t.logger.Info("Waiting for authentication: ", authURL)
+				t.logger.Info("Waiting for Tailscale authentication")
 				if t.platformInterface != nil && t.platformInterface.UsePlatformNotification() {
+					t.authPending.Store(true)
 					err := t.platformInterface.SendNotification(&adapter.Notification{
-						Identifier: "tailscale-authentication",
+						Identifier: t.authNotificationID(),
 						TypeName:   "Tailscale Authentication Notifications",
 						TypeID:     10,
 						Title:      "Tailscale Authentication",
@@ -439,17 +475,23 @@ func (t *Endpoint) watchState(ctx context.Context) {
 					if err != nil {
 						t.logger.Error("send authentication notification: ", err)
 					}
+					if t.ctx.Err() != nil {
+						// Close may have cancelled before SendNotification returned.
+						// Cancel again now that the late notification has been delivered.
+						t.authPending.Store(true)
+						t.cancelAuthNotification()
+						return false
+					}
 				}
 			case ipn.Running.String():
 				reportedAuthURL = ""
-				if exitNodePending {
-					tryApplyExitNode()
-				}
+				t.cancelAuthNotification()
+				tryApplyExitNode()
 				t.suspendIfRequested()
 			}
 			return true
 		})
-		if ctx.Err() != nil {
+		if t.ctx.Err() != nil {
 			return
 		}
 		if busError != "" {
@@ -458,7 +500,7 @@ func (t *Endpoint) watchState(ctx context.Context) {
 			t.logger.Warn("state watcher stopped unexpectedly, restarting")
 		}
 		select {
-		case <-ctx.Done():
+		case <-t.ctx.Done():
 			return
 		case <-time.After(time.Second):
 		}
@@ -471,6 +513,7 @@ func (t *Endpoint) editPrefs(sshEnabled bool) error {
 		AdvertiseRoutes:               t.advertiseRoutes,
 		RunSSH:                        sshEnabled,
 		RouteAllSet:                   true,
+		ExitNodeIDSet:                 true,
 		ExitNodeIPSet:                 true,
 		AdvertiseRoutesSet:            true,
 		RunSSHSet:                     true,
@@ -493,77 +536,28 @@ func (t *Endpoint) editPrefs(sshEnabled bool) error {
 	return nil
 }
 
-func (t *Endpoint) applyExitNode() error {
-	status, err := common.Must1(t.server.LocalClient()).Status(t.ctx)
-	if err != nil {
-		return err
-	}
-	perfs := &ipn.MaskedPrefs{
-		ExitNodeAllowLANAccess:    t.exitNodeAllowLANAccess,
-		ExitNodeIPSet:             true,
-		ExitNodeAllowLANAccessSet: true,
-	}
-	err = perfs.SetExitNodeIP(t.exitNode, status)
-	if err != nil {
-		return err
-	}
-	_, err = t.server.ExportLocalBackend().EditPrefs(perfs)
-	return err
-}
-
-func (t *Endpoint) SetTailscaleExitNode(ctx context.Context, stableID string) error {
-	if !t.started.Load() {
-		return E.New("Tailscale is not ready yet")
-	}
-	if t.advertiseExitNode && stableID != "" {
-		return E.New("cannot advertise an exit node and use an exit node at the same time")
-	}
-	perfs := &ipn.MaskedPrefs{
-		ExitNodeID:                tailcfg.StableNodeID(stableID),
-		ExitNodeAllowLANAccess:    t.exitNodeAllowLANAccess,
-		ExitNodeIDSet:             true,
-		ExitNodeIPSet:             true,
-		ExitNodeAllowLANAccessSet: true,
-	}
-	if stableID != "" {
-		status, err := common.Must1(t.server.LocalClient()).Status(ctx)
-		if err != nil {
-			return E.Cause(err, "get tailscale status")
-		}
-		found := false
-		for _, peer := range status.Peer {
-			if peer.ID != tailcfg.StableNodeID(stableID) {
-				continue
-			}
-			if !peer.ExitNodeOption {
-				return E.New("peer does not offer exit node: ", stableID)
-			}
-			found = true
-			break
-		}
-		if !found {
-			return E.New("peer not found: ", stableID)
-		}
-	}
-	_, err := t.server.ExportLocalBackend().EditPrefs(perfs)
-	if err != nil {
-		return E.Cause(err, "update prefs")
-	}
-	return nil
-}
-
 func (t *Endpoint) Logout(ctx context.Context) error {
-	if !t.started.Load() {
-		return E.New("Tailscale is not ready yet")
+	ctx, cancel, localBackend, err := t.managementContext(ctx)
+	if err != nil {
+		return err
 	}
-	err := common.Must1(t.server.LocalClient()).Logout(ctx)
+	defer cancel()
+	t.managementAccess.Lock()
+	defer t.managementAccess.Unlock()
+	if err := t.checkManagementLocked(ctx); err != nil {
+		return err
+	}
+	if t.exitChange != nil {
+		return E.New("tailscale:busy: exit change awaiting finalization")
+	}
+	err = t.managementClient.Logout(ctx)
 	if err != nil {
 		return E.Cause(err, "tailscale logout")
 	}
 	// LocalBackend.Logout deletes the profile and restarts the backend with
 	// empty preferences, and only tsnet.Server.Start performs the login
 	// bootstrap, so redo it here to obtain a new auth URL.
-	localBackend := t.server.ExportLocalBackend()
+	t.exitNodePending = t.exitNode != ""
 	prefs := ipn.NewPrefs()
 	prefs.Hostname = t.server.Hostname
 	prefs.WantRunning = true
@@ -582,6 +576,25 @@ func (t *Endpoint) Logout(ctx context.Context) error {
 		return E.Cause(err, "start interactive login")
 	}
 	return nil
+}
+
+// Late callbacks from a closed endpoint must not cancel a replacement's prompt,
+// even when both endpoints have the same tag.
+func (t *Endpoint) authNotificationID() string {
+	t.authNotificationOnce.Do(func() {
+		t.authNotificationIdentifier = "tailscale-authentication:" + t.Tag() + ":" + rand.Text()
+	})
+	return t.authNotificationIdentifier
+}
+
+func (t *Endpoint) cancelAuthNotification() {
+	if !t.authPending.Swap(false) {
+		return
+	}
+	err := t.platformInterface.CancelNotification(t.authNotificationID(), 10)
+	if err != nil {
+		t.logger.Error("cancel authentication notification: ", err)
+	}
 }
 
 func (t *Endpoint) InterfaceUpdated(ctx context.Context) {
