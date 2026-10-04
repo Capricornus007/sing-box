@@ -122,7 +122,7 @@ func (t *Endpoint) BeginTailscaleExitNodeChange(ctx context.Context, stableID st
 	if !applied.Valid() || readExitNodePrefs(applied) != selection {
 		restored, restoreErr := t.managementBackend.EditPrefs(change.before.mask())
 		if restoreErr != nil || !restored.Valid() || readExitNodePrefs(restored) != change.before {
-			return nil, fmt.Errorf("tailscale:conflict: exit preferences diverged after backend reconciliation: %v", restoreErr)
+			return nil, fmt.Errorf("tailscale:diverged: exit preferences diverged after backend reconciliation: %v", restoreErr)
 		}
 		return nil, fmt.Errorf("tailscale:conflict: backend rejected the requested exit selection")
 	}

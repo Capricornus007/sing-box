@@ -22,6 +22,7 @@ type exitTestBackend struct {
 	prefs       ipn.Prefs
 	status      ipnstate.Status
 	editErr     error
+	editHook    func(*ipn.MaskedPrefs) (ipn.PrefsView, error)
 	statusHook  func()
 	editCount   int
 }
@@ -39,6 +40,9 @@ func (b *exitTestBackend) Prefs() ipn.PrefsView {
 
 func (b *exitTestBackend) EditPrefs(prefs *ipn.MaskedPrefs) (ipn.PrefsView, error) {
 	b.editCount++
+	if b.editHook != nil {
+		return b.editHook(prefs)
+	}
 	if b.editErr != nil {
 		return ipn.PrefsView{}, b.editErr
 	}
@@ -293,6 +297,62 @@ func TestExitNodeFinalizationAndFailures(t *testing.T) {
 	}
 	if backend.prefs.ExitNodeID != "" || backend.prefs.ExitNodeIP.IsValid() || endpoint.exitNodePending {
 		t.Fatal("clear retained an exit selector or pending retry")
+	}
+}
+
+func TestBeginTailscaleExitNodeChangeReconciliationFailure(t *testing.T) {
+	for _, restoration := range []string{"failed", "mismatched", "restored"} {
+		t.Run(restoration, func(t *testing.T) {
+			endpoint, backend := newExitTestEndpoint(t, "100.64.0.1")
+			endpoint.exitNodeID = "A"
+			endpoint.exitNodePending = false
+			backend.prefs.ExitNodeID = "A"
+			backend.prefs.ExitNodeAllowLANAccess = true
+			before := readExitNodePrefs(backend.Prefs())
+			generation := endpoint.exitGeneration
+			backend.editHook = func(prefs *ipn.MaskedPrefs) (ipn.PrefsView, error) {
+				switch backend.editCount {
+				case 1:
+					if prefs.ExitNodeID != "B" {
+						t.Fatalf("apply requested %q, want B", prefs.ExitNodeID)
+					}
+					backend.prefs.ApplyEdits(prefs)
+					backend.prefs.ExitNodeID = "reconciled"
+				case 2:
+					if readExitNodePrefs(prefs.Prefs.View()) != before {
+						t.Fatal("restoration did not request the prior exit preferences")
+					}
+					if restoration == "failed" {
+						return ipn.PrefsView{}, errors.New("restoration rejected")
+					}
+					backend.prefs.ApplyEdits(prefs)
+					if restoration == "mismatched" {
+						backend.prefs.ExitNodeID = "reconciled"
+					}
+				default:
+					t.Fatalf("unexpected preference edit %d", backend.editCount)
+				}
+				return backend.Prefs(), nil
+			}
+			change, err := endpoint.BeginTailscaleExitNodeChange(context.Background(), "B")
+			if change != nil || err == nil {
+				t.Fatalf("reconciled apply returned change %v, error %v", change, err)
+			}
+			if backend.editCount != 2 || endpoint.exitChange != nil || endpoint.exitGeneration != generation {
+				t.Fatal("failed Begin retained a change or skipped exact restoration")
+			}
+			if endpoint.exitNode != "100.64.0.1" || endpoint.exitNodeID != "A" || endpoint.exitNodePending {
+				t.Fatal("failed Begin changed the prior desired exit state")
+			}
+			actual := readExitNodePrefs(backend.Prefs())
+			if restoration == "restored" {
+				if err.Error() != "tailscale:conflict: backend rejected the requested exit selection" || actual != before {
+					t.Fatalf("restored rejection returned %v with exit prefs %+v, want %+v", err, actual, before)
+				}
+			} else if !strings.HasPrefix(err.Error(), "tailscale:diverged:") || actual == before {
+				t.Fatalf("unrestored apply returned %v with exit prefs %+v", err, actual)
+			}
+		})
 	}
 }
 
