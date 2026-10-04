@@ -7,11 +7,13 @@ import (
 	"errors"
 	"net/netip"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	adapterEndpoint "github.com/sagernet/sing-box/adapter/endpoint"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/tailscale/ipn"
 	"github.com/sagernet/tailscale/ipn/ipnstate"
@@ -51,23 +53,46 @@ func (w *managementTestStateWatcher) WatchNotifications(ctx context.Context, _ i
 	fn(&ipn.Notify{State: &state})
 }
 
+type managementTestNotificationKey struct {
+	identifier string
+	typeID     int32
+}
+
+type managementTestNotificationStore struct {
+	sync.Mutex
+	prompts map[managementTestNotificationKey]string
+}
+
 type managementTestNotifications struct {
 	adapter.PlatformInterface
-	entered chan struct{}
-	release chan struct{}
+	entered       chan struct{}
+	release       chan struct{}
 	cancellations atomic.Int32
+	store         *managementTestNotificationStore
 }
 
 func (p *managementTestNotifications) UsePlatformNotification() bool { return true }
 
-func (p *managementTestNotifications) SendNotification(*adapter.Notification) error {
+func (p *managementTestNotifications) SendNotification(notification *adapter.Notification) error {
+	if p.store != nil {
+		p.store.Lock()
+		p.store.prompts[managementTestNotificationKey{notification.Identifier, notification.TypeID}] = notification.OpenURL
+		p.store.Unlock()
+	}
 	close(p.entered)
-	<-p.release
+	if p.release != nil {
+		<-p.release
+	}
 	return nil
 }
 
-func (p *managementTestNotifications) CancelNotification(string, int32) error {
+func (p *managementTestNotifications) CancelNotification(identifier string, typeID int32) error {
 	p.cancellations.Add(1)
+	if p.store != nil {
+		p.store.Lock()
+		delete(p.store.prompts, managementTestNotificationKey{identifier, typeID})
+		p.store.Unlock()
+	}
 	return nil
 }
 
@@ -106,6 +131,93 @@ func TestManagementCloseDoesNotWaitForNotificationCallback(t *testing.T) {
 	}
 	if platform.cancellations.Load() != 2 {
 		t.Fatal("late notification was not cancelled again after delivery")
+	}
+}
+
+func TestManagementLateNotificationCancellationPreservesSameTagReplacement(t *testing.T) {
+	endpointA, backendA := newExitTestEndpoint(t, "")
+	endpointB, _ := newExitTestEndpoint(t, "")
+	endpointA.Adapter = adapterEndpoint.NewAdapter("tailscale", "same-tag", nil, nil)
+	endpointB.Adapter = adapterEndpoint.NewAdapter("tailscale", "same-tag", nil, nil)
+	endpointA.logger = log.NewNOPFactory().Logger()
+	endpointB.logger = log.NewNOPFactory().Logger()
+	store := &managementTestNotificationStore{prompts: make(map[managementTestNotificationKey]string)}
+	platformA := &managementTestNotifications{
+		entered: make(chan struct{}),
+		release: make(chan struct{}),
+		store:   store,
+	}
+	platformB := &managementTestNotifications{
+		entered: make(chan struct{}),
+		store:   store,
+	}
+	endpointA.platformInterface = platformA
+	endpointB.platformInterface = platformB
+	releaseA := sync.OnceFunc(func() { close(platformA.release) })
+	defer releaseA()
+	watcherA := &managementTestStateWatcher{status: ipnstate.Status{
+		BackendState: ipn.NeedsLogin.String(),
+		AuthURL:      "https://example.invalid/login-a",
+	}}
+	watcherB := &managementTestStateWatcher{status: ipnstate.Status{
+		BackendState: ipn.NeedsLogin.String(),
+		AuthURL:      "https://example.invalid/login-b",
+	}}
+	doneA := make(chan struct{})
+	go func() { endpointA.watchState(watcherA); close(doneA) }()
+	select {
+	case <-platformA.entered:
+	case <-time.After(time.Second):
+		t.Fatal("A did not deliver its notification")
+	}
+	stoppedA := make(chan struct{})
+	go func() {
+		// The management and notification portion of Endpoint.Close must not
+		// wait for A's SendNotification callback to return.
+		endpointA.stopManagement()
+		endpointA.cancelAuthNotification()
+		close(stoppedA)
+	}()
+	select {
+	case <-stoppedA:
+	case <-time.After(time.Second):
+		t.Fatal("A shutdown waited on its notification callback")
+	}
+	doneB := make(chan struct{})
+	go func() { endpointB.watchState(watcherB); close(doneB) }()
+	select {
+	case <-platformB.entered:
+	case <-time.After(time.Second):
+		t.Fatal("B did not deliver its notification")
+	}
+	releaseA()
+	select {
+	case <-doneA:
+	case <-time.After(time.Second):
+		t.Fatal("A watcher did not finish after late notification return")
+	}
+	store.Lock()
+	promptB := store.prompts[managementTestNotificationKey{endpointB.authNotificationID(), 10}]
+	promptCount := len(store.prompts)
+	store.Unlock()
+	if promptB != watcherB.status.AuthURL || promptCount != 1 {
+		t.Fatal("A's late cancellation removed B's same-tag notification")
+	}
+	if platformA.cancellations.Load() != 2 || backendA.editCount != 0 || endpointA.started.Load() {
+		t.Fatal("A did not finish cancellation without mutating or restarting its backend")
+	}
+	endpointB.stopManagement()
+	endpointB.cancelAuthNotification()
+	select {
+	case <-doneB:
+	case <-time.After(time.Second):
+		t.Fatal("B watcher did not finish after shutdown")
+	}
+	store.Lock()
+	remaining := len(store.prompts)
+	store.Unlock()
+	if remaining != 0 {
+		t.Fatal("B shutdown did not cancel its own notification")
 	}
 }
 

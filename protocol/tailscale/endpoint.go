@@ -4,6 +4,7 @@ package tailscale
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -131,6 +132,9 @@ type Endpoint struct {
 	sshServerOptions  *option.TailscaleSSHServerOptions
 	taildrop          *taildropManager
 	localBackend      *ipnlocal.LocalBackend
+
+	authNotificationOnce       sync.Once
+	authNotificationIdentifier string
 
 	systemInterface     bool
 	systemInterfaceName string
@@ -583,7 +587,7 @@ func (t *Endpoint) watchState(localBackend tailscaleStateWatcher) {
 					return true
 				}
 				reportedAuthURL = authURL
-				t.logger.Info("Waiting for authentication: ", authURL)
+				t.logger.Info("Waiting for Tailscale authentication")
 				if t.platformInterface != nil && t.platformInterface.UsePlatformNotification() {
 					t.authPending.Store(true)
 					err := t.platformInterface.SendNotification(&adapter.Notification{
@@ -701,10 +705,13 @@ func (t *Endpoint) Logout(ctx context.Context) error {
 	return nil
 }
 
-// One notification per endpoint, so two nodes waiting for login do not replace or cancel
-// each other's prompt.
+// Late callbacks from a closed endpoint must not cancel a replacement's prompt,
+// even when both endpoints have the same tag.
 func (t *Endpoint) authNotificationID() string {
-	return "tailscale-authentication:" + t.Tag()
+	t.authNotificationOnce.Do(func() {
+		t.authNotificationIdentifier = "tailscale-authentication:" + t.Tag() + ":" + rand.Text()
+	})
+	return t.authNotificationIdentifier
 }
 
 func (t *Endpoint) cancelAuthNotification() {
