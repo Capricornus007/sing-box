@@ -387,22 +387,28 @@ func (t *DNSTransport) exchangeOnce(ctx context.Context, message *mDNS.Msg, allo
 		return
 	}
 	canonicalName := mDNS.CanonicalName(question.Name)
-	for domainSuffix, transports := range routes {
-		if matchDomainSuffix(canonicalName, domainSuffix) {
-			if len(transports) == 0 {
-				callback(&mDNS.Msg{
-					MsgHdr: mDNS.MsgHdr{
-						Id:       message.Id,
-						Rcode:    mDNS.RcodeNameError,
-						Response: true,
-					},
-					Question: []mDNS.Question{question},
-				}, nil)
-				return
-			}
-			transport.ExchangeSequential(ctx, resolverExchangers(transports, message), nil, callback)
+	var selectedResolvers []adapter.DNSTransport
+	longestSuffix := -1
+	for domainSuffix, resolvers := range routes {
+		if len(domainSuffix) > longestSuffix && matchDomainSuffix(canonicalName, domainSuffix) {
+			longestSuffix = len(domainSuffix)
+			selectedResolvers = resolvers
+		}
+	}
+	if longestSuffix >= 0 {
+		if len(selectedResolvers) == 0 {
+			callback(&mDNS.Msg{
+				MsgHdr: mDNS.MsgHdr{
+					Id:       message.Id,
+					Rcode:    mDNS.RcodeNameError,
+					Response: true,
+				},
+				Question: []mDNS.Question{question},
+			}, nil)
 			return
 		}
+		transport.ExchangeSequential(ctx, resolverExchangers(selectedResolvers, message), nil, callback)
+		return
 	}
 	if allowDefaultResolvers {
 		if len(defaultResolvers) > 0 {

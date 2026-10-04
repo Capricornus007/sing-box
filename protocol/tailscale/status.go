@@ -5,6 +5,7 @@ package tailscale
 import (
 	"context"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -14,8 +15,18 @@ import (
 
 var _ adapter.TailscaleEndpoint = (*Endpoint)(nil)
 
+// The callback must return promptly. Subscription return joins its collectors;
+// endpoint shutdown cancels them without waiting on the subscriber.
 func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapter.TailscaleEndpointStatus)) error {
-	localBackend := t.server.ExportLocalBackend()
+	ctx, cancel, localBackend, err := t.managementContext(ctx)
+	if err != nil {
+		return err
+	}
+	var workers sync.WaitGroup
+	defer func() {
+		cancel()
+		workers.Wait()
+	}()
 	// The notification callback must stay cheap and non-blocking: a
 	// watcher whose queue fills is disconnected by the IPN bus, so
 	// status collection and delivery (which blocks on the subscriber)
@@ -27,15 +38,23 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 		default:
 		}
 	}
+	workers.Add(1)
 	go func() {
+		defer workers.Done()
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-updateSignal:
 			}
+			t.managementAccess.Lock()
+			if t.checkManagementLocked(ctx) != nil {
+				t.managementAccess.Unlock()
+				return
+			}
 			status := localBackend.Status()
 			result := convertTailscaleStatus(status)
+			setSelectedExitNode(result, localBackend.Prefs())
 			result.KeyAuth = t.keyAuth
 			canShareFiles, taildropTargets := t.taildropTargets()
 			result.CanShareFiles = canShareFiles
@@ -50,6 +69,10 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 					}
 				}
 			}
+			t.managementAccess.Unlock()
+			if ctx.Err() != nil {
+				return
+			}
 			fn(result)
 		}
 	}()
@@ -57,7 +80,9 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 	watchErr := t.taildrop.watch(t.taildrop.fileWatchers, fileSignal)
 	if watchErr == nil {
 		defer t.taildrop.unwatch(t.taildrop.fileWatchers, fileSignal)
+		workers.Add(1)
 		go func() {
+			defer workers.Done()
 			for {
 				select {
 				case <-ctx.Done():
@@ -70,6 +95,9 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 	}
 	scheduleUpdate()
 	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		var busError string
 		localBackend.WatchNotifications(ctx, ipn.NotifyInitialState|ipn.NotifyPeerPatches, nil, func(roNotify *ipn.Notify) (keepGoing bool) {
 			if roNotify.ErrMessage != nil {
@@ -115,6 +143,9 @@ func convertTailscaleStatus(status *ipnstate.Status) *adapter.TailscaleEndpointS
 	groupIndex := make(map[int64]*adapter.TailscaleUserGroup)
 	for _, peerKey := range status.Peers() {
 		peer := status.Peer[peerKey]
+		if peer == nil {
+			continue
+		}
 		userID := int64(peer.UserID)
 		group, loaded := groupIndex[userID]
 		if !loaded {
@@ -142,30 +173,33 @@ func convertTailscaleStatus(status *ipnstate.Status) *adapter.TailscaleEndpointS
 			return 0
 		})
 	}
-	// status.ExitNodeStatus is populated from the cached netmap Peers
-	// slice, which incremental deltas do not update; the live peer map
-	// behind status.Peer sets PeerStatus.ExitNode delta-correctly, so it
-	// is the primary source.
-	for _, peerKey := range status.Peers() {
-		peer := status.Peer[peerKey]
-		if peer.ExitNode {
-			result.ExitNode = convertTailscalePeer(peer)
-			break
-		}
-	}
-	if result.ExitNode == nil && status.ExitNodeStatus != nil {
-		ips := make([]string, 0, len(status.ExitNodeStatus.TailscaleIPs))
-		for _, prefix := range status.ExitNodeStatus.TailscaleIPs {
-			ips = append(ips, prefix.Addr().String())
-		}
-		result.ExitNode = &adapter.TailscalePeer{
-			StableID:     string(status.ExitNodeStatus.ID),
-			TailscaleIPs: ips,
-			Online:       status.ExitNodeStatus.Online,
-			ExitNode:     true,
-		}
-	}
 	return result
+}
+
+// Preferences identify the selection even when its peer is absent. Only live
+// peer flags confirm it; cached ExitNodeStatus can survive a clear or removal.
+func setSelectedExitNode(result *adapter.TailscaleEndpointStatus, prefs ipn.PrefsView) {
+	result.ExitNode = nil
+	result.SelectedExitNodeID = ""
+	result.SelectedExitNodeIP = ""
+	if !prefs.Valid() {
+		return
+	}
+	result.SelectedExitNodeID = string(prefs.ExitNodeID())
+	if prefs.ExitNodeIP().IsValid() {
+		result.SelectedExitNodeIP = prefs.ExitNodeIP().String()
+	}
+	for _, group := range result.UserGroups {
+		for _, peer := range group.Peers {
+			selected := result.SelectedExitNodeID != "" && peer.StableID == result.SelectedExitNodeID
+			if result.SelectedExitNodeID == "" && result.SelectedExitNodeIP != "" {
+				selected = slices.Contains(peer.TailscaleIPs, result.SelectedExitNodeIP)
+			}
+			if selected && peer.ExitNode {
+				result.ExitNode = peer
+			}
+		}
+	}
 }
 
 func convertTailscalePeer(peer *ipnstate.PeerStatus) *adapter.TailscalePeer {
