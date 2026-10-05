@@ -38,9 +38,7 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 		default:
 		}
 	}
-	workers.Add(1)
-	go func() {
-		defer workers.Done()
+	workers.Go(func() {
 		for {
 			select {
 			case <-ctx.Done():
@@ -75,14 +73,12 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 			}
 			fn(result)
 		}
-	}()
+	})
 	fileSignal := make(chan struct{}, 1)
 	watchErr := t.taildrop.watch(t.taildrop.fileWatchers, fileSignal)
 	if watchErr == nil {
 		defer t.taildrop.unwatch(t.taildrop.fileWatchers, fileSignal)
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			for {
 				select {
 				case <-ctx.Done():
@@ -91,7 +87,7 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 					scheduleUpdate()
 				}
 			}
-		}()
+		})
 	}
 	scheduleUpdate()
 	for {
