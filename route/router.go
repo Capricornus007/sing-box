@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -45,6 +46,7 @@ type Router struct {
 	processCache      *freelru.Cache[processCacheKey, processCacheEntry]
 	neighborResolver  adapter.NeighborResolver
 	pauseManager      pause.Manager
+	trackerAccess     sync.RWMutex
 	trackers          []adapter.ConnectionTracker
 	nekoTracker       adapter.ConnectionTracker //nolint:unused // reserved slot for the NekoBox+ connection-tracker patch stream; not yet wired into the current RouteConnection/RoutePacketConnection bodies
 	platformInterface adapter.PlatformInterface
@@ -239,7 +241,24 @@ func (r *Router) Rules() []adapter.Rule {
 }
 
 func (r *Router) AppendTracker(tracker adapter.ConnectionTracker) {
-	r.trackers = append(r.trackers, tracker)
+	// copy-on-write：讀端（route.go 每條連線都會遍歷）只取一次切片標頭就能安全走完，
+	// 所以這裡不能原地 append —— 原地寫入會與正在被讀的舊標頭共用同一個底層陣列。
+	// NB4A 會在 box 啟動之後才追加 stats tracker（libcore 的 SetV2rayStats），
+	// 缺這把鎖時切片標頭被撕裂，讀端取到垃圾 tracker 直接空指標 panic，:bg 整樁 abort。
+	r.trackerAccess.Lock()
+	defer r.trackerAccess.Unlock()
+	next := make([]adapter.ConnectionTracker, len(r.trackers)+1)
+	copy(next, r.trackers)
+	next[len(r.trackers)] = tracker
+	r.trackers = next
+}
+
+// connectionTrackers 回傳 tracker 列表的穩定快照。不複製底層陣列，
+// 因為 AppendTracker 採 copy-on-write，舊標頭永遠不會被原地改動。
+func (r *Router) connectionTrackers() []adapter.ConnectionTracker {
+	r.trackerAccess.RLock()
+	defer r.trackerAccess.RUnlock()
+	return r.trackers
 }
 
 func (r *Router) NeedFindProcess() bool {

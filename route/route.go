@@ -160,7 +160,7 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	}
 	metadata.RouteOutbound = selectedOutbound.Tag()
 	metadata.OutboundChain = chain
-	for _, tracker := range r.trackers {
+	for _, tracker := range r.connectionTrackers() {
 		conn = tracker.RoutedConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
 	}
 	ctx = interrupt.ContextWithIsExternalConnection(ctx)
@@ -327,7 +327,7 @@ func (r *Router) routePacketConnection(ctx context.Context, conn N.PacketConn, m
 	}
 	metadata.RouteOutbound = selectedOutbound.Tag()
 	metadata.OutboundChain = chain
-	for _, tracker := range r.trackers {
+	for _, tracker := range r.connectionTrackers() {
 		conn = tracker.RoutedPacketConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
 	}
 	if metadata.FakeIP {
@@ -549,13 +549,14 @@ func (r *Router) preMatchFlow(ctx context.Context, metadata *adapter.InboundCont
 	metadataCopy := *metadata
 	result.NewTracker = func() tun.FlowTracker {
 		r.logger.InfoContext(ctx, "pre-match: forward ", metadataCopy.Network, " connection from ", metadataCopy.Source.AddrString(), " to ", metadataCopy.Destination.AddrString(), " via outbound/", outbound.Type(), "[", outbound.Tag(), "]")
-		flowTrackers := make([]tun.FlowTracker, 0, len(r.trackers)+2)
+		trackers := r.connectionTrackers()
+		flowTrackers := make([]tun.FlowTracker, 0, len(trackers)+2)
 		flowTrackers = append(flowTrackers, newFlowLogger(ctx, r.logger, metadataCopy, outbound))
 		flowInterrupter := newFlowInterrupter(chain)
 		if flowInterrupter != nil {
 			flowTrackers = append(flowTrackers, flowInterrupter)
 		}
-		for _, tracker := range r.trackers {
+		for _, tracker := range trackers {
 			flowTracker := tracker.RoutedFlow(ctx, metadataCopy, matchedRule, outbound)
 			if flowTracker != nil {
 				flowTrackers = append(flowTrackers, flowTracker)
