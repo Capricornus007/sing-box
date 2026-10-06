@@ -78,7 +78,9 @@ func TestResetClosesActiveHTTP2StreamsAndAllowsReconnect(t *testing.T) {
 				case <-ctx.Done():
 					t.Fatal("request never reached HTTP/2 server")
 				}
-				if err := transport.Close(); err != nil {
+				// 本倉的 Close 對 xhttp 是永久關閉，重撥語意走 Reset
+				// （adapter.ResetV2RayClientTransport 會在沒有 Reset 時退回 Close）。
+				if err := adapter.ResetV2RayClientTransport(transport); err != nil {
 					t.Fatal(err)
 				}
 				select {

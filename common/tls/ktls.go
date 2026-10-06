@@ -2,7 +2,9 @@ package tls
 
 import (
 	"context"
+	"errors"
 	"net"
+	"os"
 
 	"github.com/sagernet/sing-box/common/ktls"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -23,6 +25,11 @@ func (w *KTLSClientConfig) ClientHandshake(ctx context.Context, conn net.Conn) (
 	}
 	kConn, err := ktls.NewConn(ctx, w.logger, tlsConn, w.kernelTx, w.kernelRx)
 	if err != nil {
+		if errors.Is(err, os.ErrInvalid) {
+			// 內核 TLS 用不了（演算法不支持、或 crypto/tls 私有佈局對不上，例如 go1.28）
+			// 時退回使用者態 TLS；這不該讓整條交握失敗。
+			return tlsConn, nil
+		}
 		tlsConn.Close()
 		return nil, E.Cause(err, "initialize kernel TLS")
 	}
@@ -51,6 +58,11 @@ func (w *KTlSServerConfig) ServerHandshake(ctx context.Context, conn net.Conn) (
 	}
 	kConn, err := ktls.NewConn(ctx, w.logger, tlsConn, w.kernelTx, w.kernelRx)
 	if err != nil {
+		if errors.Is(err, os.ErrInvalid) {
+			// 內核 TLS 用不了（演算法不支持、或 crypto/tls 私有佈局對不上，例如 go1.28）
+			// 時退回使用者態 TLS；這不該讓整條交握失敗。
+			return tlsConn, nil
+		}
 		tlsConn.Close()
 		return nil, E.Cause(err, "initialize kernel TLS")
 	}

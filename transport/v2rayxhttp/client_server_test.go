@@ -1057,6 +1057,10 @@ func newBufferLogger(ctx context.Context, output io.Writer) log.ObservableFactor
 		false,
 	)
 	factory.SetLevel(log.LevelDebug)
+	// defaultFactory 在 Start() 之前只會把條目堆進 pendingEntries，不 Start 就永遠讀不到輸出。
+	if err := factory.Start(); err != nil {
+		panic(err)
+	}
 	return factory
 }
 

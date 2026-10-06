@@ -4,6 +4,7 @@ package badtls
 
 import (
 	"hash"
+	"os"
 	"reflect"
 	"sync"
 	"unsafe"
@@ -35,68 +36,68 @@ func NewRawHalfConn(rawHalfConn reflect.Value, methods *Methods) (*RawHalfConn, 
 
 	rawMutex := rawHalfConn.FieldByName("Mutex")
 	if !rawMutex.IsValid() || rawMutex.Kind() != reflect.Struct {
-		return nil, E.New("badtls: invalid halfConn.Mutex")
+		return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.Mutex")
 	}
 	halfConn.Mutex = (*sync.Mutex)(unsafe.Pointer(rawMutex.UnsafeAddr()))
 
 	rawErr := rawHalfConn.FieldByName("err")
 	if !rawErr.IsValid() || rawErr.Kind() != reflect.Interface {
-		return nil, E.New("badtls: invalid halfConn.err")
+		return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.err")
 	}
 	halfConn.Err = (*error)(unsafe.Pointer(rawErr.UnsafeAddr()))
 
 	rawVersion := rawHalfConn.FieldByName("version")
 	if !rawVersion.IsValid() || rawVersion.Kind() != reflect.Uint16 {
-		return nil, E.New("badtls: invalid halfConn.version")
+		return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.version")
 	}
 	halfConn.Version = (*uint16)(unsafe.Pointer(rawVersion.UnsafeAddr()))
 
 	rawCipher := rawHalfConn.FieldByName("cipher")
 	if !rawCipher.IsValid() || rawCipher.Kind() != reflect.Interface {
-		return nil, E.New("badtls: invalid halfConn.cipher")
+		return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.cipher")
 	}
 	halfConn.Cipher = (*any)(unsafe.Pointer(rawCipher.UnsafeAddr()))
 
 	rawSeq := rawHalfConn.FieldByName("seq")
 	if !rawSeq.IsValid() || rawSeq.Kind() != reflect.Array || rawSeq.Len() != 8 || rawSeq.Type().Elem().Kind() != reflect.Uint8 {
-		return nil, E.New("badtls: invalid halfConn.seq")
+		return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.seq")
 	}
 	halfConn.Seq = (*[8]byte)(unsafe.Pointer(rawSeq.UnsafeAddr()))
 
 	rawScratchBuf := rawHalfConn.FieldByName("scratchBuf")
 	if !rawScratchBuf.IsValid() || rawScratchBuf.Kind() != reflect.Array || rawScratchBuf.Len() != 13 || rawScratchBuf.Type().Elem().Kind() != reflect.Uint8 {
-		return nil, E.New("badtls: invalid halfConn.scratchBuf")
+		return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.scratchBuf")
 	}
 	halfConn.ScratchBuf = (*[13]byte)(unsafe.Pointer(rawScratchBuf.UnsafeAddr()))
 
 	rawTrafficSecret := rawHalfConn.FieldByName("trafficSecret")
 	if !rawTrafficSecret.IsValid() || rawTrafficSecret.Kind() != reflect.Slice || rawTrafficSecret.Type().Elem().Kind() != reflect.Uint8 {
-		return nil, E.New("badtls: invalid halfConn.trafficSecret")
+		return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.trafficSecret")
 	}
 	halfConn.TrafficSecret = (*[]byte)(unsafe.Pointer(rawTrafficSecret.UnsafeAddr()))
 
 	rawMac := rawHalfConn.FieldByName("mac")
 	if !rawMac.IsValid() || rawMac.Kind() != reflect.Interface {
-		return nil, E.New("badtls: invalid halfConn.mac")
+		return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.mac")
 	}
 	halfConn.Mac = (*hash.Hash)(unsafe.Pointer(rawMac.UnsafeAddr()))
 
 	rawKey := rawHalfConn.FieldByName("rawKey")
 	if rawKey.IsValid() {
 		if /*!rawKey.IsValid() || */ rawKey.Kind() != reflect.Slice || rawKey.Type().Elem().Kind() != reflect.Uint8 {
-			return nil, E.New("badtls: invalid halfConn.rawKey")
+			return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.rawKey")
 		}
 		halfConn.RawKey = (*[]byte)(unsafe.Pointer(rawKey.UnsafeAddr()))
 
 		rawIV := rawHalfConn.FieldByName("rawIV")
 		if !rawIV.IsValid() || rawIV.Kind() != reflect.Slice || rawIV.Type().Elem().Kind() != reflect.Uint8 {
-			return nil, E.New("badtls: invalid halfConn.rawIV")
+			return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.rawIV")
 		}
 		halfConn.RawIV = (*[]byte)(unsafe.Pointer(rawIV.UnsafeAddr()))
 
 		rawMAC := rawHalfConn.FieldByName("rawMac")
 		if !rawMAC.IsValid() || rawMAC.Kind() != reflect.Slice || rawMAC.Type().Elem().Kind() != reflect.Uint8 {
-			return nil, E.New("badtls: invalid halfConn.rawMac")
+			return nil, E.Cause(os.ErrInvalid, "badtls: invalid halfConn.rawMac")
 		}
 		halfConn.RawMac = (*[]byte)(unsafe.Pointer(rawMAC.UnsafeAddr()))
 	}

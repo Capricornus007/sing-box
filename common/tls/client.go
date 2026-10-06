@@ -117,7 +117,7 @@ func ClientHandshake(ctx context.Context, conn net.Conn, config Config) (Conn, e
 	readWaitConn, err := badtls.NewReadWaitConn(tlsConn)
 	if err == nil {
 		return readWaitConn, nil
-	} else if err != os.ErrInvalid {
+	} else if !errors.Is(err, os.ErrInvalid) {
 		return nil, err
 	}
 	return tlsConn, nil

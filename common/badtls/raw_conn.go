@@ -64,61 +64,61 @@ func NewRawConn(rawTLSConn tls.Conn) (*RawConn, error) {
 
 	rawIsClient := rawConn.FieldByName("isClient")
 	if !rawIsClient.IsValid() || rawIsClient.Kind() != reflect.Bool {
-		return nil, E.New("invalid Conn.isClient")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.isClient")
 	}
 	conn.IsClient = (*bool)(unsafe.Pointer(rawIsClient.UnsafeAddr()))
 
 	rawIsHandshakeComplete := rawConn.FieldByName("isHandshakeComplete")
 	if !rawIsHandshakeComplete.IsValid() || rawIsHandshakeComplete.Kind() != reflect.Struct {
-		return nil, E.New("invalid Conn.isHandshakeComplete")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.isHandshakeComplete")
 	}
 	conn.IsHandshakeComplete = (*atomic.Bool)(unsafe.Pointer(rawIsHandshakeComplete.UnsafeAddr()))
 
 	rawVers := rawConn.FieldByName("vers")
 	if !rawVers.IsValid() || rawVers.Kind() != reflect.Uint16 {
-		return nil, E.New("invalid Conn.vers")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.vers")
 	}
 	conn.Vers = (*uint16)(unsafe.Pointer(rawVers.UnsafeAddr()))
 
 	rawCipherSuite := rawConn.FieldByName("cipherSuite")
 	if !rawCipherSuite.IsValid() || rawCipherSuite.Kind() != reflect.Uint16 {
-		return nil, E.New("invalid Conn.cipherSuite")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.cipherSuite")
 	}
 	conn.CipherSuite = (*uint16)(unsafe.Pointer(rawCipherSuite.UnsafeAddr()))
 
 	rawRawInput := rawConn.FieldByName("rawInput")
 	if !rawRawInput.IsValid() || rawRawInput.Kind() != reflect.Struct {
-		return nil, E.New("invalid Conn.rawInput")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.rawInput")
 	}
 	conn.RawInput = (*bytes.Buffer)(unsafe.Pointer(rawRawInput.UnsafeAddr()))
 
 	rawInput := rawConn.FieldByName("input")
 	if !rawInput.IsValid() || rawInput.Kind() != reflect.Struct {
-		return nil, E.New("invalid Conn.input")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.input")
 	}
 	conn.Input = (*bytes.Reader)(unsafe.Pointer(rawInput.UnsafeAddr()))
 
 	rawHand := rawConn.FieldByName("hand")
 	if !rawHand.IsValid() || rawHand.Kind() != reflect.Struct {
-		return nil, E.New("invalid Conn.hand")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.hand")
 	}
 	conn.Hand = (*bytes.Buffer)(unsafe.Pointer(rawHand.UnsafeAddr()))
 
 	rawCloseNotifySent := rawConn.FieldByName("closeNotifySent")
 	if !rawCloseNotifySent.IsValid() || rawCloseNotifySent.Kind() != reflect.Bool {
-		return nil, E.New("invalid Conn.closeNotifySent")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.closeNotifySent")
 	}
 	conn.CloseNotifySent = (*bool)(unsafe.Pointer(rawCloseNotifySent.UnsafeAddr()))
 
 	rawCloseNotifyErr := rawConn.FieldByName("closeNotifyErr")
 	if !rawCloseNotifyErr.IsValid() || rawCloseNotifyErr.Kind() != reflect.Interface {
-		return nil, E.New("invalid Conn.closeNotifyErr")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.closeNotifyErr")
 	}
 	conn.CloseNotifyErr = (*error)(unsafe.Pointer(rawCloseNotifyErr.UnsafeAddr()))
 
 	rawIn := rawConn.FieldByName("in")
 	if !rawIn.IsValid() || rawIn.Kind() != reflect.Struct {
-		return nil, E.New("invalid Conn.in")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.in")
 	}
 	halfIn, err := NewRawHalfConn(rawIn, methods)
 	if err != nil {
@@ -128,7 +128,7 @@ func NewRawConn(rawTLSConn tls.Conn) (*RawConn, error) {
 
 	rawOut := rawConn.FieldByName("out")
 	if !rawOut.IsValid() || rawOut.Kind() != reflect.Struct {
-		return nil, E.New("invalid Conn.out")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.out")
 	}
 	halfOut, err := NewRawHalfConn(rawOut, methods)
 	if err != nil {
@@ -138,25 +138,25 @@ func NewRawConn(rawTLSConn tls.Conn) (*RawConn, error) {
 
 	rawBytesSent := rawConn.FieldByName("bytesSent")
 	if !rawBytesSent.IsValid() || rawBytesSent.Kind() != reflect.Int64 {
-		return nil, E.New("invalid Conn.bytesSent")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.bytesSent")
 	}
 	conn.BytesSent = (*int64)(unsafe.Pointer(rawBytesSent.UnsafeAddr()))
 
 	rawPacketsSent := rawConn.FieldByName("packetsSent")
 	if !rawPacketsSent.IsValid() || rawPacketsSent.Kind() != reflect.Int64 {
-		return nil, E.New("invalid Conn.packetsSent")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.packetsSent")
 	}
 	conn.PacketsSent = (*int64)(unsafe.Pointer(rawPacketsSent.UnsafeAddr()))
 
 	rawActiveCall := rawConn.FieldByName("activeCall")
 	if !rawActiveCall.IsValid() || rawActiveCall.Kind() != reflect.Struct {
-		return nil, E.New("invalid Conn.activeCall")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.activeCall")
 	}
 	conn.ActiveCall = (*atomic.Int32)(unsafe.Pointer(rawActiveCall.UnsafeAddr()))
 
 	rawTmp := rawConn.FieldByName("tmp")
 	if !rawTmp.IsValid() || rawTmp.Kind() != reflect.Array || rawTmp.Len() != 16 || rawTmp.Type().Elem().Kind() != reflect.Uint8 {
-		return nil, E.New("invalid Conn.tmp")
+		return nil, E.Cause(os.ErrInvalid, "unsupported crypto/tls layout: Conn.tmp")
 	}
 	conn.Tmp = (*[16]byte)(unsafe.Pointer(rawTmp.UnsafeAddr()))
 
