@@ -41,6 +41,24 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	if err != nil {
 		return nil, E.Cause(err, "decode private key")
 	}
+	if len(privateKeyBytes) != 32 {
+		return nil, E.New("invalid private key length")
+	}
+	for _, value := range []string{
+		options.InitPacketMagicHeader,
+		options.ResponsePacketMagicHeader,
+		options.UnderloadPacketMagicHeader,
+		options.TransportPacketMagicHeader,
+		options.SpecialJunk1,
+		options.SpecialJunk2,
+		options.SpecialJunk3,
+		options.SpecialJunk4,
+		options.SpecialJunk5,
+	} {
+		if strings.ContainsAny(value, "\r\n") {
+			return nil, E.New("invalid line break in AmneziaWG parameter")
+		}
+	}
 	privateKey := hex.EncodeToString(privateKeyBytes)
 	ipcConf := "private_key=" + privateKey
 	if options.ListenPort != 0 {
@@ -62,11 +80,17 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 		if err != nil {
 			return nil, E.Cause(err, "decode public key for peer ", peerIndex)
 		}
+		if len(publicKeyBytes) != 32 {
+			return nil, E.New("invalid public key length for peer ", peerIndex)
+		}
 		peer.publicKeyHex = hex.EncodeToString(publicKeyBytes)
 		if rawPeer.PreSharedKey != "" {
 			preSharedKeyBytes, err := base64.StdEncoding.DecodeString(rawPeer.PreSharedKey)
 			if err != nil {
 				return nil, E.Cause(err, "decode pre shared key for peer ", peerIndex)
+			}
+			if len(preSharedKeyBytes) != 32 {
+				return nil, E.New("invalid pre shared key length for peer ", peerIndex)
 			}
 			peer.preSharedKeyHex = hex.EncodeToString(preSharedKeyBytes)
 		}

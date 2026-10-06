@@ -178,6 +178,14 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	canSplice := h.transport == nil
+	if canSplice && h.decryption != nil && h.decryption.IsFullRandomXorMode() {
+		canSplice = false
+	}
+	h.newConnectionExInternal(ctx, conn, metadata, onClose, canSplice)
+}
+
+func (h *Inbound) newConnectionExInternal(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc, canSplice bool) {
 	if h.tlsConfig != nil && h.transport == nil {
 		tlsConn, err := tls.ServerHandshake(ctx, conn, h.tlsConfig)
 		if err != nil {
@@ -199,10 +207,6 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 	}
 	var err error
 	if needsEnhancedVision(h.vision, h.decryption != nil, h.transport != nil) {
-		canSplice := h.transport == nil
-		if canSplice && h.decryption != nil && h.decryption.IsFullRandomXorMode() {
-			canSplice = false
-		}
 		err = h.service.NewConnectionWithOptions(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose, canSplice)
 	} else {
 		err = h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
@@ -253,6 +257,21 @@ func (h *Inbound) newPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 		h.logger.InfoContext(ctx, "[", user, "] inbound packet connection to ", metadata.Destination)
 	}
 	h.router.RoutePacketConnectionEx(ctx, conn, metadata, onClose)
+}
+
+var _ adapter.V2RayServerTransportHandler = (*inboundTransportHandler)(nil)
+
+type inboundTransportHandler Inbound
+
+func (h *inboundTransportHandler) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+	var metadata adapter.InboundContext
+	metadata.Source = source
+	metadata.Destination = destination
+	//nolint:staticcheck
+	metadata.InboundDetour = h.listener.ListenOptions().Detour
+	//nolint:staticcheck
+	h.logger.InfoContext(ctx, "inbound connection from ", metadata.Source)
+	(*Inbound)(h).newConnectionExInternal(ctx, conn, metadata, onClose, false)
 }
 
 type serverDecryptionConfig struct {
@@ -328,7 +347,7 @@ func parseServerDecryption(raw string) (serverDecryptionConfig, error) {
 			}
 			return cfg, E.New("invalid decryption key length: ", len(data))
 		}
-		return cfg, E.New("invalid decryption key: ", segment)
+		return cfg, E.New("invalid decryption key encoding")
 	}
 	if len(cfg.keys) == 0 {
 		return cfg, E.New("no valid decryption keys found in decryption string")
@@ -337,21 +356,6 @@ func parseServerDecryption(raw string) (serverDecryptionConfig, error) {
 		cfg.padding = strings.Join(paddingParts, ".")
 	}
 	return cfg, nil
-}
-
-var _ adapter.V2RayServerTransportHandler = (*inboundTransportHandler)(nil)
-
-type inboundTransportHandler Inbound
-
-func (h *inboundTransportHandler) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
-	var metadata adapter.InboundContext
-	metadata.Source = source
-	metadata.Destination = destination
-	//nolint:staticcheck
-	metadata.InboundDetour = h.listener.ListenOptions().Detour
-	//nolint:staticcheck
-	h.logger.InfoContext(ctx, "inbound connection from ", metadata.Source)
-	(*Inbound)(h).NewConnection(ctx, conn, metadata, onClose)
 }
 
 func (h *Inbound) References() []string {

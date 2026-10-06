@@ -53,6 +53,9 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	if err != nil {
 		return nil, E.Cause(err, "decode private key")
 	}
+	if len(privateKeyBytes) != 32 {
+		return nil, E.New("invalid private key length")
+	}
 	privateKey := hex.EncodeToString(privateKeyBytes)
 	ipcConf := "private_key=" + privateKey
 	if options.ListenPort != 0 {
@@ -77,10 +80,14 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 			return nil, E.New("invalid public key for peer ", peerIndex, ", required ", device.NoisePublicKeySize, " bytes, got ", len(publicKeyBytes))
 		}
 		peer.publicKey = device.NoisePublicKey(publicKeyBytes)
+		peer.publicKeyHex = hex.EncodeToString(publicKeyBytes)
 		if rawPeer.PreSharedKey != "" {
 			preSharedKeyBytes, err := base64.StdEncoding.DecodeString(rawPeer.PreSharedKey)
 			if err != nil {
 				return nil, E.Cause(err, "decode pre shared key for peer ", peerIndex)
+			}
+			if len(preSharedKeyBytes) != 32 {
+				return nil, E.New("invalid pre shared key length for peer ", peerIndex)
 			}
 			peer.preSharedKeyHex = hex.EncodeToString(preSharedKeyBytes)
 		}
@@ -218,46 +225,24 @@ func (e *Endpoint) Start(postStart bool) error {
 		},
 	}
 	wgDevice := device.NewDevice(e.options.Context, e.returnDevice, bind, logger, e.options.Workers)
-	domainPeers := make(map[device.NoisePublicKey]*peerConfig)
-	for peerIndex, peer := range e.peers {
-		if peer.destination.IsDomain() {
-			domainPeers[peer.publicKey] = &e.peers[peerIndex]
-		}
+	resolver, err := e.endpointResolver(bind)
+	if err != nil {
+		wgDevice.Close()
+		return err
 	}
-	if len(domainPeers) > 0 {
-		wgDevice.SetEndpointResolverFunc(func(publicKey device.NoisePublicKey) ([]conn.Endpoint, error) {
-			peer, found := domainPeers[publicKey]
-			if !found {
-				return nil, nil
-			}
-			addresses, lookupErr := e.options.ResolvePeer(peer.destination.Fqdn)
-			if lookupErr != nil {
-				return nil, lookupErr
-			}
-			endpoints := make([]conn.Endpoint, 0, len(addresses))
-			for _, address := range addresses {
-				destination := netip.AddrPortFrom(address, peer.destination.Port)
-				if peer.reserved != ([3]uint8{}) {
-					bind.SetReservedForEndpoint(destination, peer.reserved)
-				}
-				endpoint, parseErr := bind.ParseEndpoint(destination.String())
-				if parseErr != nil {
-					return nil, parseErr
-				}
-				endpoints = append(endpoints, endpoint)
-			}
-			return endpoints, nil
-		})
+	if resolver != nil {
+		wgDevice.SetEndpointResolverFunc(resolver)
 	}
 	var ipcConf strings.Builder
 	ipcConf.WriteString(e.ipcConf)
 	for _, peer := range e.peers {
 		ipcConf.WriteString(peer.GenerateIpcLines())
 	}
+	// IpcSet can initiate a handshake while creating a peer.
 	err = wgDevice.IpcSet(ipcConf.String())
 	if err != nil {
 		wgDevice.Close()
-		return E.Cause(err, "setup wireguard: \n", ipcConf.String())
+		return E.New("invalid WireGuard device configuration")
 	}
 	wgPeers := make([]*device.Peer, 0, len(e.peers))
 	for _, peer := range e.peers {
@@ -274,6 +259,49 @@ func (e *Endpoint) Start(postStart bool) error {
 	}
 	e.allowedIPs = wgDevice.AllowedIPs()
 	return nil
+}
+
+func (e *Endpoint) endpointResolver(bind conn.Bind) (device.PeerEndpointResolverFunc, error) {
+	peers := make(map[device.NoisePublicKey]peerConfig)
+	for _, peer := range e.peers {
+		if !peer.destination.IsDomain() {
+			continue
+		}
+		var key device.NoisePublicKey
+		if err := key.FromHex(peer.publicKeyHex); err != nil {
+			return nil, E.New("invalid peer public key")
+		}
+		peers[key] = peer
+	}
+	if len(peers) == 0 {
+		return nil, nil
+	}
+	if e.options.ResolvePeer == nil {
+		return nil, E.New("missing peer domain resolver")
+	}
+	return func(key device.NoisePublicKey) ([]conn.Endpoint, error) {
+		peer, found := peers[key]
+		if !found {
+			return nil, nil
+		}
+		addresses, err := e.options.ResolvePeer(peer.destination.Fqdn)
+		if err != nil {
+			return nil, err
+		}
+		endpoints := make([]conn.Endpoint, 0, len(addresses))
+		for _, address := range addresses {
+			destination := netip.AddrPortFrom(address, peer.destination.Port)
+			if peer.reserved != [3]uint8{} {
+				bind.SetReservedForEndpoint(destination, peer.reserved)
+			}
+			endpoint, err := bind.ParseEndpoint(destination.String())
+			if err != nil {
+				return nil, err
+			}
+			endpoints = append(endpoints, endpoint)
+		}
+		return endpoints, nil
+	}, nil
 }
 
 func (e *Endpoint) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
@@ -393,6 +421,7 @@ type peerConfig struct {
 	destination     M.Socksaddr
 	endpoint        netip.AddrPort
 	publicKey       device.NoisePublicKey
+	publicKeyHex    string
 	preSharedKeyHex string
 	allowedIPs      []netip.Prefix
 	keepalive       uint16

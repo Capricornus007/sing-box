@@ -31,6 +31,7 @@ type ClientBind struct {
 	reservedForEndpoint map[netip.AddrPort][3]uint8
 	connAccess          sync.Mutex
 	conn                *wireConn
+	rewriteReserved     bool
 	done                chan struct{}
 	isConnect           bool
 	connectAddr         netip.AddrPort
@@ -44,6 +45,7 @@ func NewClientBind(ctx context.Context, logger logger.Logger, dialer N.Dialer, i
 		pauseManager:        service.FromContext[pause.Manager](ctx),
 		dialer:              dialer,
 		reservedForEndpoint: make(map[netip.AddrPort][3]uint8),
+		rewriteReserved:     reserved != [3]uint8{},
 		done:                make(chan struct{}),
 		isConnect:           isConnect,
 		connectAddr:         connectAddr,
@@ -135,7 +137,7 @@ func (c *ClientBind) receive(packets [][]byte, sizes []int, eps []conn.Endpoint)
 		return
 	}
 	sizes[0] = n
-	if n > 3 {
+	if n > 3 && c.reservedRewrite() {
 		b := packets[0]
 		clear(b[1:4])
 	}
@@ -171,12 +173,15 @@ func (c *ClientBind) Send(bufs [][]byte, ep conn.Endpoint) error {
 		return err
 	}
 	destination := netip.AddrPort(ep.(remoteEndpoint))
+	c.connAccess.Lock()
+	rewriteReserved := c.rewriteReserved
+	reserved, loaded := c.reservedForEndpoint[destination]
+	c.connAccess.Unlock()
+	if !loaded {
+		reserved = c.reserved
+	}
 	for _, b := range bufs {
-		if len(b) > 3 {
-			reserved, loaded := c.reservedForEndpoint[destination]
-			if !loaded {
-				reserved = c.reserved
-			}
+		if len(b) > 3 && rewriteReserved {
 			copy(b[1:4], reserved[:])
 		}
 		_, err = udpConn.WriteToUDPAddrPort(b, destination)
@@ -201,7 +206,18 @@ func (c *ClientBind) BatchSize() int {
 }
 
 func (c *ClientBind) SetReservedForEndpoint(destination netip.AddrPort, reserved [3]byte) {
+	c.connAccess.Lock()
+	defer c.connAccess.Unlock()
 	c.reservedForEndpoint[destination] = reserved
+	if reserved != [3]byte{} {
+		c.rewriteReserved = true
+	}
+}
+
+func (c *ClientBind) reservedRewrite() bool {
+	c.connAccess.Lock()
+	defer c.connAccess.Unlock()
+	return c.rewriteReserved
 }
 
 type wireConn struct {

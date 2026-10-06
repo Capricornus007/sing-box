@@ -35,18 +35,19 @@ func RegisterOutbound(registry *outbound.Registry) {
 
 type Outbound struct {
 	outbound.Adapter
-	logger        logger.ContextLogger
-	dialer        N.Dialer
-	tcpDialer     N.Dialer
-	client        snellClient
-	legacy        *legacy.Client
-	serverAddr    M.Socksaddr
-	psk           []byte
-	userKey       []byte
-	version       int
-	reuse         bool
-	quicDestCache *expiringmap.Map[quicDestCacheKey, uint64]
-	quicDestSeq   atomic.Uint64
+	logger         logger.ContextLogger
+	dialer         N.Dialer
+	tcpDialer      N.Dialer
+	client         snellClient
+	legacy         *legacy.Client
+	serverAddr     M.Socksaddr
+	psk            []byte
+	userKey        []byte
+	version        int
+	reuse          bool
+	quicDestAccess sync.Mutex
+	quicDestCache  *expiringmap.Map[quicDestCacheKey, uint64]
+	quicDestSeq    atomic.Uint64
 }
 
 var (
@@ -145,9 +146,6 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		userKey:    []byte(options.UserKey),
 		version:    version,
 		reuse:      options.Reuse,
-	}
-	if version == 5 {
-		outbound.quicDestCache = expiringmap.New[quicDestCacheKey, uint64](quicDestCacheTTL)
 	}
 	return outbound, nil
 }
@@ -298,43 +296,72 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateInitialize {
 		return nil
 	}
-	if h.quicDestCache != nil {
-		scope.Add(func() error {
-			h.quicDestCache.Close()
-			return nil
-		})
-	}
+	scope.Add(func() error {
+		h.closeQUICDestCache()
+		return nil
+	})
 	scope.Add(h.client.Close)
 	return nil
 }
 
+// cachedQUICDestCache 延後建立：Outbound 不只由 NewOutbound 產生，
+// 測試與內部重連路徑直接用結構體時也得有快取，否則 QUIC 模式會靜默失憶。
+func (h *Outbound) cachedQUICDestCache() *expiringmap.Map[quicDestCacheKey, uint64] {
+	h.quicDestAccess.Lock()
+	defer h.quicDestAccess.Unlock()
+	if h.quicDestCache == nil && h.version == 5 {
+		h.quicDestCache = expiringmap.New[quicDestCacheKey, uint64](quicDestCacheTTL)
+	}
+	return h.quicDestCache
+}
+
+func (h *Outbound) closeQUICDestCache() {
+	h.quicDestAccess.Lock()
+	cache := h.quicDestCache
+	h.quicDestCache = nil
+	h.quicDestAccess.Unlock()
+	if cache != nil {
+		cache.Close()
+	}
+}
+
 func (h *Outbound) isRecentQUICDest(source M.Socksaddr, destination M.Socksaddr) bool {
-	if h.quicDestCache == nil {
+	cache := h.cachedQUICDestCache()
+	if cache == nil {
 		return false
 	}
-	_, loaded := h.quicDestCache.LoadAndRefresh(quicDestCacheKey{source: source, destination: destination})
+	_, loaded := cache.LoadAndRefresh(quicDestCacheKey{source: source, destination: destination})
 	return loaded
 }
 
 func (h *Outbound) markQUICDest(source M.Socksaddr, destination M.Socksaddr) uint64 {
-	if h.quicDestCache == nil {
+	cache := h.cachedQUICDestCache()
+	if cache == nil {
 		return 0
 	}
 	token := h.quicDestSeq.Add(1)
 	if token == 0 {
 		token = h.quicDestSeq.Add(1)
 	}
-	h.quicDestCache.Store(quicDestCacheKey{source: source, destination: destination}, token)
+	h.quicDestAccess.Lock()
+	if h.quicDestCache != nil {
+		h.quicDestCache.Store(quicDestCacheKey{source: source, destination: destination}, token)
+	}
+	h.quicDestAccess.Unlock()
 	return token
 }
 
 func (h *Outbound) refreshQUICDest(source M.Socksaddr, destination M.Socksaddr, token uint64) {
-	if h.quicDestCache == nil || token == 0 {
+	if token == 0 || h.cachedQUICDestCache() == nil {
 		return
 	}
-	h.quicDestCache.StoreIf(quicDestCacheKey{source: source, destination: destination}, token, func(current uint64, loaded bool) bool {
-		return !loaded || current == token
-	})
+	h.quicDestAccess.Lock()
+	if h.quicDestCache != nil {
+		h.quicDestCache.StoreIf(quicDestCacheKey{source: source, destination: destination}, token, func(current uint64, loaded bool) bool {
+			return !loaded || current == token
+		})
+	}
+	h.quicDestAccess.Unlock()
 }
 
 type v5LazyPacketConn struct {

@@ -52,7 +52,10 @@ func (c *Range) UnmarshalJSON(content []byte) error {
 	err := json.Unmarshal(content, &stringValue)
 	if err == nil {
 		parts := strings.Split(stringValue, "-")
-		if len(parts) != 2 {
+		if len(parts) > 2 {
+			return E.New("invalid range")
+		}
+		if len(parts) == 1 {
 			from, err := strconv.ParseInt(parts[0], 10, 32)
 			if err != nil {
 				return err

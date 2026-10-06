@@ -262,7 +262,10 @@ func (i *ServerInstance) Handshake(conn net.Conn, fallback *[]byte) (*CommonConn
 	if err != nil {
 		return nil, err
 	}
-	x25519SKey, _ := ecdh.X25519().GenerateKey(rand.Reader)
+	x25519SKey, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
 	x25519Key, err := x25519SKey.ECDH(peerX25519PKey)
 	if err != nil {
 		return nil, err

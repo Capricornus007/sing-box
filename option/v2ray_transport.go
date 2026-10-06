@@ -30,7 +30,7 @@ func NormalizeXHTTPMode(mode string) (string, error) {
 }
 
 type _V2RayTransportOptions struct {
-	Type               string                  `json:"type" enum:"http,ws,quic,grpc,httpupgrade"`
+	Type               string                  `json:"type" enum:"http,ws,quic,grpc,httpupgrade,kcp,xhttp"`
 	HTTPOptions        V2RayHTTPOptions        `json:"-"`
 	WebsocketOptions   V2RayWebsocketOptions   `json:"-"`
 	QUICOptions        V2RayQUICOptions        `json:"-"`
@@ -106,6 +106,7 @@ func (o V2RayTransportOptions) DescribeSchema(builder schema.Builder) (*schema.N
 			{Value: C.V2RayTransportTypeQUIC, StructType: reflect.TypeFor[V2RayQUICOptions]()},
 			{Value: C.V2RayTransportTypeGRPC, StructType: reflect.TypeFor[V2RayGRPCOptions]()},
 			{Value: C.V2RayTransportTypeHTTPUpgrade, StructType: reflect.TypeFor[V2RayHTTPUpgradeOptions]()},
+			{Value: C.V2RayTransportTypeXHTTP, StructType: reflect.TypeFor[V2RayXHTTPOptions]()},
 		}, nil)
 	})
 }
@@ -625,6 +626,32 @@ type V2RayXHTTPXmuxOptions struct {
 	HMaxRequestTimes Xbadoption.Range `json:"h_max_request_times"`
 	HMaxReusableSecs Xbadoption.Range `json:"h_max_reusable_secs"`
 	HKeepAlivePeriod int64            `json:"h_keep_alive_period"`
+}
+
+// UnmarshalJSON applies the xray xmux defaults to omitted ranges while keeping
+// explicitly written zeros, so `{"h_keep_alive_period": 10}` still gets
+// hMaxRequestTimes 600-900 and `{"max_concurrency": 0}` stays unlimited.
+func (m *V2RayXHTTPXmuxOptions) UnmarshalJSON(content []byte) error {
+	type plain V2RayXHTTPXmuxOptions
+	value := plain{
+		MaxConcurrency:   Xbadoption.Range{From: 1, To: 1},
+		HMaxRequestTimes: Xbadoption.Range{From: 600, To: 900},
+		HMaxReusableSecs: Xbadoption.Range{From: 1800, To: 3000},
+	}
+	err := json.Unmarshal(content, &value)
+	if err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	err = json.Unmarshal(content, &fields)
+	if err != nil {
+		return err
+	}
+	if _, present := fields["max_concurrency"]; !present && value.MaxConnections.To > 0 {
+		value.MaxConcurrency = Xbadoption.Range{}
+	}
+	*m = V2RayXHTTPXmuxOptions(value)
+	return m.Validate()
 }
 
 func (m V2RayXHTTPXmuxOptions) isZero() bool {

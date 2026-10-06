@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -41,6 +42,7 @@ import (
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/filemanager"
 	tailscaleroot "github.com/sagernet/tailscale"
+	"github.com/sagernet/tailscale/envknob"
 	_ "github.com/sagernet/tailscale/feature/relayserver"
 	"github.com/sagernet/tailscale/ipn"
 	"github.com/sagernet/tailscale/ipn/ipnlocal"
@@ -173,6 +175,11 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	if options.AdvertiseExitNode && options.ExitNode != "" {
 		return nil, E.New("cannot advertise an exit node and use an exit node at the same time.")
 	}
+	// OnlyTCP443 stops every UDP send, but magicsock still reports the local
+	// interface addresses to the coordination server, where every peer can
+	// read them. Omit them too. The knob is process-wide; the last endpoint
+	// created decides.
+	envknob.Setenv("TS_DEBUG_OMIT_LOCAL_ADDRS", strconv.FormatBool(options.OnlyTCP443))
 	outboundDialer, err := dialer.NewWithOptions(dialer.Options{
 		Context:          ctx,
 		Options:          options.DialerOptions,
@@ -217,6 +224,7 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 			ControlURL:    options.ControlURL,
 			Port:          options.ListenPort,
 			AdvertiseTags: options.AdvertiseTags,
+			OnlyTCP443:    options.OnlyTCP443,
 			Dialer:        &endpointDialer{Dialer: outboundDialer, logger: logger},
 			LookupHook: func(ctx context.Context, host string) ([]netip.Addr, error) {
 				return dnsRouter.Lookup(ctx, host, dialerQueryOptions)
@@ -396,18 +404,16 @@ func (t *Endpoint) postStart(scope *adapter.Scope) error {
 		t.sshServerInstance = sshServer
 	}
 	t.managementAccess.Lock()
+	defer t.managementAccess.Unlock()
 	if t.closed || t.ctx.Err() != nil {
-		t.managementAccess.Unlock()
 		return E.New("tailscale:closed")
 	}
 	localClient, err := t.server.LocalClient()
 	if err != nil {
-		t.managementAccess.Unlock()
 		return err
 	}
 	t.managementBackend = localBackend
 	t.managementClient = localClient
-	t.managementAccess.Unlock()
 	t.started.Store(true)
 	go t.watchState(localBackend)
 	scope.Add(func() error {
@@ -909,6 +915,11 @@ func (t *Endpoint) NewPacketConnectionEx(_ context.Context, conn N.PacketConn, s
 func (t *Endpoint) PreferredDomain(metadata *adapter.InboundContext, domain string) bool {
 	routeDomains := t.routeDomains.Load()
 	if routeDomains == nil {
+		return false
+	}
+	// A sniffed IP literal is not a name; without this an IPv6 address would pass the
+	// single-label search-domain check below.
+	if M.ParseAddr(domain).IsValid() {
 		return false
 	}
 	domain = strings.ToLower(domain)

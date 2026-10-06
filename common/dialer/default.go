@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"slices"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -29,6 +30,17 @@ var (
 	_ ParallelInterfaceDialer = (*DefaultDialer)(nil)
 	_ UDPListener             = (*DefaultDialer)(nil)
 )
+
+// DoNotSelectInterface forces the default dialer to skip interface/network-strategy
+// selection (nekobox/Android: the VPNService protect-hook handles fd protection).
+// It is an atomic.Bool because DialContext/ListenPacket read it concurrently.
+var DoNotSelectInterface atomic.Bool
+
+// ConcurrentDial mirrors the nekobox route.concurrent_dial setting. 1.13's dialer
+// already parallelizes multi-address dialing natively, so this is accepted for
+// config compatibility (NekoBox emits it) and exposed for callers that want to
+// gate the legacy concurrent-socket behavior. atomic.Bool for concurrent reads.
+var ConcurrentDial atomic.Bool
 
 type DefaultDialer struct {
 	dialer4                tfo.Dialer
@@ -276,7 +288,7 @@ func (d *DefaultDialer) DialContext(ctx context.Context, network string, address
 	} else if address.IsDomain() {
 		return nil, E.New("domain not resolved")
 	}
-	if d.networkStrategy == nil {
+	if DoNotSelectInterface.Load() || d.networkStrategy == nil {
 		conn, err := listener.ListenNetworkNamespace[net.Conn](ctx, d.netns, func() (net.Conn, error) {
 			switch N.NetworkName(network) {
 			case N.NetworkUDP:
@@ -347,10 +359,10 @@ func (d *DefaultDialer) DialParallelInterface(ctx context.Context, network strin
 }
 
 func (d *DefaultDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
-	if d.networkStrategy == nil {
+	if DoNotSelectInterface.Load() || d.networkStrategy == nil {
 		packetConn, err := listener.ListenNetworkNamespace[net.PacketConn](ctx, d.netns, func() (net.PacketConn, error) {
 			listenConfig := d.udpListener
-			if d.autoDetectBindFunc != nil {
+			if d.autoDetectBindFunc != nil && !DoNotSelectInterface.Load() {
 				listenConfig.Control = control.Append(listenConfig.Control, func(network, address string, conn syscall.RawConn) error {
 					if destination.Addr.IsValid() {
 						return d.autoDetectBindFunc(network, destination.String(), conn)

@@ -51,7 +51,7 @@ require (
 	github.com/sagernet/cronet-go/all v0.0.0-20260929213745-4d18a60dc3a8
 	github.com/sagernet/fswatch v0.1.2
 	github.com/sagernet/gliderssh v0.3.4-0.20260531100337-2194faca5648
-	github.com/sagernet/gomobile v0.1.12
+	github.com/sagernet/gomobile v0.1.13
 	github.com/sagernet/netlink v0.0.0-20260814022025-64455d367bbf
 	github.com/sagernet/nftables v0.3.0-mod.4
 	github.com/sagernet/quic-go v0.61.0-sing-box-mod.9

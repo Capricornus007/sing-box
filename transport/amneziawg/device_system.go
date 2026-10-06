@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"os"
 	"runtime"
+	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-tun"
@@ -27,6 +28,7 @@ type systemDevice struct {
 	device      tun.Tun
 	batchDevice tun.LinuxTUN
 	events      chan wgTun.Event
+	closeOnce   sync.Once
 }
 
 func newSystemDevice(options DeviceOptions) (*systemDevice, error) {
@@ -148,8 +150,14 @@ func (w *systemDevice) Events() <-chan wgTun.Event {
 }
 
 func (w *systemDevice) Close() error {
-	close(w.events)
-	return w.device.Close()
+	var err error
+	w.closeOnce.Do(func() {
+		close(w.events)
+		if w.device != nil {
+			err = w.device.Close()
+		}
+	})
+	return err
 }
 
 func (w *systemDevice) BatchSize() int {

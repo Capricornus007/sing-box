@@ -94,7 +94,7 @@ func ProxyDisplayName(proxyType string) string {
 		return "Naive"
 	case TypeWireGuard:
 		return "WireGuard"
-	case TypeAwg:
+	case TypeAmneziaWG, TypeAwg:
 		return "AmneziaWG"
 	case TypeHysteria:
 		return "Hysteria"

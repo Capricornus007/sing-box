@@ -1,4 +1,4 @@
-package amneziawg
+package wireguard
 
 import (
 	"context"
@@ -20,8 +20,12 @@ import (
 	"github.com/sagernet/sing/service"
 )
 
+// RegisterOutbound restores the plain "wireguard" outbound that upstream 1.13
+// removed (endpoint-only). It reuses transport/amneziawg with no obfuscation
+// parameters, so it behaves like plain WireGuard. nekobox still emits
+// type="wireguard" outbounds, so this keeps existing profiles working.
 func RegisterOutbound(registry *outbound.Registry) {
-	outbound.Register[option.AmneziaWGOutboundOptions](registry, C.TypeAmneziaWG, NewOutbound)
+	outbound.Register[option.LegacyWireGuardOutboundOptions](registry, C.TypeWireGuard, NewOutbound)
 }
 
 type Outbound struct {
@@ -33,9 +37,9 @@ type Outbound struct {
 	endpoint       *amneziawg.Endpoint
 }
 
-func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.AmneziaWGOutboundOptions) (adapter.Outbound, error) {
+func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.LegacyWireGuardOutboundOptions) (adapter.Outbound, error) {
 	outbound := &Outbound{
-		Adapter:        outbound.NewAdapterWithDialerOptions(C.TypeAmneziaWG, tag, []string{N.NetworkTCP, N.NetworkUDP}, options.DialerOptions),
+		Adapter:        outbound.NewAdapterWithDialerOptions(C.TypeWireGuard, tag, []string{N.NetworkTCP, N.NetworkUDP}, options.DialerOptions),
 		ctx:            ctx,
 		dnsRouter:      service.FromContext[adapter.DNSRouter](ctx),
 		logger:         logger,
@@ -90,28 +94,12 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 				return netip.Addr{}, lookupErr
 			}
 			if len(endpointAddresses) == 0 {
-				return netip.Addr{}, E.New("no addresses for peer endpoint")
+				return netip.Addr{}, E.New("no addresses found for ", domain)
 			}
 			return endpointAddresses[0], nil
 		},
 		Peers: peers,
-
-		JunkPacketCount:            options.JunkPacketCount,
-		JunkPacketMinSize:          options.JunkPacketMinSize,
-		JunkPacketMaxSize:          options.JunkPacketMaxSize,
-		InitPacketJunkSize:         options.InitPacketJunkSize,
-		ResponsePacketJunkSize:     options.ResponsePacketJunkSize,
-		CookieReplyPacketJunkSize:  options.CookieReplyPacketJunkSize,
-		TransportPacketJunkSize:    options.TransportPacketJunkSize,
-		InitPacketMagicHeader:      options.InitPacketMagicHeader,
-		ResponsePacketMagicHeader:  options.ResponsePacketMagicHeader,
-		UnderloadPacketMagicHeader: options.UnderloadPacketMagicHeader,
-		TransportPacketMagicHeader: options.TransportPacketMagicHeader,
-		SpecialJunk1:               options.SpecialJunk1,
-		SpecialJunk2:               options.SpecialJunk2,
-		SpecialJunk3:               options.SpecialJunk3,
-		SpecialJunk4:               options.SpecialJunk4,
-		SpecialJunk5:               options.SpecialJunk5,
+		// No AmneziaWG obfuscation parameters -> plain WireGuard.
 	})
 	if err != nil {
 		return nil, err
@@ -120,10 +108,9 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	return outbound, nil
 }
 
-func (o *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+func (o *Outbound) Start(stage adapter.StartStage) error {
 	switch stage {
 	case adapter.StartStateStart:
-		scope.Add(o.Close)
 		return o.endpoint.Start(false)
 	case adapter.StartStatePostStart:
 		return o.endpoint.Start(true)
@@ -142,7 +129,7 @@ func (o *Outbound) DialContext(ctx context.Context, network string, destination 
 	case N.NetworkUDP:
 		o.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	}
-	if destination.IsFqdn() { //nolint:staticcheck // strict FQDN routing gate preserved; M.IsDomain change would alter which destinations take the resolve-and-serial path
+	if destination.IsFqdn() {
 		destinationAddresses, err := o.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})
 		if err != nil {
 			return nil, err
@@ -156,7 +143,7 @@ func (o *Outbound) DialContext(ctx context.Context, network string, destination 
 
 func (o *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	o.logger.InfoContext(ctx, "outbound packet connection to ", destination)
-	if destination.IsFqdn() { //nolint:staticcheck // strict FQDN routing gate preserved; M.IsDomain change would alter which destinations take the resolve-and-serial path
+	if destination.IsFqdn() {
 		destinationAddresses, err := o.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})
 		if err != nil {
 			return nil, err
@@ -166,6 +153,8 @@ func (o *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 			return nil, err
 		}
 		return packetConn, err
+	} else if !destination.Addr.IsValid() {
+		return nil, E.New("invalid destination: ", destination)
 	}
 	return o.endpoint.ListenPacket(ctx, destination)
 }

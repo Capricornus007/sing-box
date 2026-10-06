@@ -32,6 +32,7 @@ type TailscaleEndpointOptions struct {
 	SystemInterfaceName        string                     `json:"system_interface_name,omitempty"`
 	SystemInterfaceMTU         uint32                     `json:"system_interface_mtu,omitempty"`
 	UDPTimeout                 UDPTimeoutCompat           `json:"udp_timeout,omitempty"`
+	OnlyTCP443                 bool                       `json:"only_tcp_443,omitempty"`
 	SSHServer                  *TailscaleSSHServerOptions `json:"ssh_server,omitempty"`
 	TaildropDirectory          string                     `json:"taildrop_directory,omitempty"`
 	OnDemand                   bool                       `json:"on_demand,omitempty"`

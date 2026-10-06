@@ -118,6 +118,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	muxOpts := common.PtrValueOrDefault(options.Multiplex)
 	if muxOpts.Enabled {
 		options.Flow = ""
+		outbound.vision = false
 	}
 	outbound.client, err = vless.NewClient(options.UUID, options.Flow, logger)
 	if err != nil {
@@ -246,7 +247,7 @@ func (h *vlessDialer) DialContext(ctx context.Context, network string, destinati
 		}
 	} else if h.tlsDialer != nil {
 		conn, err = h.tlsDialer.DialTLSContext(ctx, h.serverAddr)
-		if err == nil && enhancedVision && isVisionTLSConn(conn) {
+		if err == nil && enhancedVision && baseConn == nil && isVisionTLSConn(conn) {
 			baseConn = conn
 		}
 	} else {
@@ -258,10 +259,12 @@ func (h *vlessDialer) DialContext(ctx context.Context, network string, destinati
 
 	// Apply encryption if configured
 	if h.encryption != nil {
-		conn, err = h.encryption.Handshake(conn)
-		if err != nil {
-			return nil, E.Cause(err, "encryption handshake")
+		encryptionConn, encryptionErr := h.encryption.Handshake(conn)
+		if encryptionErr != nil {
+			common.Close(conn)
+			return nil, E.Cause(encryptionErr, "encryption handshake")
 		}
+		conn = encryptionConn
 	}
 
 	var visionBaseConn net.Conn
@@ -269,6 +272,7 @@ func (h *vlessDialer) DialContext(ctx context.Context, network string, destinati
 	if enhancedVision {
 		conn, visionBaseConn, visionCanSplice, err = h.prepareEnhancedVisionConn(conn, baseConn)
 		if err != nil {
+			common.Close(conn)
 			return nil, err
 		}
 	}
@@ -353,7 +357,7 @@ func (h *vlessDialer) ListenPacket(ctx context.Context, destination M.Socksaddr)
 		}
 	} else if h.tlsDialer != nil {
 		conn, err = h.tlsDialer.DialTLSContext(ctx, h.serverAddr)
-		if err == nil && enhancedVision && isVisionTLSConn(conn) {
+		if err == nil && enhancedVision && baseConn == nil && isVisionTLSConn(conn) {
 			baseConn = conn
 		}
 	} else {
@@ -365,11 +369,12 @@ func (h *vlessDialer) ListenPacket(ctx context.Context, destination M.Socksaddr)
 	}
 	// Apply encryption if configured
 	if h.encryption != nil {
-		conn, err = h.encryption.Handshake(conn)
-		if err != nil {
+		encryptionConn, encryptionErr := h.encryption.Handshake(conn)
+		if encryptionErr != nil {
 			common.Close(conn)
-			return nil, E.Cause(err, "encryption handshake")
+			return nil, E.Cause(encryptionErr, "encryption handshake")
 		}
+		conn = encryptionConn
 	}
 	var visionBaseConn net.Conn
 	var visionCanSplice bool
@@ -444,9 +449,6 @@ func isVisionTLSConn(conn net.Conn) bool {
 		return false
 	}
 	if _, ok := conn.(interface{ ConnectionState() stdtls.ConnectionState }); ok {
-		return true
-	}
-	if _, ok := conn.(interface{ Handshake() error }); ok {
 		return true
 	}
 	connType := reflect.TypeOf(conn)

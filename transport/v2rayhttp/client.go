@@ -14,6 +14,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/badhttp"
+	"github.com/sagernet/sing-box/common/conntrack"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
@@ -29,7 +30,7 @@ var _ adapter.V2RayMultiplexClientTransport = (*Client)(nil)
 
 type Client struct {
 	ctx        context.Context
-	dialer     N.Dialer
+	dialer     *conntrack.Dialer
 	serverAddr M.Socksaddr
 	transport  common.TypedValue[http.RoundTripper]
 	http2      bool
@@ -41,18 +42,19 @@ type Client struct {
 }
 
 func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, options option.V2RayHTTPOptions, tlsConfig tls.Config) (adapter.V2RayClientTransport, error) {
+	connections := &conntrack.Dialer{Dialer: dialer}
 	var transport http.RoundTripper
 	if tlsConfig == nil {
 		transport = &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return dialer.DialContext(ctx, network, M.ParseSocksaddr(addr))
+				return connections.DialContext(ctx, network, M.ParseSocksaddr(addr))
 			},
 		}
 	} else {
 		if len(tlsConfig.NextProtos()) == 0 {
 			tlsConfig.SetNextProtos([]string{http2.NextProtoTLS})
 		}
-		tlsDialer := tls.NewDialer(dialer, tlsConfig)
+		tlsDialer := tls.NewDialer(connections, tlsConfig)
 		transport = &http2.Transport{
 			ReadIdleTimeout: time.Duration(options.IdleTimeout),
 			PingTimeout:     time.Duration(options.PingTimeout),
@@ -81,7 +83,7 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 	}
 	client := &Client{
 		ctx:        ctx,
-		dialer:     dialer,
+		dialer:     connections,
 		serverAddr: serverAddr,
 		requestURL: requestURL,
 		host:       options.Host,
@@ -193,6 +195,7 @@ func (c *Client) CloseIdleConnections() {
 }
 
 func (c *Client) Close() error {
-	c.transport.Store(ResetTransport(c.transport.Load()))
+	c.dialer.Reset()
+	CloseIdleConnections(c.transport.Load())
 	return nil
 }

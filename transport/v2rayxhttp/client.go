@@ -354,6 +354,9 @@ func NewClient(ctx context.Context, logger logger.ContextLogger, dialer N.Dialer
 		}
 	}
 	options.Mode = mode
+	if mode == "packet-up" && options.GetNormalizedScMaxEachPostBytes().From <= 0 {
+		return nil, E.New("sc_max_each_post_bytes must be positive")
+	}
 	rawOptions := options
 	if rawOptions.SessionIDPlacement == rawOptions.SessionPlacement && rawOptions.SessionIDKey == "" {
 		rawOptions.SessionIDPlacement = ""
