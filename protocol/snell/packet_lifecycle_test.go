@@ -3,10 +3,11 @@ package snell
 import (
 	"context"
 	"errors"
-	M "github.com/sagernet/sing/common/metadata"
 	"net"
 	"testing"
 	"time"
+
+	M "github.com/sagernet/sing/common/metadata"
 )
 
 func TestCloseBeforeWriteUnblocksReadAndPreventsDial(t *testing.T) {

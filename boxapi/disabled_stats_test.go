@@ -1,8 +1,9 @@
 package boxapi
 
 import (
-	"github.com/sagernet/sing-box/option"
 	"testing"
+
+	"github.com/sagernet/sing-box/option"
 )
 
 func TestDisabledStatsHaveNoTracker(t *testing.T) {

@@ -51,14 +51,15 @@ func TestResetClosesActiveHTTP2StreamsAndAllowsReconnect(t *testing.T) {
 			}
 			address := M.ParseSocksaddr(server.Listener.Addr().String())
 			var transport adapter.V2RayClientTransport
-			if protocol == "http" {
+			switch protocol {
+			case "http":
 				transport, err = v2rayhttp.NewClient(ctx, &loopbackDialer{}, address, option.V2RayHTTPOptions{}, tlsConfig)
 				if err != nil {
 					t.Fatal(err)
 				}
-			} else if protocol == "grpc" {
+			case "grpc":
 				transport = v2raygrpclite.NewClient(ctx, &loopbackDialer{}, address, option.V2RayGRPCOptions{}, tlsConfig)
-			} else {
+			default:
 				transport, err = xhttp.NewClient(ctx, log.NewNOPFactory().Logger(), &loopbackDialer{}, address, option.V2RayXHTTPOptions{Mode: "stream-one"}, tlsConfig)
 				if err != nil {
 					t.Fatal(err)

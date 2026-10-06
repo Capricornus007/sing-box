@@ -91,7 +91,7 @@ func TestClientMetadataOnWire(t *testing.T) {
 				t.Fatal(captured.err)
 			}
 			settings := make(map[string]string)
-			for _, line := range strings.Split(captured.settings, "\n") {
+			for line := range strings.SplitSeq(captured.settings, "\n") {
 				key, value, _ := strings.Cut(line, "=")
 				settings[key] = value
 			}
