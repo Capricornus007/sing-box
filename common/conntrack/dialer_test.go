@@ -15,6 +15,7 @@ type testDialerFunc func(context.Context) (net.Conn, error)
 func (f testDialerFunc) DialContext(ctx context.Context, _ string, _ M.Socksaddr) (net.Conn, error) {
 	return f(ctx)
 }
+
 func (f testDialerFunc) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
 	return nil, net.ErrClosed
 }

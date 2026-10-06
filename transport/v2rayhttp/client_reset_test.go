@@ -23,6 +23,7 @@ type loopbackDialer struct{ net.Dialer }
 func (d *loopbackDialer) DialContext(ctx context.Context, network string, address M.Socksaddr) (net.Conn, error) {
 	return d.Dialer.DialContext(ctx, network, address.String())
 }
+
 func (*loopbackDialer) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
 	return nil, net.ErrClosed
 }

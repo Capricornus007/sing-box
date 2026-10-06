@@ -102,6 +102,7 @@ func (t *statsFlowTracker) CountForward(n int) {
 		counter.Add(int64(n))
 	}
 }
+
 func (t *statsFlowTracker) CountReverse(n int) {
 	for _, counter := range t.down {
 		counter.Add(int64(n))

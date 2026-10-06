@@ -25,6 +25,7 @@ type handshakeDialer struct{ conn net.Conn }
 func (d handshakeDialer) DialContext(context.Context, string, M.Socksaddr) (net.Conn, error) {
 	return d.conn, nil
 }
+
 func (handshakeDialer) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
 	return nil, net.ErrClosed
 }

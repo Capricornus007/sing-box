@@ -30,6 +30,7 @@ func (d *quicTestDialer) DialContext(_ context.Context, network string, _ M.Sock
 	d.connections = append(d.connections, conn)
 	return conn, nil
 }
+
 func (*quicTestDialer) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
 	return nil, net.ErrClosed
 }
