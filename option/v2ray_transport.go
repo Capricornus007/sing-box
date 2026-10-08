@@ -626,31 +626,64 @@ type V2RayXHTTPXmuxOptions struct {
 	HMaxRequestTimes Xbadoption.Range `json:"h_max_request_times"`
 	HMaxReusableSecs Xbadoption.Range `json:"h_max_reusable_secs"`
 	HKeepAlivePeriod int64            `json:"h_keep_alive_period"`
+
+	// 哪個 key 是使用者自己寫的。xray 的語意是「寫了 0 就是 0（不限）」，跟「沒寫」
+	// 不能混為一談，而 Range{0,0} 兩種情況看起來一模一樣，所以只能另外記。
+	// 用 uint8 當遮罩而不是 map，是為了讓這個結構仍可比較（isZero 用 ==）。
+	present uint8
 }
 
-// UnmarshalJSON applies the xray xmux defaults to omitted ranges while keeping
-// explicitly written zeros, so `{"h_keep_alive_period": 10}` still gets
-// hMaxRequestTimes 600-900 and `{"max_concurrency": 0}` stays unlimited.
+const (
+	xmuxPresentMaxConcurrency = 1 << iota
+	xmuxPresentMaxConnections
+	xmuxPresentCMaxReuseTimes
+	xmuxPresentHMaxRequestTimes
+	xmuxPresentHMaxReusableSecs
+	xmuxPresentHKeepAlivePeriod
+)
+
+var xmuxPresenceBits = map[string]uint8{
+	"max_concurrency":     xmuxPresentMaxConcurrency,
+	"max_connections":     xmuxPresentMaxConnections,
+	"c_max_reuse_times":   xmuxPresentCMaxReuseTimes,
+	"h_max_request_times": xmuxPresentHMaxRequestTimes,
+	"h_max_reusable_secs": xmuxPresentHMaxReusableSecs,
+	"h_keep_alive_period": xmuxPresentHKeepAlivePeriod,
+}
+
+func (m *V2RayXHTTPXmuxOptions) wasSet(bit uint8) bool {
+	return m.present&bit != 0
+}
+
+// UnmarshalJSON 有兩條規則，都是照 xray：
+//   - `{"xmux":{}}`（空物件）＝「全部用預設值」，把 max_connections 6..6、
+//     h_max_request_times 600..900、h_max_reusable_secs 1800..3000 直接填進欄位。
+//   - 只要有寫任何一個 key，就**不預填**：沒寫的欄位由 GetNormalized* 依「有沒有寫」
+//     決定要給預設值還是保留明確的 0（`{"max_concurrency":0}` 是不限，不是沒寫）。
 func (m *V2RayXHTTPXmuxOptions) UnmarshalJSON(content []byte) error {
 	type plain V2RayXHTTPXmuxOptions
-	value := plain{
-		MaxConcurrency:   Xbadoption.Range{From: 1, To: 1},
-		HMaxRequestTimes: Xbadoption.Range{From: 600, To: 900},
-		HMaxReusableSecs: Xbadoption.Range{From: 1800, To: 3000},
-	}
-	err := json.Unmarshal(content, &value)
-	if err != nil {
+	var value plain
+	if err := json.Unmarshal(content, &value); err != nil {
 		return err
 	}
 	var fields map[string]json.RawMessage
-	err = json.Unmarshal(content, &fields)
-	if err != nil {
+	if err := json.Unmarshal(content, &fields); err != nil {
 		return err
 	}
-	if _, present := fields["max_concurrency"]; !present && value.MaxConnections.To > 0 {
+	var present uint8
+	for key, bit := range xmuxPresenceBits {
+		if _, ok := fields[key]; ok {
+			present |= bit
+		}
+	}
+	if len(fields) == 0 {
+		value.MaxConnections = Xbadoption.Range{From: 6, To: 6}
+		value.HMaxRequestTimes = Xbadoption.Range{From: 600, To: 900}
+		value.HMaxReusableSecs = Xbadoption.Range{From: 1800, To: 3000}
 		value.MaxConcurrency = Xbadoption.Range{}
 	}
 	*m = V2RayXHTTPXmuxOptions(value)
+	m.present = present
 	return m.Validate()
 }
 
@@ -666,11 +699,8 @@ func (m *V2RayXHTTPXmuxOptions) Validate() error {
 }
 
 func (m *V2RayXHTTPXmuxOptions) Normalize() error {
-	if m.isZero() {
-		m.MaxConnections = Xbadoption.Range{From: 6, To: 6}
-		m.HMaxRequestTimes = Xbadoption.Range{From: 600, To: 900}
-		m.HMaxReusableSecs = Xbadoption.Range{From: 1800, To: 3000}
-	}
+	// 只把負數夾到 0（Xbadoption.Range 自己也會做），預設值一律交給 GetNormalized*，
+	// 否則「明確寫 0」會被當成「沒寫」而蓋掉。
 	normalizeXHTTPOptionalNonNegativeRange(&m.MaxConcurrency)
 	normalizeXHTTPOptionalNonNegativeRange(&m.MaxConnections)
 	normalizeXHTTPOptionalNonNegativeRange(&m.CMaxReuseTimes)
@@ -691,15 +721,25 @@ func normalizeXHTTPOptionalNonNegativeRange(value *Xbadoption.Range) {
 	}
 }
 
+// 三個 getter 的共同規矩：**欄位已经有值就以它為準**（選項也可能是程式內直接建結構、
+// 不經 JSON，這時 present 是 0）；present 只用來分辨「明確寫 0」跟「根本沒寫」。
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedMaxConcurrency() Xbadoption.Range {
-	return m.MaxConcurrency
+	if m.MaxConcurrency.From != 0 || m.MaxConcurrency.To != 0 || m.wasSet(xmuxPresentMaxConcurrency) {
+		return m.MaxConcurrency
+	}
+	// 沒寫 max_concurrency：走 connections 模式，這裡回零值代表不啟用 concurrency 上限。
+	return Xbadoption.Range{}
 }
 
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedMaxConnections() Xbadoption.Range {
-	if m.isZero() {
-		return Xbadoption.Range{From: 6, To: 6}
+	if m.MaxConnections.From != 0 || m.MaxConnections.To != 0 || m.wasSet(xmuxPresentMaxConnections) {
+		return m.MaxConnections
 	}
-	return m.MaxConnections
+	if m.MaxConcurrency.To > 0 {
+		// 使用者選的是 concurrency 模式，connections 不該被動補 6。
+		return Xbadoption.Range{}
+	}
+	return Xbadoption.Range{From: 6, To: 6}
 }
 
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedCMaxReuseTimes() Xbadoption.Range {
@@ -707,17 +747,17 @@ func (m *V2RayXHTTPXmuxOptions) GetNormalizedCMaxReuseTimes() Xbadoption.Range {
 }
 
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedHMaxRequestTimes() Xbadoption.Range {
-	if m.isZero() && m.HMaxRequestTimes.From == 0 && m.HMaxRequestTimes.To == 0 {
-		return Xbadoption.Range{From: 600, To: 900}
+	if m.HMaxRequestTimes.From != 0 || m.HMaxRequestTimes.To != 0 || m.wasSet(xmuxPresentHMaxRequestTimes) {
+		return m.HMaxRequestTimes
 	}
-	return m.HMaxRequestTimes
+	return Xbadoption.Range{From: 600, To: 900}
 }
 
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedHMaxReusableSecs() Xbadoption.Range {
-	if m.isZero() && m.HMaxReusableSecs.From == 0 && m.HMaxReusableSecs.To == 0 {
-		return Xbadoption.Range{From: 1800, To: 3000}
+	if m.HMaxReusableSecs.From != 0 || m.HMaxReusableSecs.To != 0 || m.wasSet(xmuxPresentHMaxReusableSecs) {
+		return m.HMaxReusableSecs
 	}
-	return m.HMaxReusableSecs
+	return Xbadoption.Range{From: 1800, To: 3000}
 }
 
 type V2RayKCPOptions struct {
