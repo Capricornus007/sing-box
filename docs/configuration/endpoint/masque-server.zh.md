@@ -93,8 +93,6 @@ IP 代理资源的 URI 模板路径，可以包含 `target` 和 `ipproto` 变量
 
 需要特权且不能与已有系统接口冲突。
 
-endpoint 会配置接口地址和 MTU，但不会安装操作系统路由或 DNS 设置。
-
 如果禁用，sing-box 将使用内部网络栈。
 
 ### name

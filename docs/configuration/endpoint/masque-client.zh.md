@@ -76,8 +76,6 @@ HTTP 版本。
 
 默认使用 `3`。
 
-当为 `1` 或 `2` 时，IP 数据包通过 TCP 流传输，而不是 QUIC 数据报。
-
 当为 `2` 时，[QUIC 字段](#quic-字段) 替换为 [HTTP2 字段](#http2-字段)。
 
 ### disable_version_fallback
@@ -101,8 +99,6 @@ HTTP/3 需要 TLS。
 使用系统接口。
 
 需要特权且不能与已有系统接口冲突。
-
-endpoint 会配置接口地址和 MTU，但不会安装操作系统路由或 DNS 设置。
 
 如果禁用，sing-box 将使用内部网络栈。
 

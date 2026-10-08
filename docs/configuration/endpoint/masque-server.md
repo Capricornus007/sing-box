@@ -93,9 +93,6 @@ Use system interface.
 
 Requires privilege and cannot conflict with existing system interfaces.
 
-The endpoint configures interface addresses and MTU but does not install
-operating-system routes or DNS settings.
-
 If disabled, sing-box uses the internal network stack.
 
 ### name

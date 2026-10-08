@@ -12,9 +12,6 @@ Remove the `stack` option to use it.
 
 The `stack` option is deprecated in sing-box 1.15.0 and will be removed in sing-box 1.17.0.
 
-Starting with sing-box 1.16.0, the command-line client requires `ENABLE_DEPRECATED_TUN_STACK=true`
-to continue using this option.
-
 === ":material-card-remove: Deprecated"
 
     ```json

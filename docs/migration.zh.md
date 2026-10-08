@@ -11,8 +11,6 @@ icon: material/arrange-bring-forward
 
 `stack` 参数自 sing-box 1.15.0 起废弃，并将在 sing-box 1.17.0 中被移除。
 
-自 sing-box 1.16.0 起，命令行客户端需要设置 `ENABLE_DEPRECATED_TUN_STACK=true` 才能继续使用此参数。
-
 === ":material-card-remove: 已废弃"
 
     ```json

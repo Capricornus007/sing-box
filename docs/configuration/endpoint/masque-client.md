@@ -76,8 +76,6 @@ Available values: `1`, `2`, `3`.
 
 `3` is used by default.
 
-When `1` or `2`, IP packets are carried in the TCP stream instead of QUIC datagrams.
-
 When `2`, [QUIC Fields](#quic-fields) are replaced by [HTTP2 Fields](#http2-fields).
 
 ### disable_version_fallback
@@ -101,9 +99,6 @@ The server will route traffic for these prefixes into this endpoint, where it is
 Use system interface.
 
 Requires privilege and cannot conflict with existing system interfaces.
-
-The endpoint configures interface addresses and MTU but does not install
-operating-system routes or DNS settings.
 
 If disabled, sing-box uses the internal network stack.
 
