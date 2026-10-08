@@ -687,10 +687,6 @@ func (m *V2RayXHTTPXmuxOptions) UnmarshalJSON(content []byte) error {
 	return m.Validate()
 }
 
-func (m V2RayXHTTPXmuxOptions) isZero() bool {
-	return m == (V2RayXHTTPXmuxOptions{})
-}
-
 func (m *V2RayXHTTPXmuxOptions) Validate() error {
 	if m.MaxConnections.To > 0 && m.MaxConcurrency.To > 0 {
 		return E.New("maxConnections cannot be specified together with maxConcurrency")
