@@ -216,7 +216,7 @@ require (
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )
 
-replace github.com/amnezia-vpn/amneziawg-go/v3 => github.com/Capricornus007/amneziawg-go/v3 v3.1.20260828-mod.2
+replace github.com/amnezia-vpn/amneziawg-go/v3 => github.com/Capricornus007/amneziawg-go/v3 v3.1.20261008-mod.4
 
 replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.20260930040615-6fa792f31fbf
 
