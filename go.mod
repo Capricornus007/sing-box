@@ -66,7 +66,7 @@ require (
 	github.com/sagernet/sing-shadowsocks2 v0.2.2-0.20260929152114-a69d1086332b
 	github.com/sagernet/sing-shadowtls v0.2.2-0.20260928201441-a9c0127d5c99
 	github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f
-	github.com/sagernet/sing-tun v0.9.7-0.20261007151655-7539c9855f19
+	github.com/sagernet/sing-tun v0.9.7-0.20261009022811-5c2edb183cc9
 	github.com/sagernet/sing-usbip v0.0.0-20260817040617-28bd42667eca
 	github.com/sagernet/sing-vmess v0.2.9-0.20260929152519-9b95ab8c9478
 	github.com/sagernet/smux v1.5.50-sing-box-mod.1
@@ -222,7 +222,7 @@ replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.2026
 
 replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20261001053801-d9bd2c6eb6a0
 
-replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.9.4-0.20261008083110-69b8f1a44d67
+replace github.com/sagernet/sing-tun => github.com/Capricornus007/sing-tun v0.9.4-0.20261009032739-6d0ca10783af
 
 replace github.com/sagernet/quic-go => github.com/Capricornus007/quic-go v0.61.0-sing-box-mod.9.0.20261001054000-283264781fe5
 
