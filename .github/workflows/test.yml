@@ -6,6 +6,7 @@ on:
       - stable
       - testing
       - unstable
+      - 1.15.x
     paths-ignore:
       - '**.md'
       - '.github/**'
@@ -15,9 +16,10 @@ on:
       - stable
       - testing
       - unstable
+      - 1.15.x
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.build }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:

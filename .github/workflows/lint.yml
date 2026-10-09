@@ -12,6 +12,7 @@ on:
       - '**.md'
       - '.github/**'
       - '!.github/workflows/lint.yml'
+  workflow_dispatch:
   pull_request:
     branches:
       - oldstable
@@ -21,7 +22,7 @@ on:
       - 1.15.x
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.build }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
