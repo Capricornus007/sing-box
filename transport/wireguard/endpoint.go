@@ -80,7 +80,6 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 			return nil, E.New("invalid public key for peer ", peerIndex, ", required ", device.NoisePublicKeySize, " bytes, got ", len(publicKeyBytes))
 		}
 		peer.publicKey = device.NoisePublicKey(publicKeyBytes)
-		peer.publicKeyHex = hex.EncodeToString(publicKeyBytes)
 		if rawPeer.PreSharedKey != "" {
 			preSharedKeyBytes, err := base64.StdEncoding.DecodeString(rawPeer.PreSharedKey)
 			if err != nil {
@@ -261,17 +260,17 @@ func (e *Endpoint) Start(postStart bool) error {
 	return nil
 }
 
+// endpointResolver 把「目的地是域名的 peer」整理成 公開金鑰→端點候選 的回調。
+// 上游在 Start 裡把同樣這段內聯展開了；我方留成方法是有對應的單元測試
+// （endpoint_resolver_test.go 測的是「不認識的 peer 不該去發解析」），內聯就測不到。
+// 鍵直接用 peer.publicKey，不再另存一份 hex 字串（上游這次也把 publicKeyHex 刪了）。
 func (e *Endpoint) endpointResolver(bind conn.Bind) (device.PeerEndpointResolverFunc, error) {
 	peers := make(map[device.NoisePublicKey]peerConfig)
 	for _, peer := range e.peers {
 		if !peer.destination.IsDomain() {
 			continue
 		}
-		var key device.NoisePublicKey
-		if err := key.FromHex(peer.publicKeyHex); err != nil {
-			return nil, E.New("invalid peer public key")
-		}
-		peers[key] = peer
+		peers[peer.publicKey] = peer
 	}
 	if len(peers) == 0 {
 		return nil, nil
@@ -421,7 +420,6 @@ type peerConfig struct {
 	destination     M.Socksaddr
 	endpoint        netip.AddrPort
 	publicKey       device.NoisePublicKey
-	publicKeyHex    string
 	preSharedKeyHex string
 	allowedIPs      []netip.Prefix
 	keepalive       uint16

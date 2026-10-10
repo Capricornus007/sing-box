@@ -109,7 +109,7 @@ func TestManagementCloseDoesNotWaitForNotificationCallback(t *testing.T) {
 		AuthURL:      "https://example.invalid/login",
 	}}
 	done := make(chan struct{})
-	go func() { endpoint.watchState(watcher); close(done) }()
+	go func() { endpoint.watchState(endpoint.ctx, watcher); close(done) }()
 	<-platform.entered
 	stopped := make(chan struct{})
 	go func() { endpoint.stopManagement(); close(stopped) }()
@@ -164,7 +164,7 @@ func TestManagementLateNotificationCancellationPreservesSameTagReplacement(t *te
 		AuthURL:      "https://example.invalid/login-b",
 	}}
 	doneA := make(chan struct{})
-	go func() { endpointA.watchState(watcherA); close(doneA) }()
+	go func() { endpointA.watchState(endpointA.ctx, watcherA); close(doneA) }()
 	select {
 	case <-platformA.entered:
 	case <-time.After(time.Second):
@@ -184,7 +184,7 @@ func TestManagementLateNotificationCancellationPreservesSameTagReplacement(t *te
 		t.Fatal("A shutdown waited on its notification callback")
 	}
 	doneB := make(chan struct{})
-	go func() { endpointB.watchState(watcherB); close(doneB) }()
+	go func() { endpointB.watchState(endpointB.ctx, watcherB); close(doneB) }()
 	select {
 	case <-platformB.entered:
 	case <-time.After(time.Second):

@@ -25,7 +25,7 @@ func TestEndpointResolverRoutesByPeerKey(t *testing.T) {
 			}
 			return []netip.Addr{netip.MustParseAddr("192.0.2.1"), netip.MustParseAddr("2001:db8::1")}, nil
 		}},
-		peers: []peerConfig{{publicKeyHex: keyHex, destination: M.ParseSocksaddr("peer.example:51820")}},
+		peers: []peerConfig{{publicKey: key, destination: M.ParseSocksaddr("peer.example:51820")}},
 	}
 	resolver, err := endpoint.endpointResolver(conn.NewStdNetBind(nil))
 	if err != nil {

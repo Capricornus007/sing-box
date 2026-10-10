@@ -415,7 +415,9 @@ func (t *Endpoint) postStart(scope *adapter.Scope) error {
 	t.managementBackend = localBackend
 	t.managementClient = localClient
 	t.started.Store(true)
-	go t.watchState(localBackend)
+	// watcher 的退出條件改吃 scope 的 ctx（上游 a691a4402 的生命週期綁法），
+	// 回調裡那層 t.ctx 護欄留我方：它管的是「endpoint 已關，別再動平台通知」。
+	go t.watchState(scope.Context(), localBackend)
 	scope.Add(func() error {
 		t.stopManagement()
 		return nil
@@ -423,7 +425,7 @@ func (t *Endpoint) postStart(scope *adapter.Scope) error {
 	return nil
 }
 
-func (t *Endpoint) watchState(localBackend tailscaleStateWatcher) {
+func (t *Endpoint) watchState(ctx context.Context, localBackend tailscaleStateWatcher) {
 	var reportedAuthURL string
 	running := false
 	tryApplyExitNode := func() {
@@ -437,7 +439,7 @@ func (t *Endpoint) watchState(localBackend tailscaleStateWatcher) {
 			return
 		}
 		var busError string
-		localBackend.WatchNotifications(t.ctx, ipn.NotifyInitialState|ipn.NotifyPeerPatches, nil, func(roNotify *ipn.Notify) (keepGoing bool) {
+		localBackend.WatchNotifications(ctx, ipn.NotifyInitialState|ipn.NotifyPeerPatches, nil, func(roNotify *ipn.Notify) (keepGoing bool) {
 			if t.ctx.Err() != nil {
 				return false
 			}
@@ -497,7 +499,7 @@ func (t *Endpoint) watchState(localBackend tailscaleStateWatcher) {
 			}
 			return true
 		})
-		if t.ctx.Err() != nil {
+		if ctx.Err() != nil {
 			return
 		}
 		if busError != "" {
@@ -506,7 +508,7 @@ func (t *Endpoint) watchState(localBackend tailscaleStateWatcher) {
 			t.logger.Warn("state watcher stopped unexpectedly, restarting")
 		}
 		select {
-		case <-t.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-time.After(time.Second):
 		}
