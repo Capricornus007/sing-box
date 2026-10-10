@@ -21,9 +21,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { goos: android, goarch: arm64 }
-          - { goos: linux, goarch: arm64 }
-          - { goos: linux, goarch: amd64 }
+          # eBPF 後端宣稱無 cgo，所以這條用 CGO_ENABLED=0 驗它本身；整棵 ./... 的
+          # Android 產物由 build.yml 負責（那條有 NDK r28 且 CGO_ENABLED=1，
+          # 整棵樹裡的 service/ocm 等套件需要 cgo，純 Go 環境編不過）。
+          - { goos: android, goarch: arm64, targets: "./common/ebpf/... ./option/...", test: false }
+          - { goos: linux, goarch: arm64, targets: "./...", test: false }
+          - { goos: linux, goarch: amd64, targets: "./...", test: true }
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,10 +46,13 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
+          TARGETS: ${{ matrix.targets }}
         run: |-
-          go build -v -tags "with_gvisor with_ebpf" ./...
+          # TARGETS 是空格分隔的多個套件樣本，這裡就是要它展開
+          # shellcheck disable=SC2086
+          go build -v -tags "with_gvisor with_ebpf" ${TARGETS}
       - name: Test eBPF backend
-        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        if: matrix.test
         env:
           CGO_ENABLED: "0"
         run: |-
