@@ -317,10 +317,6 @@ func (r *Router) routePacketConnection(ctx context.Context, conn N.PacketConn, m
 		N.ReleaseMultiPacketBuffer(packetBuffers)
 		return err
 	}
-	for _, buffer := range slices.Backward(packetBuffers) {
-		conn = bufio.NewCachedPacketConn(conn, buffer.Buffer, buffer.Destination)
-		N.PutPacketBuffer(buffer)
-	}
 	conn = cachePacketBuffers(conn, packetBuffers)
 	if selectedRule != nil {
 		metadata.RouteRule = selectedRule.String()
