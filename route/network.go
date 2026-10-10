@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -50,6 +51,7 @@ type NetworkManager struct {
 	powerListener           winpowrprof.EventListener
 	pauseManager            pause.Manager
 	platformInterface       adapter.PlatformInterface
+	extraProtectFunc        atomic.Pointer[control.Func]
 	connectionManager       adapter.ConnectionManager
 	endpoint                adapter.EndpointManager
 	inbound                 adapter.InboundManager
@@ -368,14 +370,37 @@ func (r *NetworkManager) AutoDetectInterfaceFunc() control.Func {
 }
 
 func (r *NetworkManager) ProtectFunc() control.Func {
+	var platformProtect control.Func
 	if r.platformInterface != nil && r.platformInterface.UsePlatformAutoDetectInterfaceControl() {
-		return func(network, address string, conn syscall.RawConn) error {
+		platformProtect = func(network, address string, conn syscall.RawConn) error {
 			return control.Raw(conn, func(fd uintptr) error {
 				return r.platformInterface.AutoDetectInterfaceControl(int(fd))
 			})
 		}
 	}
-	return nil
+	// 這裡必須回傳一個每次撥號才查表的 wrapper，而不是回傳當下拼好的結果：
+	// outbound 的 dialer 在 inbound 之前就建立並 snapshot 了本函式的回傳值，
+	// 若 eBPF inbound 到 Start() 才註冊 bypass，回傳 nil 會讓它永遠接不上，
+	// 代理自己的外出 socket 於是又被 eBPF 抓回去，形成自我迴圈。
+	return func(network, address string, conn syscall.RawConn) error {
+		if platformProtect != nil {
+			if err := platformProtect(network, address, conn); err != nil {
+				return err
+			}
+		}
+		if extra := r.extraProtectFunc.Load(); extra != nil {
+			return (*extra)(network, address, conn)
+		}
+		return nil
+	}
+}
+
+func (r *NetworkManager) RegisterExtraProtectFunc(protect control.Func) {
+	r.extraProtectFunc.Store(&protect)
+}
+
+func (r *NetworkManager) UnregisterExtraProtectFunc() {
+	r.extraProtectFunc.Store(nil)
 }
 
 func (r *NetworkManager) DefaultOptions() adapter.NetworkOptions {

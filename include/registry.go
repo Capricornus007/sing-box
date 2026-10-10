@@ -24,6 +24,7 @@ import (
 	"github.com/sagernet/sing-box/protocol/block"
 	"github.com/sagernet/sing-box/protocol/bridge"
 	"github.com/sagernet/sing-box/protocol/direct"
+	"github.com/sagernet/sing-box/protocol/ebpf"
 	"github.com/sagernet/sing-box/protocol/fragmentexclave"
 	"github.com/sagernet/sing-box/protocol/group"
 	"github.com/sagernet/sing-box/protocol/http"
@@ -61,6 +62,7 @@ func InboundRegistry() *inbound.Registry {
 	redirect.RegisterRedirect(registry)
 	redirect.RegisterTProxy(registry)
 	direct.RegisterInbound(registry)
+	ebpf.RegisterInbound(registry)
 
 	socks.RegisterInbound(registry)
 	http.RegisterInbound(registry)

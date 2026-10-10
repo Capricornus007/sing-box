@@ -6,6 +6,7 @@ const (
 	TypeTProxy             = "tproxy"
 	TypeDirect             = "direct"
 	TypeBridge             = "bridge"
+	TypeEBPF               = "ebpf"
 	TypeFragmentExclave    = "fragment-exclave"
 	TypeBlock              = "block"
 	TypeDNS                = "dns"

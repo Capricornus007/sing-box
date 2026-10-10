@@ -1,0 +1,569 @@
+//go:build with_ebpf && (linux || android)
+
+package ebpf
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net"
+	"net/netip"
+	"runtime"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/inbound"
+	ECommon "github.com/sagernet/sing-box/common/ebpf"
+	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/log"
+	LC "github.com/sagernet/sing-box/option"
+
+	E "github.com/sagernet/sing/common/exceptions"
+	"github.com/sagernet/sing/common/network"
+	"github.com/sagernet/sing/service"
+)
+
+var (
+	redirectIPv4Candidates = []netip.Prefix{
+		netip.MustParsePrefix("127.128.0.0/9"),
+		netip.MustParsePrefix("127.64.0.0/10"),
+	}
+	redirectIPv6Candidates = []netip.Prefix{
+		netip.MustParsePrefix("fd53:696e:672d:626f::/64"),
+		netip.MustParsePrefix("fd53:696e:672d:6270::/64"),
+	}
+)
+
+type Inbound struct {
+	inbound.Adapter
+	ctx            context.Context
+	router         adapter.Router
+	networkManager adapter.NetworkManager
+	dnsRouter      adapter.DNSRouter
+	logger         log.ContextLogger
+	options        LC.EBPFInboundOptions
+
+	cgroupEnabled            bool
+	sharedNetworkEnabled     bool
+	cgroupPath               string
+	enableTCP                bool
+	enableUDP                bool
+	dnsMode                  string
+	cgroupIPv6Mode           string
+	cgroupIPv6Available      bool
+	cgroupIPv6Probe          cgroupIPv6ProbeState
+	cgroupIPv6ProbeLock      sync.Mutex
+	sharedIPv6Mode           string
+	redirectIPv4Prefix       netip.Prefix
+	redirectIPv6Prefix       netip.Prefix
+	cgroupMapCapacity        ECommon.CgroupMapCapacity
+	cgroupPolicy             ECommon.CgroupPolicy
+	androidUIDOptions        *androidUIDOptions
+	udpTimeout               time.Duration
+	bypassPrivateAddress     bool
+	sharedNetworkMapCapacity ECommon.SharedNetworkMapCapacities
+	sharedNetworkIncludeMAC  []ECommon.MACAddress
+	sharedNetworkExcludeMAC  []ECommon.MACAddress
+
+	listeners internalListenerSet
+
+	sharedNetwork *sharedNetwork
+
+	backendAccess sync.RWMutex
+	backend       *ECommon.CgroupBackend
+
+	protectRegistered bool
+
+	localRoutes []*localRoute
+
+	udpClientTable udpClientTable
+	udpWarnings    udpWarningLimiters
+
+	bypassRuleSetAccess   sync.Mutex
+	bypassRuleSet         []adapter.RuleSet
+	bypassRuleSetCallback io.Closer
+	bypassRuleSetStarted  bool
+	bypassCIDR            []netip.Prefix
+
+	udpPeriodicStop chan struct{}
+	udpPeriodicDone chan struct{}
+
+	closeOnce sync.Once
+}
+
+func RegisterInbound(registry *inbound.Registry) {
+	inbound.Register[LC.EBPFInboundOptions](registry, C.TypeEBPF, NewInbound)
+}
+
+// NewInbound 只做設定驗證與建物件；eBPF 程式的附著一律推到 Start，
+// 否則配置載入階段（outbound 還沒就緒）就會產生無法回滾的內核副作用。
+func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options LC.EBPFInboundOptions) (adapter.Inbound, error) {
+	_, cgroupEnabled, sharedNetworkEnabled, err := normalizeMode(options.Mode)
+	if err != nil {
+		return nil, err
+	}
+	if err = validateLocalOptions(cgroupEnabled, options.Local); err != nil {
+		return nil, err
+	}
+	if err = validateSharedOptions(sharedNetworkEnabled, options.Shared); err != nil {
+		return nil, err
+	}
+	if err = validateAndroidUIDOptions(runtime.GOOS, options.Local); err != nil {
+		return nil, err
+	}
+	cgroupPath, err := normalizeCgroupPath(options.Local.CgroupPath)
+	if err != nil {
+		return nil, err
+	}
+	dnsMode, err := normalizeDNSMode(options.DNSMode)
+	if err != nil {
+		return nil, err
+	}
+	cgroupIPv6Mode, err := normalizeCgroupIPv6Mode(options.Local.IPv6Mode)
+	if err != nil {
+		return nil, err
+	}
+	sharedIPv6Mode, err := normalizeSharedIPv6Mode(options.Shared.IPv6Mode)
+	if err != nil {
+		return nil, err
+	}
+	cgroupMapCapacity, err := normalizeCgroupMapCapacity(options.Local.StateCapacity)
+	if err != nil {
+		return nil, err
+	}
+	includeUIDRanges, err := parseUIDRanges(options.Local.IncludeUID, options.Local.IncludeUIDRange)
+	if err != nil {
+		return nil, E.Cause(err, "parse include_uid_range")
+	}
+	excludeUIDRanges, err := parseUIDRanges(options.Local.ExcludeUID, options.Local.ExcludeUIDRange)
+	if err != nil {
+		return nil, E.Cause(err, "parse exclude_uid_range")
+	}
+	sharedNetworkOptions := LC.EBPFShared{}
+	if sharedNetworkEnabled {
+		sharedNetworkOptions, err = normalizeSharedNetworkOptions(options.Shared)
+		if err != nil {
+			return nil, err
+		}
+	}
+	sharedNetworkIncludeMAC, err := parseSharedNetworkMACAddresses("include_mac_address", sharedNetworkOptions.IncludeMACAddress)
+	if err != nil {
+		return nil, err
+	}
+	sharedNetworkExcludeMAC, err := parseSharedNetworkMACAddresses("exclude_mac_address", sharedNetworkOptions.ExcludeMACAddress)
+	if err != nil {
+		return nil, err
+	}
+	sharedNetworkMapCapacity, err := normalizeSharedNetworkMapCapacity(sharedNetworkOptions.StateCapacity)
+	if err != nil {
+		return nil, err
+	}
+	enableTCP, enableUDP := parseNetworkOptions(options.Network)
+	if !enableTCP && !enableUDP {
+		return nil, E.New("eBPF inbound network must include tcp or udp")
+	}
+	if err = validateSharedNetworkProtocols(sharedNetworkEnabled, enableUDP, dnsMode); err != nil {
+		return nil, err
+	}
+	udpTimeout, err := normalizeUDPTimeout(options.UDPTimeout)
+	if err != nil {
+		return nil, err
+	}
+	bypassPrivateAddress := options.BypassPrivateAddress == nil || *options.BypassPrivateAddress
+
+	inboundListener := &Inbound{
+		Adapter:                  inbound.NewAdapter(C.TypeEBPF, tag),
+		ctx:                      ctx,
+		router:                   router,
+		networkManager:           service.FromContext[adapter.NetworkManager](ctx),
+		dnsRouter:                service.FromContext[adapter.DNSRouter](ctx),
+		logger:                   logger,
+		options:                  options,
+		cgroupEnabled:            cgroupEnabled,
+		sharedNetworkEnabled:     sharedNetworkEnabled,
+		cgroupPath:               cgroupPath,
+		enableTCP:                enableTCP,
+		enableUDP:                enableUDP,
+		dnsMode:                  dnsMode,
+		cgroupIPv6Mode:           cgroupIPv6Mode,
+		cgroupIPv6Available:      true,
+		sharedIPv6Mode:           sharedIPv6Mode,
+		redirectIPv4Prefix:       redirectIPv4Candidates[0],
+		redirectIPv6Prefix:       redirectIPv6Candidates[0],
+		cgroupMapCapacity:        cgroupMapCapacity,
+		udpTimeout:               udpTimeout,
+		bypassPrivateAddress:     bypassPrivateAddress,
+		sharedNetworkMapCapacity: sharedNetworkMapCapacity,
+		sharedNetworkIncludeMAC:  sharedNetworkIncludeMAC,
+		sharedNetworkExcludeMAC:  sharedNetworkExcludeMAC,
+		cgroupPolicy: ECommon.CgroupPolicy{
+			HijackDNS:            dnsMode != dnsModeOff,
+			DNSRespectBypass:     dnsMode == dnsModeRespectBypass,
+			BypassPrivateAddress: bypassPrivateAddress,
+			IncludeUIDConfigured: len(options.Local.IncludeUID) > 0 ||
+				len(options.Local.IncludeUIDRange) > 0 || len(options.Local.IncludePackage) > 0,
+			IncludeUID: includeUIDRanges,
+			ExcludeUID: excludeUIDRanges,
+		},
+		androidUIDOptions: newAndroidUIDOptions(options.Local),
+	}
+
+	if err = inboundListener.setupBypassRuleSets(router); err != nil {
+		return nil, err
+	}
+
+	if sharedNetworkEnabled {
+		inboundListener.sharedNetwork = newSharedNetwork(
+			inboundListener,
+			sharedNetworkOptions,
+			sharedNetworkMapCapacity,
+		)
+	}
+
+	return inboundListener, nil
+}
+
+func (i *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	if stage != adapter.StartStateStart {
+		return nil
+	}
+	if err := i.start(); err != nil {
+		_ = i.Close()
+		return err
+	}
+	scope.Add(i.Close)
+	return nil
+}
+
+func parseNetworkOptions(networks []string) (tcp bool, udp bool) {
+	if len(networks) == 0 {
+		return true, true
+	}
+	for _, networkName := range networks {
+		switch strings.ToLower(networkName) {
+		case network.NetworkTCP:
+			tcp = true
+		case network.NetworkUDP:
+			udp = true
+		}
+	}
+	return
+}
+
+func (i *Inbound) start() error {
+	if i.cgroupEnabled {
+		if i.androidUIDOptions != nil {
+			if err := i.resolveAndroidUIDPolicy(); err != nil {
+				return err
+			}
+		}
+		if err := i.refreshCgroupIPv6Availability(true); err != nil {
+			return err
+		}
+		policy := i.cgroupPolicy
+		policy.EnableBypassCIDR = true
+		backend, err := ECommon.PrepareCgroup(ECommon.CgroupConfig{
+			Path:          i.cgroupPath,
+			EnableTCP:     i.enableTCP,
+			EnableUDP:     i.enableUDP,
+			EnableIPv6:    i.cgroupIPv6Enabled(),
+			AutoIPv6:      i.cgroupIPv6Mode == cgroupIPv6ModeAuto && i.cgroupIPv6Enabled(),
+			IPv6Available: i.cgroupIPv6Available,
+			RedirectIPv4:  i.redirectIPv4Prefix,
+			RedirectIPv6:  i.redirectIPv6Prefix,
+			MapCapacity:   i.cgroupMapCapacity,
+			UDPTimeout:    i.udpTimeout,
+			Policy:        policy,
+		})
+		if err != nil {
+			return err
+		}
+		i.setBackend(backend)
+
+		if protectFunc := backend.SocketProtectFunc(); protectFunc != nil {
+			if i.networkManager == nil {
+				// 接不上 protect 就等於代理自己的外出也被 eBPF 抓回來，是無限迴圈，
+				// 寧可啟動失敗也不能靜默降級。
+				return E.New("missing network manager, eBPF self-bypass unavailable")
+			}
+			i.networkManager.RegisterExtraProtectFunc(protectFunc)
+			i.protectRegistered = true
+		}
+
+		if err = i.startBypassRuleSets(); err != nil {
+			return err
+		}
+		if err = i.setupLocalRoutes(); err != nil {
+			return err
+		}
+		if err = i.listeners.start(
+			i.enableTCP,
+			i.enableUDP,
+			i.redirectIPv4Prefix.IsValid(),
+			i.cgroupIPv6Enabled(),
+			i.newListener,
+		); err != nil {
+			return err
+		}
+		if err = backend.LoadPrograms(i.listeners.selectedPort()); err != nil {
+			return err
+		}
+		if i.sharedNetwork != nil {
+			if err = i.sharedNetwork.Start(backend); err != nil {
+				return err
+			}
+		}
+		if err = backend.Attach(); err != nil {
+			return err
+		}
+
+		i.startUDPPeriodic()
+
+		bypassIPv4Count, bypassIPv6Count := backend.BypassCIDRCount()
+		if i.cgroupIPv6Mode == cgroupIPv6ModeAuto && i.cgroupIPv6Enabled() {
+			logInfof("[EBPF] local cgroup IPv6 interception: available=%v", i.cgroupIPv6Available)
+		}
+		logInfof("[EBPF] inbound attached: cgroup=%s, listen_port=%d, dns_mode=%s, udp_timeout=%s, local_ipv6_mode=%s, self_bypass=%s, redirect_address=[%s], bypass_cidr={ipv4:%d, ipv6:%d}, programs=[%s]",
+			backend.CgroupPath(),
+			i.listeners.selectedPort(),
+			i.dnsMode,
+			i.udpTimeout,
+			i.cgroupIPv6Mode,
+			backend.SelfBypassMode(),
+			strings.Join(i.redirectAddressStrings(), ", "),
+			bypassIPv4Count,
+			bypassIPv6Count,
+			strings.Join(backend.AttachedPrograms(), ", "),
+		)
+		if len(i.bypassRuleSet) > 0 {
+			logInfof("[EBPF] bypass_rule_set will populate after rule-providers finish loading; see the next 'refreshed bypass CIDR policy' log")
+		}
+	} else if i.sharedNetworkEnabled {
+		// Shared-only mode: the shared network backend does not need a cgroup
+		// backend, but the inbound must still create its listeners.
+		if err := i.listeners.start(
+			i.enableTCP,
+			i.enableUDP,
+			i.redirectIPv4Prefix.IsValid(),
+			false,
+			i.newListener,
+		); err != nil {
+			return err
+		}
+		if i.sharedNetwork != nil {
+			if err := i.sharedNetwork.Start(nil); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (i *Inbound) Close() error {
+	var closeErr error
+	i.closeOnce.Do(func() {
+		i.stopUDPPeriodic()
+		i.stopBypassRuleSets()
+		SetBypassIPSet(nil)
+		if i.sharedNetwork != nil {
+			closeErr = i.sharedNetwork.Close()
+		}
+		backend := i.backendInstance()
+		if backend != nil {
+			closeErr = E.Errors(closeErr, backend.Close())
+			if backend.IsClosed() {
+				i.setBackend(nil)
+			}
+		}
+		i.unregisterSocketProtect()
+		closeErr = E.Errors(closeErr, i.listeners.close())
+		closeErr = E.Errors(closeErr, i.removeLocalRoutes())
+	})
+	return closeErr
+}
+
+func (i *Inbound) Address() string {
+	address := "eBPF(cgroup=" + i.backendCgroupPath() + ", listen_port=" + fmt.Sprintf("%d", i.listeners.selectedPort()) + ")"
+	return address
+}
+
+func (i *Inbound) backendCgroupPath() string {
+	if backend := i.backendInstance(); backend != nil {
+		return backend.CgroupPath()
+	}
+	return ""
+}
+
+func (i *Inbound) redirectAddressStrings() []string {
+	addresses := make([]string, 0, 2)
+	if i.redirectIPv4Prefix.IsValid() {
+		addresses = append(addresses, i.redirectIPv4Prefix.String())
+	}
+	if i.redirectIPv6Prefix.IsValid() {
+		addresses = append(addresses, i.redirectIPv6Prefix.String())
+	}
+	return addresses
+}
+
+// sharedRedirectIPv6Prefix returns the shared-network IPv6 redirect prefix only
+// when shared IPv6 interception is enabled.
+func (i *Inbound) sharedRedirectIPv6Prefix() netip.Prefix {
+	if i.sharedIPv6Mode == sharedIPv6ModeAlways {
+		return i.redirectIPv6Prefix
+	}
+	return netip.Prefix{}
+}
+
+func (i *Inbound) backendInstance() *ECommon.CgroupBackend {
+	i.backendAccess.RLock()
+	defer i.backendAccess.RUnlock()
+	return i.backend
+}
+
+func (i *Inbound) setBackend(backend *ECommon.CgroupBackend) {
+	i.backendAccess.Lock()
+	i.backend = backend
+	i.backendAccess.Unlock()
+}
+
+func (i *Inbound) unregisterSocketProtect() {
+	if !i.protectRegistered {
+		return
+	}
+	if i.networkManager != nil {
+		i.networkManager.UnregisterExtraProtectFunc()
+	}
+	i.protectRegistered = false
+}
+
+// InterfaceUpdated refreshes local host addresses and notifies the
+// shared-network TC manager that downstream interfaces may have changed.
+func (i *Inbound) InterfaceUpdated(ctx context.Context) {
+	if backend := i.backendInstance(); backend != nil && !backend.IsClosed() {
+		if err := i.refreshHostAddresses(backend); err != nil {
+			logWarnf("[EBPF] refresh local interface host addresses: %s", err.Error())
+		}
+	}
+	if err := i.refreshCgroupIPv6Availability(false); err != nil {
+		logWarnf("[EBPF] refresh local cgroup IPv6 availability: %s", err.Error())
+	}
+	if i.sharedNetwork != nil {
+		i.sharedNetwork.InterfaceUpdated()
+	}
+}
+
+func (i *Inbound) startUDPPeriodic() {
+	i.udpPeriodicStop = make(chan struct{})
+	i.udpPeriodicDone = make(chan struct{})
+	go i.udpPeriodicLoop(i.udpPeriodicStop, i.udpPeriodicDone)
+}
+
+func (i *Inbound) stopUDPPeriodic() {
+	if i.udpPeriodicStop == nil {
+		return
+	}
+	close(i.udpPeriodicStop)
+	<-i.udpPeriodicDone
+	i.udpPeriodicStop = nil
+}
+
+func (i *Inbound) udpPeriodicLoop(stop <-chan struct{}, done chan<- struct{}) {
+	defer close(done)
+	interval := i.udpTimeout / 2
+	if interval < 5*time.Second {
+		interval = 5 * time.Second
+	}
+	if interval > 30*time.Second {
+		interval = 30 * time.Second
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	bypassTicker := time.NewTicker(3 * time.Second)
+	defer bypassTicker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			i.udpClientTable.sweep(time.Now(), i.udpTimeout, func(releases []udpRedirectRelease) {
+				for _, release := range releases {
+					i.deleteUDPRedirects([]netip.Addr{release.reference.address})
+				}
+			})
+			if backend := i.backendInstance(); backend != nil && !backend.IsClosed() {
+				maxAge := 2 * i.udpTimeout
+				if maxAge < 30*time.Second {
+					maxAge = 30 * time.Second
+				}
+				result, sweepErr := backend.SweepStaleTCPRedirects(maxAge, 1024)
+				if sweepErr != nil {
+					i.udpWarnings.cleanup.warn(i.logWarn, "sweep stale TCP redirects: ", sweepErr)
+				} else if result.Removed > 0 {
+					logDebugf("[EBPF] swept %d stale TCP redirects", result.Removed)
+				}
+				if result, sweepErr := backend.SweepStaleUDPRedirects(maxAge, 1024); sweepErr != nil {
+					i.udpWarnings.cleanup.warn(i.logWarn, "sweep stale UDP redirects: ", sweepErr)
+				} else if result.Removed > 0 {
+					logDebugf("[EBPF] swept %d stale UDP redirects", result.Removed)
+				}
+			}
+		case <-bypassTicker.C:
+			i.refreshBypassCIDRPeriodic()
+		}
+	}
+}
+
+func (i *Inbound) refreshBypassCIDRPeriodic() {
+	i.bypassRuleSetAccess.Lock()
+	defer i.bypassRuleSetAccess.Unlock()
+	if !i.bypassRuleSetStarted {
+		return
+	}
+	updated, err := i.refreshBypassCIDRsLocked()
+	if err != nil {
+		if backend := i.backendInstance(); backend != nil && !backend.IsClosed() {
+			logDebugf("[EBPF] refresh bypass CIDR: %s", err.Error())
+		}
+		return
+	}
+	if updated {
+		i.logBypassCIDRUpdate()
+	}
+}
+
+func (i *Inbound) logBypassCIDRUpdate() {
+	backend := i.backendInstance()
+	if backend == nil {
+		return
+	}
+	ipv4Count, ipv6Count := backend.BypassCIDRCount()
+	logDebugf("[EBPF] refreshed bypass CIDR policy: ipv4=%d, ipv6=%d", ipv4Count, ipv6Count)
+}
+
+func localInterfacePrefixes() []netip.Prefix {
+	networkInterfaces, err := net.Interfaces()
+	if err != nil {
+		return nil
+	}
+	var prefixes []netip.Prefix
+	for _, networkInterface := range networkInterfaces {
+		addresses, err := networkInterface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, address := range addresses {
+			prefix, err := netip.ParsePrefix(address.String())
+			if err != nil || !prefix.IsValid() {
+				continue
+			}
+			unmapped := prefix.Addr().Unmap()
+			if unmapped.IsUnspecified() || unmapped.IsLoopback() {
+				continue
+			}
+			prefixes = append(prefixes, netip.PrefixFrom(unmapped, unmapped.BitLen()))
+		}
+	}
+	return prefixes
+}

@@ -24,6 +24,8 @@ type NetworkManager interface {
 	AutoDetectInterface() bool
 	AutoDetectInterfaceFunc() control.Func
 	ProtectFunc() control.Func
+	RegisterExtraProtectFunc(protect control.Func)
+	UnregisterExtraProtectFunc()
 	DefaultOptions() NetworkOptions
 	RegisterAutoRedirectOutputMark(mark uint32) error
 	AutoRedirectOutputMark() uint32
