@@ -10,7 +10,6 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	LC "github.com/sagernet/sing-box/option"
-
 	E "github.com/sagernet/sing/common/exceptions"
 )
 

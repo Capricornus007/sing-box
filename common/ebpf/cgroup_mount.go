@@ -1,3 +1,5 @@
+//go:build with_ebpf && (linux || android)
+
 package ebpf
 
 import (
@@ -29,13 +31,12 @@ func detectCgroup2Mount(reader io.Reader) (string, error) {
 	)
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		line := scanner.Text()
-		separator := strings.Index(line, " - ")
-		if separator < 0 {
+		left, right, found := strings.Cut(scanner.Text(), " - ")
+		if !found {
 			continue
 		}
-		leftFields := strings.Fields(line[:separator])
-		rightFields := strings.Fields(line[separator+3:])
+		leftFields := strings.Fields(left)
+		rightFields := strings.Fields(right)
 		if len(leftFields) < 5 || len(rightFields) == 0 || rightFields[0] != "cgroup2" {
 			continue
 		}
