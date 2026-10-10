@@ -687,9 +687,15 @@ func (c *Client) dialContextWithProfile(ctx context.Context, profile *xhttpClien
 	scMinPostsIntervalMs := options.GetNormalizedScMinPostsIntervalMs()
 	maxUploadSize := max(int32(0), scMaxEachPostBytes.Rand())
 	uploadPipeReader, uploadPipeWriter := pipe.New(pipe.WithSizeLimit(max(0, maxUploadSize-buf.Size)))
+	var uploadCause atomic.Pointer[error]
+	failUpload := func(err error) {
+		uploadCause.Store(&err)
+		uploadPipeReader.Interrupt()
+	}
 	conn.writer = uploadWriter{
 		uploadPipeWriter,
 		maxUploadSize,
+		&uploadCause,
 	}
 	uploadBaseCtx := context.WithoutCancel(ctx)
 	uploadCtx, cancelPacketUpload := context.WithCancel(uploadBaseCtx)
@@ -750,7 +756,7 @@ func (c *Client) dialContextWithProfile(ctx context.Context, profile *xhttpClien
 				if err != nil {
 					buf.ReleaseMulti(chunk)
 					buf.ReleaseMulti(remainder)
-					uploadPipeReader.Interrupt()
+					failUpload(E.Cause(err, "no xHTTP packet-up client available"))
 					return
 				}
 				hClient := dynamicHTTPClient
@@ -778,7 +784,11 @@ func (c *Client) dialContextWithProfile(ctx context.Context, profile *xhttpClien
 						contentLength,
 					)
 					if err != nil {
-						uploadPipeReader.Interrupt()
+						// uploadCtx 已結束的話這是正常收尾，不記 cause，
+						// 否則會把「被關掉」報成「壞了」。
+						if uploadCtx.Err() == nil {
+							failUpload(E.Cause(err, "xHTTP packet-up POST failed"))
+						}
 						doSplit.Store(false)
 					}
 				}(hClient, hXmuxClient, container, reqCtx, seqStr, contentLength)
