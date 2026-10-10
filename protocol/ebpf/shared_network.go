@@ -11,6 +11,7 @@ import (
 	LC "github.com/sagernet/sing-box/option"
 
 	E "github.com/sagernet/sing/common/exceptions"
+	"github.com/sagernet/sing/common/udpnat2"
 
 	tun "github.com/sagernet/sing-tun"
 )
@@ -22,6 +23,7 @@ type sharedNetwork struct {
 	sharedBackend  *ECommon.SharedNetworkBackend
 	tcManager      *sharedTCManager
 	listeners      internalListenerSet
+	udpNat         *udpnat.Service
 	udpClientTable udpClientTable
 	udpWarnings    udpWarningLimiters
 	mapCapacity    ECommon.SharedNetworkMapCapacities
@@ -38,13 +40,18 @@ func newSharedNetwork(inbound *Inbound, sharedOptions LC.EBPFShared, mapCapacity
 	if tcPriority == 0 {
 		tcPriority = defaultSharedNetworkTCPriority
 	}
-	return &sharedNetwork{
+	shared := &sharedNetwork{
 		inbound:     inbound,
 		interfaces:  append([]string(nil), sharedOptions.Interface...),
 		options:     sharedOptions,
 		mapCapacity: mapCapacity,
 		tcPriority:  tcPriority,
 	}
+	// 與本機模式各持一個 udpnat2 service：兩邊的 client 位址空間可能重疊
+	// （例如本機程式與下游台站用同一個 port），共用一張表會把封包塞進
+	// 錯的轉發狀態。timeout 由 normalizeUDPTimeout 保證非零，否則 udpnat.New 會 panic。
+	shared.udpNat = udpnat.New(shared, shared.preparePacketConnection, inbound.udpTimeout, false)
+	return shared
 }
 
 func (s *sharedNetwork) Start(cgroupBackend *ECommon.CgroupBackend) error {
@@ -154,6 +161,9 @@ func (s *sharedNetwork) udpPeriodicLoop(stop <-chan struct{}, done chan<- struct
 		case <-stop:
 			return
 		case <-ticker.C:
+			// freelru 取到既有 session 時只會續期、不檢查過期，逾期掃由這邊驅動，
+			// 否則逾期的 client 會被重複使用、session 永遠不關。
+			s.udpNat.PurgeExpired()
 			s.udpClientTable.sweep(time.Now(), s.inbound.udpTimeout, s.releaseFlows)
 			if backend := s.sharedBackendInstance(); backend != nil && !backend.IsClosed() {
 				idle := 2 * s.inbound.udpTimeout
@@ -171,6 +181,9 @@ func (s *sharedNetwork) udpPeriodicLoop(stop <-chan struct{}, done chan<- struct
 }
 
 func (s *sharedNetwork) InterfaceUpdated() {
+	// 介面換了，TC flow 與既有的 per-client session 都失去意義，兩邊一起清掉，
+	// 下一個封包才會照新介面重建 flow 並開出一條新 session。
+	s.udpNat.Purge()
 	s.udpClientTable.sweep(time.Now(), 0, s.releaseFlows)
 	s.lifecycleAccess.RLock()
 	defer s.lifecycleAccess.RUnlock()
@@ -186,6 +199,8 @@ func (s *sharedNetwork) Close() error {
 	s.lifecycleAccess.Lock()
 	defer s.lifecycleAccess.Unlock()
 	s.stopUDPPeriodic()
+	// 先關掉 per-client session，讓上層的讀迴圈在 backend 與監聽孔拆除前就收尾。
+	s.udpNat.Purge()
 	var closeErr error
 	if s.tcManager != nil {
 		tcErr := s.tcManager.Close()

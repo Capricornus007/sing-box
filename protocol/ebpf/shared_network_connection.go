@@ -3,19 +3,22 @@
 package ebpf
 
 import (
-	"io"
+	"context"
 	"net"
 	"net/netip"
 	"sync"
-	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	ECommon "github.com/sagernet/sing-box/common/ebpf"
 
-	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
+)
+
+var (
+	_ N.UDPConnectionHandlerEx = (*sharedNetwork)(nil)
+	_ udpSessionOwner          = (*sharedNetwork)(nil)
 )
 
 func (s *sharedNetwork) NewConnection(conn net.Conn) {
@@ -82,28 +85,39 @@ func (s *sharedNetwork) NewPacket(data []byte, oob []byte, source netip.AddrPort
 	}
 
 	clientState := s.udpClientTable.loadOrCreate(client)
-	metadata := adapter.InboundContext{
-		Inbound:     s.inbound.Tag(),
-		InboundType: s.inbound.Type(),
-		Network:     N.NetworkUDP,
-		Source:      M.SocksaddrFromNetIP(client),
-		Destination: M.SocksaddrFromNetIP(original.Destination),
-	}
+	metadata := s.inbound.udpSessionMetadata(
+		M.SocksaddrFromNetIP(client),
+		M.SocksaddrFromNetIP(original.Destination),
+	)
 	if s.inbound.hijackDNS(original.Destination) {
 		s.relayUDPDNS(s.inbound.dnsRouter, metadata, data, client, clientState, original.Destination)
 		return
 	}
 
-	s.inbound.routePacketConnection(
-		&sharedPacketConn{
-			shared:      s,
-			client:      client,
-			clientState: clientState,
-			destination: M.SocksaddrFromNetIP(original.Destination),
-			data:        data,
-		},
-		metadata,
+	// 與本機模式同一套 session 規則：以 client 的 source addr:port 為鍵，
+	// 同一個 client 的多個 datagram 共用一條 RoutePacketConnection。
+	s.udpNat.NewPacket(
+		[][]byte{data},
+		M.SocksaddrFromNetIP(client),
+		M.SocksaddrFromNetIP(original.Destination),
+		clientState,
 	)
+}
+
+// preparePacketConnection 是 udpnat2 建立 session 時的回呼，shared-network
+// 模式只換回包寫法（走 TC flow 對應的 UDP socket），session 生命週期一樣。
+func (s *sharedNetwork) preparePacketConnection(source M.Socksaddr, destination M.Socksaddr, userData any) (bool, context.Context, N.PacketWriter, N.CloseHandlerFunc) {
+	return prepareUDPSession(s, s.inbound.ctx, source, userData)
+}
+
+// NewPacketConnectionEx 由 udpnat2 在 session 建立時另起 goroutine 呼叫，
+// 一條 session 只進這裡一次，路由判定沿用建 session 那一包的原目的地。
+func (s *sharedNetwork) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+	s.inbound.routePacketConnection(ctx, conn, s.inbound.udpSessionMetadata(source, destination))
+}
+
+func (s *sharedNetwork) udpTable() *udpClientTable {
+	return &s.udpClientTable
 }
 
 func (s *sharedNetwork) releaseFlows(releases []udpRedirectRelease) {
@@ -137,51 +151,6 @@ func (c *sharedConn) Close() error {
 		c.shared.releaseFlow(c.flow)
 	})
 	return c.Conn.Close()
-}
-
-// sharedPacketConn 與本機模式的 udpPacketConn 同形：一個 datagram 一個連線，
-// 差别只在回包要經 shared-network 的 flow 與它自己的 UDP socket。
-type sharedPacketConn struct {
-	shared      *sharedNetwork
-	client      netip.AddrPort
-	clientState *udpClientState
-	destination M.Socksaddr
-	data        []byte
-	closed      bool
-}
-
-func (c *sharedPacketConn) ReadPacket(buffer *buf.Buffer) (M.Socksaddr, error) {
-	if c.closed || c.data == nil {
-		return M.Socksaddr{}, io.EOF
-	}
-	buffer.Write(c.data)
-	c.data = nil
-	return c.destination, nil
-}
-
-func (c *sharedPacketConn) WritePacket(buffer *buf.Buffer, destination M.Socksaddr) error {
-	return c.shared.writeUDPPacket(c.clientState, c.client, destination.AddrPort(), buffer.Bytes())
-}
-
-func (c *sharedPacketConn) LocalAddr() net.Addr {
-	return net.UDPAddrFromAddrPort(c.client)
-}
-
-func (c *sharedPacketConn) Close() error {
-	c.closed = true
-	return nil
-}
-
-func (c *sharedPacketConn) SetDeadline(t time.Time) error {
-	return nil
-}
-
-func (c *sharedPacketConn) SetReadDeadline(t time.Time) error {
-	return nil
-}
-
-func (c *sharedPacketConn) SetWriteDeadline(t time.Time) error {
-	return nil
 }
 
 func (s *sharedNetwork) writeUDPPacket(clientState *udpClientState, client netip.AddrPort, destination netip.AddrPort, data []byte) error {

@@ -3,21 +3,24 @@
 package ebpf
 
 import (
+	"context"
 	"errors"
-	"io"
 	"net"
 	"net/netip"
-	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	ECommon "github.com/sagernet/sing-box/common/ebpf"
 
 	N "github.com/sagernet/sing/common/network"
 
-	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	"golang.org/x/sys/unix"
+)
+
+var (
+	_ N.UDPConnectionHandlerEx = (*Inbound)(nil)
+	_ udpSessionOwner          = (*Inbound)(nil)
 )
 
 func (i *Inbound) NewConnection(conn net.Conn) {
@@ -112,86 +115,51 @@ func (i *Inbound) NewPacket(data []byte, oob []byte, source netip.AddrPort) {
 	if original.ConnectedUDP {
 		clientState.setConnected(true)
 	}
-	metadata := adapter.InboundContext{
-		Inbound:     i.Tag(),
-		InboundType: i.Type(),
-		Network:     N.NetworkUDP,
-		Source:      M.SocksaddrFromNetIP(client),
-		Destination: M.SocksaddrFromNetIP(original.Destination),
-	}
+	metadata := i.udpSessionMetadata(
+		M.SocksaddrFromNetIP(client),
+		M.SocksaddrFromNetIP(original.Destination),
+	)
 	if i.hijackDNS(original.Destination) {
 		i.relayUDPDNS(i.dnsRouter, metadata, data, client, clientState, original.Destination)
 		return
 	}
 
-	i.routePacketConnection(
-		&udpPacketConn{
-			inbound:     i,
-			client:      client,
-			clientState: clientState,
-			destination: M.SocksaddrFromNetIP(original.Destination),
-			data:        data,
-		},
-		metadata,
+	// session 以 client 的 source addr:port 為鍵（跟上游 tproxy/direct 一致），
+	// 同一個 client 的後續 datagram 會排進同一條 RoutePacketConnection，
+	// 不再每包一條連線。真正的原目的地放在每一包的 destination 參數裡，
+	// 由 natConn 的 ReadPacket 原樣回報給上層。
+	i.udpNat.NewPacket(
+		[][]byte{data},
+		M.SocksaddrFromNetIP(client),
+		M.SocksaddrFromNetIP(original.Destination),
+		clientState,
 	)
 }
 
-func (i *Inbound) routePacketConnection(conn N.PacketConn, metadata adapter.InboundContext) {
+// preparePacketConnection 是 udpnat2 建立 session 時的回呼，本機模式把
+// 自己的 context 與 udpClientTable 交給共用的 prepareUDPSession。
+func (i *Inbound) preparePacketConnection(source M.Socksaddr, destination M.Socksaddr, userData any) (bool, context.Context, N.PacketWriter, N.CloseHandlerFunc) {
+	return prepareUDPSession(i, i.ctx, source, userData)
+}
+
+// NewPacketConnectionEx 由 udpnat2 在 session 建立時另起 goroutine 呼叫，
+// 一條 session 只進這裡一次；RoutePacketConnection 會擋到 session 結束，
+// 所以結束時要關掉它，讓 udpnat2 的快取能把這條 natConn 淘汰。
+func (i *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+	i.routePacketConnection(ctx, conn, i.udpSessionMetadata(source, destination))
+}
+
+func (i *Inbound) routePacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext) {
 	metadata.Inbound = i.Tag()
 	metadata.InboundType = i.Type()
-	if err := i.router.RoutePacketConnection(i.ctx, conn, metadata); err != nil {
+	if err := i.router.RoutePacketConnection(ctx, conn, metadata); err != nil {
 		i.logWarn("route UDP packet connection: ", err)
 	}
 	_ = conn.Close()
 }
 
-// udpPacketConn 把 eBPF 抓到的單一 datagram 包成 sing-box 的 PacketConn。
-// 目前每個 datagram 一進一出即結束，因此上層看到的 UDP session 生命週期
-// 只有單一封包，要改成 per-client 復用得接 udpnat。
-type udpPacketConn struct {
-	inbound     *Inbound
-	client      netip.AddrPort
-	clientState *udpClientState
-	destination M.Socksaddr
-	data        []byte
-	closed      bool
-}
-
-func (c *udpPacketConn) ReadPacket(buffer *buf.Buffer) (M.Socksaddr, error) {
-	if c.closed {
-		return M.Socksaddr{}, io.EOF
-	}
-	if c.data == nil {
-		return M.Socksaddr{}, io.EOF
-	}
-	buffer.Write(c.data)
-	c.data = nil
-	return c.destination, nil
-}
-
-func (c *udpPacketConn) WritePacket(buffer *buf.Buffer, destination M.Socksaddr) error {
-	return c.inbound.writeUDPPacket(c.clientState, c.client, destination.AddrPort(), buffer.Bytes())
-}
-
-func (c *udpPacketConn) LocalAddr() net.Addr {
-	return net.UDPAddrFromAddrPort(c.client)
-}
-
-func (c *udpPacketConn) Close() error {
-	c.closed = true
-	return nil
-}
-
-func (c *udpPacketConn) SetDeadline(t time.Time) error {
-	return nil
-}
-
-func (c *udpPacketConn) SetReadDeadline(t time.Time) error {
-	return nil
-}
-
-func (c *udpPacketConn) SetWriteDeadline(t time.Time) error {
-	return nil
+func (i *Inbound) udpTable() *udpClientTable {
+	return &i.udpClientTable
 }
 
 // destination 是 redirectBinding 的鍵：bindings 以「App 原本要連的位址」索引，

@@ -22,6 +22,7 @@ import (
 
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/network"
+	"github.com/sagernet/sing/common/udpnat2"
 	"github.com/sagernet/sing/service"
 )
 
@@ -78,6 +79,7 @@ type Inbound struct {
 
 	localRoutes []*localRoute
 
+	udpNat         *udpnat.Service
 	udpClientTable udpClientTable
 	udpWarnings    udpWarningLimiters
 
@@ -213,6 +215,10 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	if err = inboundListener.setupBypassRuleSets(router); err != nil {
 		return nil, err
 	}
+
+	// UDP session 生命週期交給 udpnat2（以 client 的 source addr:port 為鍵）。
+	// timeout 經 normalizeUDPTimeout 保證非零，否則 udpnat.New 會直接 panic。
+	inboundListener.udpNat = udpnat.New(inboundListener, inboundListener.preparePacketConnection, udpTimeout, false)
 
 	if sharedNetworkEnabled {
 		inboundListener.sharedNetwork = newSharedNetwork(
@@ -365,6 +371,8 @@ func (i *Inbound) Close() error {
 	var closeErr error
 	i.closeOnce.Do(func() {
 		i.stopUDPPeriodic()
+		// 先讓 session 收尾（關掉 natConn、通知上層讀迴圈），再拆監聽孔與 backend。
+		i.udpNat.Purge()
 		i.stopBypassRuleSets()
 		SetBypassIPSet(nil)
 		if i.sharedNetwork != nil {
@@ -487,6 +495,10 @@ func (i *Inbound) udpPeriodicLoop(stop <-chan struct{}, done chan<- struct{}) {
 		case <-stop:
 			return
 		case <-ticker.C:
+			// freelru 只在新增或明確清理時淘汰過期條目，而 udpnat2 取到既有
+			// session 時只會續期不檢查過期，所以這邊要自己按 udp_timeout 掃，
+			// 否則逾期的 client 會被重複使用、session 永遠不關。
+			i.udpNat.PurgeExpired()
 			i.udpClientTable.sweep(time.Now(), i.udpTimeout, func(releases []udpRedirectRelease) {
 				for _, release := range releases {
 					i.deleteUDPRedirects([]netip.Addr{release.reference.address})
