@@ -135,17 +135,7 @@ func (m *platformDefaultInterfaceMonitor) updateDefaultInterface(interfaceName s
 	m.isConstrained = isConstrained
 	err := m.networkManager.UpdateInterfaces()
 	if err != nil {
-		// Android 上第三方 App 開 netlink route socket 會被 SELinux 擋（logcat 裡是
-		// `avc: denied { bind } ... tclass=netlink_route_socket`，Google 自己掛了 bug 編號
-		// b/155595000）。宿主若用 Kotlin 的 ConnectivityManager 提供預設介面、但沒實作平台
-		// 介面清單（NB4A 正是：UsePlatformNetworkInterfaces()=false、NetworkInterfaces() 回錯），
-		// 那「刷介面清單失敗」就是預期狀態、不影響路由決策。這個回調每 3 秒跑一次，用 Error
-		// 會把真正的錯誤淹在裡面，所以只在這種組合下降成 Debug。
-		if C.IsAndroid && !m.UsePlatformNetworkInterfaces() {
-			m.logger.Debug(E.Cause(err, "update interfaces"))
-		} else {
-			m.logger.Error(E.Cause(err, "update interfaces"))
-		}
+		m.logger.Error(E.Cause(err, "update interfaces"))
 	}
 	m.defaultInterfaceAccess.Lock()
 	if interfaceIndex32 == -1 {
