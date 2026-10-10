@@ -24,7 +24,7 @@ jobs:
           # eBPF 後端宣稱無 cgo，所以這條用 CGO_ENABLED=0 驗它本身；整棵 ./... 的
           # Android 產物由 build.yml 負責（那條有 NDK r28 且 CGO_ENABLED=1，
           # 整棵樹裡的 service/ocm 等套件需要 cgo，純 Go 環境編不過）。
-          - { goos: android, goarch: arm64, targets: "./common/ebpf/... ./option/... ./protocol/ebpf/...", test: false }
+          - { goos: android, goarch: arm64, targets: "./common/ebpf/... ./option/... ./protocol/ebpf/... ./cmd/sing-box", test: false }
           - { goos: linux, goarch: arm64, targets: "./...", test: false }
           - { goos: linux, goarch: amd64, targets: "./...", test: true }
     steps:
