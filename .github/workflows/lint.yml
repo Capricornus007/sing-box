@@ -62,6 +62,9 @@ jobs:
       # 換依賴重 build 的步驟與實測交叉表在 feed 倉 .github/actions/setup-gcl。
       - name: Install golangci-lint that reads Go tip export data
         uses: Capricornus007/repo/.github/actions/setup-gcl@master
+        with:
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
       - name: golangci-lint
         env:
           GOOS: ${{ matrix.goos }}
