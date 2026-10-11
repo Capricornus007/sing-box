@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -37,6 +38,41 @@ type xhttpLifecycleStats struct {
 	maxPosts    atomic.Int64
 	bytes       atomic.Int64
 	errors      atomic.Int64
+}
+
+// client 端「還有上傳沒結束」的計數器，用的是 product 自己記在 XmuxClient 上的
+// packetUsage（AddPacketUsage(1) 在派 POST goroutine 之前、-1 在 PostPacket 返回後）。
+// server 那邊 handler 收尾比這個早，只等 server 會在 client 還以為有 in-flight
+// 的時候就 Close，把仍在進行的上傳從中間切斷。
+type xhttpLifecycleClients struct {
+	access  sync.Mutex
+	clients map[*XmuxClient]struct{}
+}
+
+func (r *xhttpLifecycleClients) track(client *XmuxClient) {
+	if client == nil {
+		return
+	}
+	r.access.Lock()
+	defer r.access.Unlock()
+	if r.clients == nil {
+		r.clients = make(map[*XmuxClient]struct{})
+	}
+	r.clients[client] = struct{}{}
+}
+
+func (r *xhttpLifecycleClients) pendingUploads() int32 {
+	r.access.Lock()
+	clients := make([]*XmuxClient, 0, len(r.clients))
+	for client := range r.clients {
+		clients = append(clients, client)
+	}
+	r.access.Unlock()
+	var pending int32
+	for _, client := range clients {
+		pending += client.GetPacketUsage()
+	}
+	return pending
 }
 
 func TestXHTTPPacketUpLifecycleMatrix(t *testing.T) {
@@ -153,7 +189,7 @@ func runXHTTPPacketUpLifecycle(tb testing.TB, ctx context.Context, testCase xhtt
 		tb.Fatal(err)
 	}
 
-	client := newXHTTPLifecycleClient(tb, server, requestURL, testCase.options, stats)
+	client, clients := newXHTTPLifecycleClient(tb, server, requestURL, testCase.options, stats)
 	defer closeSilently(client)
 
 	payload := bytes.Repeat([]byte{'x'}, testCase.payloadSize)
@@ -174,12 +210,12 @@ func runXHTTPPacketUpLifecycle(tb testing.TB, ctx context.Context, testCase xhtt
 				tb.Fatal(err)
 			}
 		}
-		waitXHTTPLifecyclePostsIdle(tb, stats, time.Second)
+		waitXHTTPLifecyclePostsIdle(tb, stats, clients, time.Second)
 		if err = conn.Close(); err != nil {
 			tb.Fatal(err)
 		}
 	}
-	waitXHTTPLifecyclePostsIdle(tb, stats, time.Second)
+	waitXHTTPLifecyclePostsIdle(tb, stats, clients, time.Second)
 	return stats
 }
 
@@ -224,7 +260,7 @@ func newXHTTPLifecycleServer(tb testing.TB, stats *xhttpLifecycleStats, postDela
 	return server
 }
 
-func newXHTTPLifecycleClient(tb testing.TB, server *httptest.Server, requestURL *url.URL, options option.V2RayXHTTPOptions, stats *xhttpLifecycleStats) *Client {
+func newXHTTPLifecycleClient(tb testing.TB, server *httptest.Server, requestURL *url.URL, options option.V2RayXHTTPOptions, stats *xhttpLifecycleStats) (*Client, *xhttpLifecycleClients) {
 	tb.Helper()
 	xmuxOptions := option.V2RayXHTTPXmuxOptions{}
 	if options.Xmux != nil {
@@ -243,13 +279,15 @@ func newXHTTPLifecycleClient(tb testing.TB, server *httptest.Server, requestURL 
 		baseRequestURL2: *requestURL,
 		xmuxManager:     manager,
 	}
+	clients := &xhttpLifecycleClients{}
 	client.getHTTPClient = func() (DialerClient, *XmuxClient, error) {
 		xmuxClient := manager.GetXmuxClient(context.Background())
+		clients.track(xmuxClient)
 		httpClient, err := dialerClientFromXmux(xmuxClient)
 		return httpClient, xmuxClient, err
 	}
 	client.getHTTPClient2 = client.getHTTPClient
-	return client
+	return client, clients
 }
 
 func newXHTTPLifecycleDialerClient(tb testing.TB, server *httptest.Server, options *option.V2RayXHTTPBaseOptions, stats *xhttpLifecycleStats) *DefaultDialerClient {
@@ -288,14 +326,14 @@ func updateXHTTPLifecycleMax(target *atomic.Int64, value int64) {
 	}
 }
 
-func waitXHTTPLifecyclePostsIdle(tb testing.TB, stats *xhttpLifecycleStats, timeout time.Duration) {
+func waitXHTTPLifecyclePostsIdle(tb testing.TB, stats *xhttpLifecycleStats, clients *xhttpLifecycleClients, timeout time.Duration) {
 	tb.Helper()
 	deadline := time.Now().Add(timeout)
 	var stableSince time.Time
 	var lastPosts int64 = -1
 	for time.Now().Before(deadline) {
 		posts := stats.posts.Load()
-		if stats.activePosts.Load() == 0 {
+		if stats.activePosts.Load() == 0 && clients.pendingUploads() == 0 {
 			if posts == lastPosts {
 				if stableSince.IsZero() {
 					stableSince = time.Now()
@@ -313,5 +351,6 @@ func waitXHTTPLifecyclePostsIdle(tb testing.TB, stats *xhttpLifecycleStats, time
 		}
 		time.Sleep(time.Millisecond)
 	}
-	tb.Fatalf("packet-up posts did not become idle: active=%d posts=%d", stats.activePosts.Load(), stats.posts.Load())
+	tb.Fatalf("packet-up posts did not become idle: active=%d pending_uploads=%d posts=%d",
+		stats.activePosts.Load(), clients.pendingUploads(), stats.posts.Load())
 }

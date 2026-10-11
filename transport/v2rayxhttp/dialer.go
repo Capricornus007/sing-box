@@ -50,6 +50,14 @@ type DefaultDialerClient struct {
 	dialUploadConn func(ctxInner context.Context) (net.Conn, error)
 }
 
+// 自己取消一條 request（串流被關、上層連線被拆、上傳被打斷）不代表底層 HTTP/2
+// 連線壞了。同一條 xmux 連線是被多條 session 共用的，把這種錯誤一律記成
+// 「整個 client 死了」會連坐：後到的 PostPacket 在開頭的 c.closed 檢查就直接回
+// net.ErrClosed，別條 session 的上傳平白斷掉。
+func isSelfCancelled(ctx context.Context, err error) bool {
+	return ctx.Err() != nil || errors.Is(err, context.Canceled)
+}
+
 type readDoneCloser struct {
 	io.ReadCloser
 	done chan struct{}
@@ -204,7 +212,7 @@ func (c *DefaultDialerClient) OpenStream(ctx context.Context, url string, sessio
 		//nolint:bodyclose // successful stream response bodies are exposed through wrc and closed by the caller.
 		resp, err := c.client.Do(req)
 		if err != nil {
-			if !uploadOnly {
+			if !uploadOnly && !isSelfCancelled(requestCtx, err) {
 				c.closed.Store(true)
 			}
 			stopContextCancel()
@@ -289,7 +297,9 @@ func (c *DefaultDialerClient) PostPacket(ctx context.Context, url string, sessio
 		bodyOwnedByTransport = req.Body != nil
 		resp, err := c.client.Do(req)
 		if err != nil {
-			c.closed.Store(true)
+			if !isSelfCancelled(ctx, err) {
+				c.closed.Store(true)
+			}
 			return err
 		}
 		if resp.StatusCode != 200 {
