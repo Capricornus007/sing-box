@@ -27,7 +27,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Go from the feed (golang/go master tip)
-        uses: ./.github/actions/setup-feed-go
+        uses: Capricornus007/repo/.github/actions/setup-feed-go@master
       - name: Check input version
         if: github.event_name == 'workflow_dispatch'
         run: |-
@@ -68,7 +68,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Go from the feed (golang/go master tip)
-        uses: ./.github/actions/setup-feed-go
+        uses: Capricornus007/repo/.github/actions/setup-feed-go@master
       - name: Clone cronet-go
         if: matrix.naive
         run: |

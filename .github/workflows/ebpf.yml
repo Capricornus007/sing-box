@@ -31,7 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Go from the feed (golang/go master tip)
-        uses: ./.github/actions/setup-feed-go
+        uses: Capricornus007/repo/.github/actions/setup-feed-go@master
       - name: Cache Go modules
         uses: actions/cache/restore@v6
         with:

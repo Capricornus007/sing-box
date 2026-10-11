@@ -33,12 +33,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - goos: windows
-            goarch: amd64
-          - goos: windows
-            goarch: '386'
-          - goos: windows
-            goarch: arm64
           - goos: linux
             goarch: amd64
           - goos: linux
@@ -47,34 +41,29 @@ jobs:
             goarch: arm
           - goos: linux
             goarch: '386'
-          - goos: darwin
-            goarch: amd64
-          - goos: darwin
-            goarch: arm64
+          # 用戶 2026-10-11 裁：其他系統整條刪，Lint 也只留 Linux 與 Android。
           - goos: android
             goarch: arm64
-        #  - goos: freebsd
-        #    goarch: amd64
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install Go from the feed (golang/go master tip)
-        uses: ./.github/actions/setup-feed-go
+        uses: Capricornus007/repo/.github/actions/setup-feed-go@master
       - name: Cache go module
         uses: actions/cache@v6
         with:
           path: |
             ~/go/pkg/mod
           key: go-${{ hashFiles('**/go.sum') }}
+      # 不能用 golangci/golangci-lint-action：它（v2.14.0 連 main）釘 x/tools v0.50.0，
+      # 而那顆讀不了 go tip 的 std export data → 十個矩陣目標全紅（run #65）。
+      # 換依賴重 build 的步驟與實測交叉表在 feed 倉 .github/actions/setup-gcl。
+      - name: Install golangci-lint that reads Go tip export data
+        uses: Capricornus007/repo/.github/actions/setup-gcl@master
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        with:
-          version: latest
-          args: --timeout=30m
-          install-mode: binary
-          verify: false
+        run: golangci-lint run --timeout=30m
