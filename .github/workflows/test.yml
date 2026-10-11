@@ -30,27 +30,27 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - windows-latest
-          - macos-latest
-        go:
-          - 1.27.1
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: ${{ matrix.go }}
+      # Go 一律用本倉 feed 的 go-git，也就是 golang/go 的 master tip —— 與用戶機上那顆
+      # 同源（實測 `go version` 報 go1.28-devel_<sha>，feed 資產名裡的 g2c3c1caad 就是
+      # 當時的 master HEAD）。
+      #
+      # 為什麼不用 actions/setup-go：官方**不提供**未發布版本的二進位。查證：
+      #   go.dev/dl/ 上只有發布版；go.dev/dl/devel/release.json 回 404；
+      #   git ls-remote --tags golang/go | grep -c 'refs/tags/go1\.28' = 0（1.28 連 rc 都沒打）。
+      # 所以 setup-go 能拿到的最新只有 go1.27.2，那不是「尖端」。
+      #
+      # ⚠️ 裝不到就紅，**不退回去用發布版**：退回來這一輪驗的就不是用戶機上那顆 toolchain，
+      #    綠燈變成假訊號（同一條原則也用在 feed 那边的「缺檔就紅」）。
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
       - name: Set build tags and ldflags
         shell: bash
         run: |
           echo "BUILD_TAGS=$(cat release/DEFAULT_BUILD_TAGS_OTHERS)" >> "$GITHUB_ENV"
           echo "LDFLAGS_SHARED=$(cat release/LDFLAGS)" >> "$GITHUB_ENV"
-      - name: Test (unix)
-        if: matrix.os != 'windows-latest'
+      - name: Test
         run: go test -v -exec sudo -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" ./...
-      - name: Test (windows)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: go test -v -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" ./...

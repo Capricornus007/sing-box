@@ -51,11 +51,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: 1.27.1
-          cache: false
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
       - name: Cache Go modules
         uses: actions/cache/restore@v6
         with:
@@ -141,12 +138,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
-      - name: Setup Go
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
         if: ${{ ! matrix.legacy_win7 }}
-        uses: actions/setup-go@v7
-        with:
-          go-version: 1.27.1
-          cache: false
       - name: Cache Go modules
         uses: actions/cache/restore@v6
         with:
@@ -488,7 +482,7 @@ jobs:
         if: ${{ ! matrix.legacy_osx }}
         uses: actions/setup-go@v7
         with:
-          go-version: 1.27.1
+          go-version: 1.27.2
           cache: false
       - name: Cache Go modules
         uses: actions/cache/restore@v6
@@ -587,7 +581,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version: 1.27.1
+          go-version: 1.27.2
           cache: false
       - name: Cache Go modules
         uses: actions/cache@v6
@@ -687,11 +681,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: 1.27.1
-          cache: false
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
       - name: Cache Go modules
         uses: actions/cache@v6
         with:
@@ -751,11 +742,8 @@ jobs:
           fetch-depth: 1
       - name: Checkout Android client
         run: git submodule update --init clients/android
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: 1.27.1
-          cache: false
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
       - name: Cache Go modules
         uses: actions/cache/restore@v6
         with:
@@ -859,11 +847,8 @@ jobs:
           fetch-depth: 1
       - name: Checkout Android client
         run: git submodule update --init clients/android
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: 1.27.1
-          cache: false
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
       - name: Cache Go modules
         uses: actions/cache/restore@v6
         with:
@@ -972,7 +957,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version: 1.27.1
+          go-version: 1.27.2
           cache: false
       - name: Cache Go modules
         uses: actions/cache@v6
@@ -1078,11 +1063,8 @@ jobs:
         run: git -C clients/desktop checkout main
       - name: Checkout desktop submodules
         run: git -C clients/desktop submodule update --init --recursive
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: 1.27.1
-          cache: false
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
       - name: Cache Go modules
         uses: actions/cache@v6
         with:
@@ -1234,12 +1216,18 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
-      - name: Setup Go
-        if: matrix.build
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
+        if: runner.os == 'Linux'
+      # 本 job 由矩陣在 macOS runner 與 ubuntu 之間跳。feed 那顆 go-git 只有
+      # Linux x86_64，非 Linux 那一支原理上吃不到 tip（要就得在 macOS 上從源碼
+      # 建 Go）。這是平台限制，不是「用回退換綠燈」。
+      - name: Setup Go (non-Linux leg of the matrix)
+        if: runner.os != 'Linux'
         uses: actions/setup-go@v7
         with:
-          go-version: 1.27.1
-          cache: false
+          go-version: 1.27.2
+        if: matrix.build
       - name: Patch Go for iOS
         if: matrix.build && (matrix.platform == 'ios/arm64' || matrix.platform == 'tvos/arm64')
         run: .github/patch_go_for_ios.sh
@@ -1317,12 +1305,18 @@ jobs:
       - name: Checkout Apple client
         if: matrix.if
         run: git submodule update --init --recursive clients/apple
-      - name: Setup Go
-        if: matrix.if
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
+        if: runner.os == 'Linux'
+      # 本 job 由矩陣在 macOS runner 與 ubuntu 之間跳。feed 那顆 go-git 只有
+      # Linux x86_64，非 Linux 那一支原理上吃不到 tip（要就得在 macOS 上從源碼
+      # 建 Go）。這是平台限制，不是「用回退換綠燈」。
+      - name: Setup Go (non-Linux leg of the matrix)
+        if: runner.os != 'Linux'
         uses: actions/setup-go@v7
         with:
-          go-version: 1.27.1
-          cache: false
+          go-version: 1.27.2
+        if: matrix.if
       - name: Cache Go modules
         if: matrix.if
         uses: actions/cache/restore@v6

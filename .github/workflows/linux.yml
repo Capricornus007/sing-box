@@ -26,10 +26,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: 1.27.1
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
       - name: Check input version
         if: github.event_name == 'workflow_dispatch'
         run: |-
@@ -69,10 +67,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: 1.27.1
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
       - name: Clone cronet-go
         if: matrix.naive
         run: |

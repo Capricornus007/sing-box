@@ -52,10 +52,8 @@ jobs:
         with:
           ref: ${{ steps.ref.outputs.ref }}
           fetch-depth: 0
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: 1.27.1
+      - name: Install Go from the feed (golang/go master tip)
+        uses: ./.github/actions/setup-feed-go
       - name: Clone cronet-go
         if: matrix.naive
         run: |

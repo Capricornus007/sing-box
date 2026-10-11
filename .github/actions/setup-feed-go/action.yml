@@ -1,0 +1,64 @@
+name: Install Go from the junlin03 feed (golang/go master tip)
+description: >-
+  裝 feed 裡那顆 go-git（= golang/go 的 master tip），與用戶機同源；
+  取代 actions/setup-go。
+
+# 為什麼要有這個 composite，而不是各 job 直接 actions/setup-go：
+#   官方**不提供**未發布版本的二進位。查證（2026-10-11）：
+#     go.dev/dl/ 只列發布版；go.dev/dl/devel/release.json 回 404；
+#     git ls-remote --tags golang/go | grep -c 'refs/tags/go1\.28' = 0
+#     （1.28 連 rc tag 都還沒打，最新發布版是 go1.27.2）。
+#   所以 setup-go 能拿到的「最新」只有 1.27.2，那不是尖端。用戶機上那顆是
+#   feed 的 go-git（實測 `go version` 報 go1.28-devel_<sha>），CI 要吃同一顆
+#   就只能吃這個包。
+#
+# ⚠️ 裝不到就紅，**不退回去用發布版**：退回來這一輪驗的就不是用戶機上那顆
+#    toolchain，綠燈會變成假訊號。
+#
+# ⚠️ 只適用 **Linux x86_64**：feed 那顆包的硬體架構是 x86_64、只此一檔。
+#    macOS／Windows 的 job 用不了（那些平台仍走 setup-go 的發布版，或由
+#    上線後另行裁決）。
+
+inputs:
+  repo:
+    description: feed 倉（owner/name）
+    required: false
+    default: Capricornus007/repo
+
+runs:
+  using: composite
+  steps:
+    - name: 取並安裝 go-git
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v jq >/dev/null 2>&1; then
+          # runner 上一般都有 jq；缺了就不要用一條 pipe 靜默產出空字串，
+          # 那會讓下面的 test -n 報「feed 裡沒有 go-git 資產」，把環境問題
+          # 誤報成 feed 問題。
+          echo "::error::容器裡沒有 jq，無法解析 feed 資產清單"
+          exit 1
+        fi
+        pkg=$(curl -fsSL \
+                "https://api.github.com/repos/${{ inputs.repo }}/releases/latest" \
+              | jq -r '.assets[] | select(.name | startswith("go-git-"))
+                       | .browser_download_url' | head -n1)
+        test -n "$pkg" || { echo "::error::feed 裡沒有 go-git 資產"; exit 1; }
+        echo ">> 取 $pkg"
+        curl -fsSL "$pkg" -o /tmp/go-git.pkg.tar.zst
+        # 包內容：/usr/lib/go/{bin/go,bin/gofmt,pkg/tool/...} ＋ /usr/bin/go 符號連結，
+        # GOROOT 實測為 /usr/lib/go。直接解到 / ，不經 pacman（runner 是 Ubuntu）。
+        sudo tar -x --zstd -f /tmp/go-git.pkg.tar.zst -C /
+        # 顯式釘住 GOROOT 與 PATH：GitHub runner 預裝的 Go 也在 PATH 裡，誰先命中
+        # 取決於順序，不能靠「應該會蓋過去」這種假設。
+        echo "GOROOT=/usr/lib/go" >> "$GITHUB_ENV"
+        echo "/usr/lib/go/bin" >> "$GITHUB_PATH"
+        # 不許 go 再去下載官方 toolchain 頂替（go.mod 的 go 指令低於 tip 時，預設
+        # 行為可能拉一個發布版回來，那這輪驗的就不是尖端）。
+        echo "GOTOOLCHAIN=local" >> "$GITHUB_ENV"
+        export PATH="/usr/lib/go/bin:$PATH"
+        go version
+        # 硬驗「真的是 tip」：feed 那顆萬一退化成發布版，這裡就要紅，
+        # 而不是讓整輪 CI 安靜地用回 1.27.x。
+        go version | grep -q -- '-devel' \
+          || { echo "::error::裝到的不是 tip：$(go version)"; exit 1; }
