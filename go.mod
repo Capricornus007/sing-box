@@ -209,4 +209,4 @@ require (
 
 replace github.com/reF1nd/sing-snell => github.com/reF1nd/sing-snell-reF1nd v0.0.8
 
-replace github.com/sagernet/sing-vmess => github.com/hawkff/sing-vmess v0.2.8-mod.1
+replace github.com/sagernet/sing-vmess => github.com/hawkff/sing-vmess v0.2.8-mod.2
