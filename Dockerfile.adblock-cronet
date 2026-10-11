@@ -1,7 +1,43 @@
 # syntax=docker/dockerfile:1.7
 
+# GO_IMAGE 現在只是 **bootstrap**：真正的編譯器是下面從 golang/go master 編出來的
+# 尖端（裝進 /usr/local/go，把這層發布版蓋掉）。留發布版镜像當基底是因為 make.bash
+# 需要一顆能跑的 Go 當 GOROOT_BOOTSTRAP，而官方不提供未發佈版本的二進位。
 ARG GO_IMAGE=golang:1.27-bookworm
 FROM --platform=$BUILDPLATFORM ${GO_IMAGE}
+
+# ── 尖端 Go（golang/go master）──────────────────────────────────────────────
+# 用戶 2026-10-11：「docker 的隨便，但我必須看到結果運行的包含最尖端」。
+# 省時：編好的 GOROOT 以 commit 為鍵存進 BuildKit cache mount（/opt/gotip-cache），
+# 同一個尖端只編一次（那 15-25 分鐘），之後每次 build 只是幾秒的 cp。
+# GO_TIP_SHA 一定要傳、沒傳就紅——留空靠 layer 快取的話，命中時會拿到「上一次的尖端」
+# 還聲稱是尖端，那是騙人。取法：git ls-remote https://github.com/golang/go master | cut -f1
+# 結尾 `go version | grep -- -devel` 是硬驗：裝到的不是尖端就讓 build 失敗，不准退回
+# 發布版、不准靜默放過（判準同 feed 倉 .github/actions/setup-feed-go）。
+ARG GO_TIP_SHA
+RUN --mount=type=cache,target=/opt/gotip-cache \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    set -eux; \
+    test -n "${GO_TIP_SHA}" || { echo "ERROR: 沒傳 --build-arg GO_TIP_SHA=<golang/go master 的 commit sha>（Makefile.plus 的 docker-build-adblock-cronet 會自動帶）"; exit 1; }; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends git ca-certificates; \
+    tip="/opt/gotip-cache/${GO_TIP_SHA}/go"; \
+    if [ ! -x "$tip/bin/go" ]; then \
+        git init -q /tmp/gosrc; \
+        git -C /tmp/gosrc remote add origin https://github.com/golang/go; \
+        git -C /tmp/gosrc fetch -q --depth 1 origin "${GO_TIP_SHA}"; \
+        git -C /tmp/gosrc checkout -q --detach FETCH_HEAD; \
+        ( cd /tmp/gosrc/src && GOTOOLCHAIN=local GOROOT_BOOTSTRAP=/usr/local/go ./make.bash ) || { echo "ERROR: 尖端的 make.bash 失敗"; exit 1; }; \
+        mkdir -p "$(dirname "$tip")"; \
+        mv /tmp/gosrc "$tip"; \
+    fi; \
+    rm -rf /usr/local/go; \
+    cp -a "$tip" /usr/local/go; \
+    go version; \
+    go version | grep -q -- '-devel' || { echo "ERROR: 裝進 /usr/local/go 的不是尖端（go version 沒帶 -devel）"; exit 1; }
+# 不許 go 去下載發布版頂替尖端（與 setup-feed-go 同樣釘 local）。
+ENV GOTOOLCHAIN=local
 
 ARG ADBLOCK_RUST_TOOLCHAIN=1.98.0
 

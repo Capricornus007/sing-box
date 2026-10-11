@@ -10,6 +10,39 @@ WORKDIR /src/common/adblock/bridge
 RUN CARGO_TARGET_DIR=/src/common/adblock/bridge/target cargo build --release
 
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
+
+# ── builder 吃尖端（golang/go master），不吃發布版 ───────────────────────────
+# 與同倉 Dockerfile 同一套做法，理由寫在那邊的註解裡（官方沒有未發佈版的二進位、
+# GO_TIP_SHA 不給就紅、結尾硬驗 go version 帶 -devel）。
+# 省時：編好的 GOROOT 以 commit 為鍵存進 BuildKit cache mount，同一個尖端只編一次，
+# 之後每次 build 只花幾秒 cp。取 sha：
+#   git ls-remote https://github.com/golang/go master | cut -f1
+# 本階段的 build 是 CGO_ENABLED=1（要鏈 adblock-rust 的靜態庫），所以尖端那顆必須
+# 連 C 工具鏈一起裝（apk 的 build-base/musl-dev），否則 make.bash 會把 toolchain
+# 編成 no-cgo、之後 cgo 建置直接紅。
+ARG GO_TIP_SHA
+RUN --mount=type=cache,target=/opt/gotip-cache set -eux; \
+    test -n "${GO_TIP_SHA}" || { echo "ERROR: 沒傳 --build-arg GO_TIP_SHA=<golang/go master 的 commit sha>"; exit 1; }; \
+    apk add --no-cache git build-base musl-dev; \
+    tip="/opt/gotip-cache/${GO_TIP_SHA}/go"; \
+    if [ ! -x "$tip/bin/go" ]; then \
+        git init -q /tmp/gosrc; \
+        git -C /tmp/gosrc remote add origin https://github.com/golang/go; \
+        git -C /tmp/gosrc fetch -q --depth 1 origin "${GO_TIP_SHA}"; \
+        git -C /tmp/gosrc checkout -q --detach FETCH_HEAD; \
+        ( cd /tmp/gosrc/src && GOTOOLCHAIN=local GOROOT_BOOTSTRAP=/usr/local/go ./make.bash ) || { echo "ERROR: 尖端的 make.bash 失敗"; exit 1; }; \
+        mkdir -p "$(dirname "$tip")"; \
+        mv /tmp/gosrc "$tip"; \
+    fi; \
+    rm -rf /opt/go-tip; \
+    cp -a "$tip" /opt/go-tip; \
+    /opt/go-tip/bin/go version; \
+    /opt/go-tip/bin/go version | grep -q -- '-devel' || { echo "ERROR: 編出來的不是尖端（go version 沒帶 -devel）"; exit 1; }
+ENV GOROOT=/opt/go-tip
+ENV PATH=/opt/go-tip/bin:${PATH}
+ENV GOTOOLCHAIN=local
+RUN go version | grep -q -- '-devel' || { echo "ERROR: builder 階段的 go 不是尖端：$(go version)"; exit 1; }
+
 RUN apk add --no-cache git build-base
 COPY . /go/src/github.com/sagernet/sing-box
 COPY --from=rust /adblock-rust /go/src/github.com/sagernet/adblock-rust
@@ -29,6 +62,10 @@ RUN set -ex \
         -o /go/bin/sing-box \
         -ldflags "-X \"github.com/sagernet/sing-box/constant.Version=$VERSION\" $LDFLAGS_SHARED -s -w -buildid=" \
         ./cmd/sing-box
+# 產物層級的硬驗：印出這顆 sing-box 是哪個 toolchain 編的，不是尖端就紅。
+RUN go version /go/bin/sing-box
+RUN go version /go/bin/sing-box | grep -q -- '-devel' \
+    || { echo "ERROR: 產物 sing-box 不是尖端編出來的"; exit 1; }
 
 FROM --platform=$TARGETPLATFORM alpine AS dist
 RUN apk add --no-cache --upgrade bash tzdata ca-certificates nftables
