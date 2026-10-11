@@ -219,9 +219,8 @@ type routeTestDNSTransport struct {
 	queried *[]string
 }
 
-func (*routeTestDNSTransport) Start(adapter.StartStage) error { return nil }
-func (*routeTestDNSTransport) Close() error                   { return nil }
-func (*routeTestDNSTransport) Reset()                         {}
+func (*routeTestDNSTransport) Start(adapter.StartStage, *adapter.Scope) error { return nil }
+func (*routeTestDNSTransport) Reset()                                         {}
 
 func (t *routeTestDNSTransport) Exchange(_ context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	*t.queried = append(*t.queried, t.Tag())

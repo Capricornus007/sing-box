@@ -121,18 +121,16 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	return outbound, nil
 }
 
-func (o *Outbound) Start(stage adapter.StartStage) error {
+func (o *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	switch stage {
+	case adapter.StartStateInitialize:
+		scope.Add(o.endpoint.Close)
 	case adapter.StartStateStart:
 		return o.endpoint.Start(false)
 	case adapter.StartStatePostStart:
 		return o.endpoint.Start(true)
 	}
 	return nil
-}
-
-func (o *Outbound) Close() error {
-	return o.endpoint.Close()
 }
 
 // PeerStatus reports the live state of the peers.

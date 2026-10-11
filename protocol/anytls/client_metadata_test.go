@@ -64,10 +64,11 @@ func TestClientMetadataOnWire(t *testing.T) {
 				Logger:   log.NewNOPFactory().Logger(),
 				DialOut:  func(context.Context) (net.Conn, error) { return clientConn, nil },
 			}}
-			if err := h.Start(adapter.StartStateInitialize); err != nil {
+			scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
+			defer scope.Close()
+			if err := h.Start(adapter.StartStateInitialize, scope); err != nil {
 				t.Fatal(err)
 			}
-			defer h.Close()
 			destination := M.ParseSocksaddr("example.invalid:443")
 			stream, err := h.createProxy(context.Background(), destination)
 			if err != nil {
