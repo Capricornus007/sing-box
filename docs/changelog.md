@@ -2,6 +2,10 @@
 icon: material/alert-decagram
 ---
 
+#### 1.15.0-alpha.12
+
+* Fixes and improvements
+
 #### 1.15.0-alpha.11
 
 * Fixes and improvements
@@ -136,9 +140,6 @@ See [WireGuard](/configuration/endpoint/wireguard/#on_demand),
 [OpenConnect](/configuration/endpoint/openconnect/#on_demand).
 
 **3**:
-
-Changes to the cache file are now collected in a write buffer and committed in one transaction
-when the buffer is full, on memory pressure, or when sing-box exits.
 
 See [Cache File](/configuration/experimental/cache-file/#buffer_size).
 
