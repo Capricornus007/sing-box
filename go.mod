@@ -219,7 +219,7 @@ require (
 
 replace github.com/amnezia-vpn/amneziawg-go/v3 => github.com/Capricornus007/amneziawg-go/v3 v3.1.20261008-mod.4
 
-replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.20261011114049-3800f68a5a7f
+replace github.com/sagernet/sing => github.com/Capricornus007/sing v0.9.5-0.20261013050421-cf7625cb2068
 
 replace github.com/sagernet/sing-snell => github.com/Capricornus007/sing-snell v0.0.0-20261011114123-e5b3ee6fad8f
 
