@@ -37,6 +37,18 @@ type AmneziaWGOutboundOptions struct {
 	SpecialJunk3               string `json:"i3,omitempty"`
 	SpecialJunk4               string `json:"i4,omitempty"`
 	SpecialJunk5               string `json:"i5,omitempty"`
+
+	// AmneziaWG 3.1 parameters. The key is base64 as in wg-quick configs; the timers and
+	// padding are a number or a "min-max" range.
+	HeaderProtectionKey    string `json:"header_protection_key,omitempty"`
+	ContentPaddingAddition string `json:"content_padding_addition,omitempty"`
+	RekeyAfterTime         string `json:"rekey_after_time,omitempty"`
+	RekeyTimeout           string `json:"rekey_timeout,omitempty"`
+	RejectAfterTime        string `json:"reject_after_time,omitempty"`
+	KeepaliveTimeout       string `json:"keepalive_timeout,omitempty"`
+	MaxHandshakeAttempts   string `json:"max_handshake_attempts,omitempty"`
+	RandomTrailers         bool   `json:"random_trailers,omitempty"`
+	DisableCookies         bool   `json:"disable_cookies,omitempty"`
 }
 
 // LegacyWireGuardOutboundOptions is the plain WireGuard outbound schema used by

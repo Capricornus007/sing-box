@@ -46,6 +46,17 @@ type EndpointOptions struct {
 	SpecialJunk3               string // i3
 	SpecialJunk4               string // i4
 	SpecialJunk5               string // i5
+
+	// AmneziaWG 3.1 parameters; empty values keep the device defaults.
+	HeaderProtectionKey    string // base64
+	ContentPaddingAddition string
+	RekeyAfterTime         string
+	RekeyTimeout           string
+	RejectAfterTime        string
+	KeepaliveTimeout       string
+	MaxHandshakeAttempts   string
+	RandomTrailers         bool
+	DisableCookies         bool
 }
 
 type PeerOptions struct {

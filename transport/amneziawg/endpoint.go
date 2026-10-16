@@ -45,17 +45,25 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	if len(privateKeyBytes) != 32 {
 		return nil, E.New("invalid private key length")
 	}
-	for _, value := range []string{options.InitPacketMagicHeader, options.ResponsePacketMagicHeader, options.UnderloadPacketMagicHeader, options.TransportPacketMagicHeader, options.SpecialJunk1, options.SpecialJunk2, options.SpecialJunk3, options.SpecialJunk4, options.SpecialJunk5} {
+	for _, value := range []string{options.InitPacketMagicHeader, options.ResponsePacketMagicHeader, options.UnderloadPacketMagicHeader, options.TransportPacketMagicHeader, options.SpecialJunk1, options.SpecialJunk2, options.SpecialJunk3, options.SpecialJunk4, options.SpecialJunk5, options.ContentPaddingAddition, options.RekeyAfterTime, options.RekeyTimeout, options.RejectAfterTime, options.KeepaliveTimeout, options.MaxHandshakeAttempts} {
 		if strings.ContainsAny(value, "\r\n") {
 			return nil, E.New("invalid line break in AmneziaWG parameter")
 		}
+	}
+	var headerProtectionKey string
+	if options.HeaderProtectionKey != "" {
+		keyBytes, err := base64.StdEncoding.DecodeString(options.HeaderProtectionKey)
+		if err != nil || len(keyBytes) != 32 {
+			return nil, E.New("invalid AmneziaWG header protection key")
+		}
+		headerProtectionKey = hex.EncodeToString(keyBytes)
 	}
 	privateKey := hex.EncodeToString(privateKeyBytes)
 	ipcConf := "private_key=" + privateKey
 	if options.ListenPort != 0 {
 		ipcConf += "\nlisten_port=" + F.ToString(options.ListenPort)
 	}
-	ipcConf += generateAmneziaWGIpcLines(options)
+	ipcConf += generateAmneziaWGIpcLines(options, headerProtectionKey)
 	var peers []peerConfig
 	for peerIndex, rawPeer := range options.Peers {
 		peer := peerConfig{
@@ -93,7 +101,7 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 				return nil, E.New("invalid reserved value for peer ", peerIndex, ", required 3 bytes, got ", len(peer.reserved))
 			}
 			copy(peer.reserved[:], rawPeer.Reserved[:])
-			if peer.reserved != [3]uint8{} && generateAmneziaWGIpcLines(options) != "" {
+			if peer.reserved != [3]uint8{} && generateAmneziaWGIpcLines(options, headerProtectionKey) != "" {
 				return nil, E.New("reserved bytes cannot be combined with AmneziaWG obfuscation")
 			}
 		}
@@ -292,7 +300,7 @@ func (c peerConfig) GenerateIpcLines() string {
 // settings as UAPI configuration lines. Zero/empty values are omitted so a
 // device without any AmneziaWG parameters configures exactly like plain
 // WireGuard.
-func generateAmneziaWGIpcLines(options EndpointOptions) string {
+func generateAmneziaWGIpcLines(options EndpointOptions, headerProtectionKey string) string {
 	var b strings.Builder
 	addInt := func(key string, value int32) {
 		if value != 0 {
@@ -326,5 +334,18 @@ func generateAmneziaWGIpcLines(options EndpointOptions) string {
 	addStr("i3", options.SpecialJunk3)
 	addStr("i4", options.SpecialJunk4)
 	addStr("i5", options.SpecialJunk5)
+	addStr("header_protection_key", headerProtectionKey)
+	addStr("content_padding_addition", options.ContentPaddingAddition)
+	addStr("rekey_after_time", options.RekeyAfterTime)
+	addStr("rekey_timeout", options.RekeyTimeout)
+	addStr("reject_after_time", options.RejectAfterTime)
+	addStr("keepalive_timeout", options.KeepaliveTimeout)
+	addStr("max_handshake_attempts", options.MaxHandshakeAttempts)
+	if options.RandomTrailers {
+		addStr("random_trailers", "true")
+	}
+	if options.DisableCookies {
+		addStr("disable_cookies", "true")
+	}
 	return b.String()
 }

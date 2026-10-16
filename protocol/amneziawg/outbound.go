@@ -113,6 +113,16 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		SpecialJunk3:               options.SpecialJunk3,
 		SpecialJunk4:               options.SpecialJunk4,
 		SpecialJunk5:               options.SpecialJunk5,
+
+		HeaderProtectionKey:    options.HeaderProtectionKey,
+		ContentPaddingAddition: options.ContentPaddingAddition,
+		RekeyAfterTime:         options.RekeyAfterTime,
+		RekeyTimeout:           options.RekeyTimeout,
+		RejectAfterTime:        options.RejectAfterTime,
+		KeepaliveTimeout:       options.KeepaliveTimeout,
+		MaxHandshakeAttempts:   options.MaxHandshakeAttempts,
+		RandomTrailers:         options.RandomTrailers,
+		DisableCookies:         options.DisableCookies,
 	})
 	if err != nil {
 		return nil, err
