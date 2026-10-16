@@ -97,11 +97,9 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		clientOptions = append(clientOptions, vmess.ClientWithAuthenticatedLength())
 	}
 	security := options.Security
+	// "auto" stays an AEAD cipher under TLS too: Xray-core servers since v26.7 reject the "zero" security.
 	if security == "" {
 		security = "auto"
-	}
-	if security == "auto" && outbound.tlsConfig != nil {
-		security = "zero"
 	}
 	client, err := vmess.NewClient(options.UUID, security, options.AlterId, clientOptions...)
 	if err != nil {
