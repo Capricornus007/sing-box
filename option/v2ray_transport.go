@@ -29,13 +29,14 @@ func NormalizeXHTTPMode(mode string) (string, error) {
 }
 
 type _V2RayTransportOptions struct {
-	Type               string                  `json:"type" enum:"http,ws,quic,grpc,httpupgrade,xhttp"`
+	Type               string                  `json:"type" enum:"http,ws,quic,grpc,httpupgrade,xhttp,kcp"`
 	HTTPOptions        V2RayHTTPOptions        `json:"-"`
 	WebsocketOptions   V2RayWebsocketOptions   `json:"-"`
 	QUICOptions        V2RayQUICOptions        `json:"-"`
 	GRPCOptions        V2RayGRPCOptions        `json:"-"`
 	HTTPUpgradeOptions V2RayHTTPUpgradeOptions `json:"-"`
 	XHTTPOptions       V2RayXHTTPOptions       `json:"-"`
+	KCPOptions         V2RayKCPOptions         `json:"-"`
 }
 
 type V2RayTransportOptions _V2RayTransportOptions
@@ -55,6 +56,8 @@ func (o V2RayTransportOptions) MarshalJSON() ([]byte, error) {
 		v = o.HTTPUpgradeOptions
 	case C.V2RayTransportTypeXHTTP:
 		v = o.XHTTPOptions
+	case C.V2RayTransportTypeKCP:
+		v = o.KCPOptions
 	case "":
 		return nil, E.New("missing transport type")
 	default:
@@ -82,6 +85,8 @@ func (o *V2RayTransportOptions) UnmarshalJSON(bytes []byte) error {
 		v = &o.HTTPUpgradeOptions
 	case C.V2RayTransportTypeXHTTP:
 		v = &o.XHTTPOptions
+	case C.V2RayTransportTypeKCP:
+		v = &o.KCPOptions
 	default:
 		return E.New("unknown transport type: " + o.Type)
 	}
@@ -101,6 +106,7 @@ func (o V2RayTransportOptions) DescribeSchema(builder schema.Builder) (*schema.N
 			{Value: C.V2RayTransportTypeGRPC, StructType: reflect.TypeFor[V2RayGRPCOptions]()},
 			{Value: C.V2RayTransportTypeHTTPUpgrade, StructType: reflect.TypeFor[V2RayHTTPUpgradeOptions]()},
 			{Value: C.V2RayTransportTypeXHTTP, StructType: reflect.TypeFor[V2RayXHTTPOptions]()},
+			{Value: C.V2RayTransportTypeKCP, StructType: reflect.TypeFor[V2RayKCPOptions]()},
 		}, nil)
 	})
 }
