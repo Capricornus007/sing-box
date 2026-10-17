@@ -174,12 +174,7 @@ func (w *kcpPacketWriter) Write(b []byte) (int, error) {
 	}
 
 	if w.security != nil {
-		nonceSize := w.security.NonceSize()
-		nonce := packet.Extend(nonceSize)
-		common.Must1(rand.Read(nonce))
-
-		encrypted := w.security.Seal(nil, nonce, b, nil)
-		packet.Write(encrypted)
+		sealPacket(packet, w.security, b)
 	} else {
 		packet.Write(b)
 	}
@@ -191,6 +186,14 @@ func (w *kcpPacketWriter) Write(b []byte) (int, error) {
 	}
 
 	return len(b), nil
+}
+
+// sealPacket appends a random nonce and the sealed segment b to packet. It seals into the free
+// space of the packet: a segment of one MTU and its overhead fit far below the buffer size.
+func sealPacket(packet *buf.Buffer, security cipher.AEAD, b []byte) {
+	nonce := packet.Extend(security.NonceSize())
+	common.Must1(rand.Read(nonce))
+	packet.Extend(len(security.Seal(packet.FreeBytes()[:0], nonce, b, nil)))
 }
 
 type kcpPacketReader struct {
@@ -212,7 +215,8 @@ func (r *kcpPacketReader) Read(b []byte) []Segment {
 		if len(b) <= nonceSize+overhead {
 			return nil
 		}
-		out, err := r.security.Open(nil, b[:nonceSize], b[nonceSize:], nil)
+		// Open in place: the segments copy what they keep, and the caller drops the packet after reading.
+		out, err := r.security.Open(b[nonceSize:nonceSize], b[:nonceSize], b[nonceSize:], nil)
 		if err != nil {
 			return nil
 		}

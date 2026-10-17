@@ -179,6 +179,7 @@ func (s *AckSegment) parse(conv uint16, cmd Command, opt SegmentOption, buf []by
 	if len(buf) < count*4 {
 		return false, nil
 	}
+	s.NumberList = make([]uint32, 0, count)
 	for i := 0; i < count; i++ {
 		s.PutNumber(binary.BigEndian.Uint32(buf))
 		buf = buf[4:]
@@ -308,7 +309,8 @@ func ReadSegment(buf []byte) (Segment, []byte) {
 	case CommandData:
 		seg = NewDataSegment()
 	case CommandACK:
-		seg = NewAckSegment(128)
+		// parse sizes the number list, which usually holds a few numbers, not the 128 a sender collects.
+		seg = new(AckSegment)
 	default:
 		seg = NewCmdOnlySegment()
 	}

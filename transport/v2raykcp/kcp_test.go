@@ -175,6 +175,49 @@ func TestKCPWireFormat(t *testing.T) {
 	}
 }
 
+// The cost of sending and reading back one data segment of a full MTU.
+func BenchmarkKCPPacket(b *testing.B) {
+	for name, options := range map[string]option.V2RayKCPOptions{"raw": {}, "legacy": {Legacy: true}, "seed": {Seed: "kcp-seed"}} {
+		b.Run(name, func(b *testing.B) {
+			config, err := NewConfig(options)
+			if err != nil {
+				b.Fatal(err)
+			}
+			security, _ := config.GetSecurity()
+			conn := &lastPacketConn{}
+			writer := &kcpPacketWriter{conn: conn, remoteAddr: &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 1}, header: config.GetPacketHeader(), security: security}
+			reader := &kcpPacketReader{security: security, headerSize: HeaderSize(config.GetHeaderType())}
+			data := &DataSegment{Conv: 1, payload: buf.New()}
+			data.payload.Extend(int(config.GetMTUValue()) - writer.Overhead() - DataSegmentOverhead)
+			segment := make([]byte, data.ByteSize())
+			data.Serialize(segment)
+			b.ReportAllocs()
+			b.SetBytes(int64(len(segment)))
+			for b.Loop() {
+				if _, err = writer.Write(segment); err != nil {
+					b.Fatal(err)
+				}
+				segments := reader.Read(conn.packet)
+				if len(segments) != 1 {
+					b.Fatal("packet does not read back")
+				}
+				segments[0].Release()
+			}
+		})
+	}
+}
+
+// lastPacketConn keeps the last packet written to it.
+type lastPacketConn struct {
+	N.PacketConn
+	packet []byte
+}
+
+func (c *lastPacketConn) WritePacket(buffer *buf.Buffer, _ M.Socksaddr) error {
+	c.packet = append(c.packet[:0], buffer.Bytes()...)
+	return nil
+}
+
 // capturePacketConn records the last packet written to it.
 type capturePacketConn struct {
 	net.Conn

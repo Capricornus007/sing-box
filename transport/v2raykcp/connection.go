@@ -1,7 +1,6 @@
 package v2raykcp
 
 import (
-	"bytes"
 	"io"
 	"net"
 	"runtime"
@@ -9,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 )
 
@@ -417,15 +417,12 @@ func (c *Connection) Write(b []byte) (int, error) {
 	}
 
 	totalWritten := 0
-	reader := bytes.NewReader(b)
 
-	for reader.Len() > 0 {
+	for len(b) > 0 {
+		n := min(len(b), int(c.mss))
 		buffer := buf.New()
-		n, _ := buffer.ReadFrom(io.LimitReader(reader, int64(c.mss)))
-		if n == 0 {
-			buffer.Release()
-			break
-		}
+		common.Must1(buffer.Write(b[:n]))
+		b = b[n:]
 
 		for !c.sendingWorker.Push(buffer) {
 			if c.State() != StateActive {
@@ -441,7 +438,7 @@ func (c *Connection) Write(b []byte) (int, error) {
 			}
 		}
 
-		totalWritten += int(n)
+		totalWritten += n
 	}
 
 	c.dataUpdater.WakeUp()

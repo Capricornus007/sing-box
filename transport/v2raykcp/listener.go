@@ -3,14 +3,12 @@ package v2raykcp
 import (
 	"context"
 	"crypto/cipher"
-	"crypto/rand"
 	"net"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
@@ -204,12 +202,7 @@ func (w *serverPacketWriter) Write(b []byte) (int, error) {
 	}
 
 	if w.security != nil {
-		nonceSize := w.security.NonceSize()
-		nonce := buffer.Extend(nonceSize)
-		common.Must1(rand.Read(nonce))
-
-		encrypted := w.security.Seal(nil, nonce, b, nil)
-		buffer.Write(encrypted)
+		sealPacket(buffer, w.security, b)
 	} else {
 		buffer.Write(b)
 	}
