@@ -119,6 +119,11 @@ func TestEndpointRejectsInvalidKeysAndParameterInjection(t *testing.T) {
 		{PrivateKey: key, SpecialJunk1: "<b 0xc7><r -5>"},
 		{PrivateKey: key, SpecialJunk2: "<rc 40000><rd 40000>"},
 		{PrivateKey: key, SpecialJunk5: "<dz -1>"},
+		// More junk packets than one send batch, and junk sizes that wrap around to gigabytes.
+		{PrivateKey: key, JunkPacketCount: 129, JunkPacketMinSize: 40, JunkPacketMaxSize: 70},
+		{PrivateKey: key, JunkPacketCount: 4, JunkPacketMinSize: 200, JunkPacketMaxSize: 50},
+		{PrivateKey: key, JunkPacketCount: 4, JunkPacketMinSize: 40},
+		{PrivateKey: key, JunkPacketCount: 4, JunkPacketMinSize: 40, JunkPacketMaxSize: 70000},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: "AA=="}}},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: key, PreSharedKey: "AA=="}}},
 		{PrivateKey: key, AmneziaWGObfuscationOptions: option.AmneziaWGObfuscationOptions{JunkPacketCount: 1}, Peers: []PeerOptions{{PublicKey: key, Reserved: []byte{1, 2, 3}, AllowedIPs: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}}}},

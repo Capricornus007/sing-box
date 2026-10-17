@@ -291,8 +291,12 @@ func (c peerConfig) GenerateIpcLines() string {
 	return ipcLines
 }
 
-// maxSpecialJunkSize is the largest UDP payload over IPv4; the device sends each I1-I5 packet as one datagram.
-const maxSpecialJunkSize = 65507
+// maxPacketSize is the largest UDP payload over IPv4; the device sends each junk and I1-I5 packet as one datagram.
+const maxPacketSize = 65507
+
+// maxJunkPacketCount is the most junk packets the device sends before a handshake; senders
+// that write 128 packets per batch panic on more.
+const maxJunkPacketCount = 128
 
 // specialJunkFits adds up an I1-I5 tag chain the way the device sizes the packet. The device takes
 // the lengths as they are: a negative one panics when the packet is built and a huge one allocates
@@ -324,12 +328,12 @@ func specialJunkFits(spec string) bool {
 			size += 4
 		case "r", "rc", "rd", "dz":
 			length, err := strconv.Atoi(argument)
-			if err != nil || length < 0 || length > maxSpecialJunkSize {
+			if err != nil || length < 0 || length > maxPacketSize {
 				return false
 			}
 			size += length
 		}
-		if size > maxSpecialJunkSize {
+		if size > maxPacketSize {
 			return false
 		}
 	}
@@ -345,8 +349,16 @@ func IpcLines(options option.AmneziaWGObfuscationOptions) (string, error) {
 	}
 	for index, value := range []string{options.SpecialJunk1, options.SpecialJunk2, options.SpecialJunk3, options.SpecialJunk4, options.SpecialJunk5} {
 		if !specialJunkFits(value) {
-			return "", E.New("invalid AmneziaWG i", index+1, ": every length must be a whole number of bytes and the packet at most ", maxSpecialJunkSize, " bytes")
+			return "", E.New("invalid AmneziaWG i", index+1, ": every length must be a whole number of bytes and the packet at most ", maxPacketSize, " bytes")
 		}
+	}
+	if options.JunkPacketCount < 0 || options.JunkPacketCount > maxJunkPacketCount {
+		return "", E.New("invalid AmneziaWG jc: at most ", maxJunkPacketCount, " junk packets")
+	}
+	// The device sizes junk packets from jmin and jmax as given: with jmin above jmax, including an
+	// unset jmax, the unsigned size wraps around to gigabytes.
+	if options.JunkPacketCount > 0 && (options.JunkPacketMinSize < 0 || options.JunkPacketMinSize > options.JunkPacketMaxSize || options.JunkPacketMaxSize > maxPacketSize) {
+		return "", E.New("invalid AmneziaWG jmin and jmax: jmin must not exceed jmax, and jmax must be at most ", maxPacketSize, " bytes")
 	}
 	var headerProtectionKey string
 	if options.HeaderProtectionKey != "" {
