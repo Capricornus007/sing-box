@@ -39,11 +39,13 @@ func v31Options(key string, address string, peers []PeerOptions, dialer N.Dialer
 			ResponsePacketMagicHeader:  "1000000-8000000",
 			UnderloadPacketMagicHeader: "10000000-80000000",
 			TransportPacketMagicHeader: "100000000-800000000",
-			HeaderProtectionKey:        headerKey,
-			ContentPaddingAddition:     "8-24",
-			RekeyAfterTime:             "110-130",
-			RejectAfterTime:            "170-200",
-			RandomTrailers:             true,
+			// Every tag that carries a length, sent before each handshake.
+			SpecialJunk1:           "<b 0xc700000001><r 16><t><rc 8><rd 4><dz 2>",
+			HeaderProtectionKey:    headerKey,
+			ContentPaddingAddition: "8-24",
+			RekeyAfterTime:         "110-130",
+			RejectAfterTime:        "170-200",
+			RandomTrailers:         true,
 		},
 	}
 }
@@ -109,7 +111,7 @@ func TestAmneziaWG31OptionsReachTheDevice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, line := range []string{"header_protection_key=" + strings.Repeat("00", 32), "content_padding_addition=8-24", "rekey_after_time=110-130", "reject_after_time=170-200", "random_trailers=true"} {
+	for _, line := range []string{"i1=<b 0xc700000001><r 16><t><rc 8><rd 4><dz 2>", "header_protection_key=" + strings.Repeat("00", 32), "content_padding_addition=8-24", "rekey_after_time=110-130", "reject_after_time=170-200", "random_trailers=true"} {
 		if !strings.Contains(lines, line+"\n") {
 			t.Fatalf("missing %s in %q", line, lines)
 		}

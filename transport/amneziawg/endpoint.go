@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/amnezia-vpn/amneziawg-go/v3/device"
@@ -290,12 +291,61 @@ func (c peerConfig) GenerateIpcLines() string {
 	return ipcLines
 }
 
+// maxSpecialJunkSize is the largest UDP payload over IPv4; the device sends each I1-I5 packet as one datagram.
+const maxSpecialJunkSize = 65507
+
+// specialJunkFits adds up an I1-I5 tag chain the way the device sizes the packet. The device takes
+// the lengths as they are: a negative one panics when the packet is built and a huge one allocates
+// without bound. Tags the device cannot parse are left for it to report.
+func specialJunkFits(spec string) bool {
+	size := 0
+	for rest := spec; ; {
+		start := strings.IndexByte(rest, '<')
+		if start < 0 {
+			return true
+		}
+		end := strings.IndexByte(rest[start:], '>')
+		if end < 0 {
+			return true
+		}
+		fields := strings.Fields(rest[start+1 : start+end])
+		rest = rest[start+end+1:]
+		if len(fields) == 0 {
+			continue
+		}
+		argument := ""
+		if len(fields) > 1 {
+			argument = fields[1]
+		}
+		switch fields[0] {
+		case "b":
+			size += len(strings.TrimPrefix(argument, "0x")) / 2
+		case "t":
+			size += 4
+		case "r", "rc", "rd", "dz":
+			length, err := strconv.Atoi(argument)
+			if err != nil || length < 0 || length > maxSpecialJunkSize {
+				return false
+			}
+			size += length
+		}
+		if size > maxSpecialJunkSize {
+			return false
+		}
+	}
+}
+
 // IpcLines returns the AmneziaWG settings as wireguard-go UAPI lines, each ending in a
 // newline. Zero values are left out, so a device without settings stays plain WireGuard.
 func IpcLines(options option.AmneziaWGObfuscationOptions) (string, error) {
 	for _, value := range []string{options.InitPacketMagicHeader, options.ResponsePacketMagicHeader, options.UnderloadPacketMagicHeader, options.TransportPacketMagicHeader, options.SpecialJunk1, options.SpecialJunk2, options.SpecialJunk3, options.SpecialJunk4, options.SpecialJunk5, options.ContentPaddingAddition, options.RekeyAfterTime, options.RekeyTimeout, options.RejectAfterTime, options.KeepaliveTimeout, options.MaxHandshakeAttempts} {
 		if strings.ContainsAny(value, "\r\n") {
 			return "", E.New("invalid line break in AmneziaWG parameter")
+		}
+	}
+	for index, value := range []string{options.SpecialJunk1, options.SpecialJunk2, options.SpecialJunk3, options.SpecialJunk4, options.SpecialJunk5} {
+		if !specialJunkFits(value) {
+			return "", E.New("invalid AmneziaWG i", index+1, ": every length must be a whole number of bytes and the packet at most ", maxSpecialJunkSize, " bytes")
 		}
 	}
 	var headerProtectionKey string

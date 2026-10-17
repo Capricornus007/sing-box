@@ -115,6 +115,10 @@ func TestEndpointRejectsInvalidKeysAndParameterInjection(t *testing.T) {
 		{PrivateKey: "AA=="},
 		{PrivateKey: key, InitPacketMagicHeader: "64\nreplace_peers=true"},
 		{PrivateKey: key, SpecialJunk1: "<r 16>\rprivate_key=0"},
+		// The device would panic building these packets or allocate without bound.
+		{PrivateKey: key, SpecialJunk1: "<b 0xc7><r -5>"},
+		{PrivateKey: key, SpecialJunk2: "<rc 40000><rd 40000>"},
+		{PrivateKey: key, SpecialJunk5: "<dz -1>"},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: "AA=="}}},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: key, PreSharedKey: "AA=="}}},
 		{PrivateKey: key, AmneziaWGObfuscationOptions: option.AmneziaWGObfuscationOptions{JunkPacketCount: 1}, Peers: []PeerOptions{{PublicKey: key, Reserved: []byte{1, 2, 3}, AllowedIPs: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}}}},
