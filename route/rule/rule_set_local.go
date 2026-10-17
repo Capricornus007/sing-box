@@ -11,6 +11,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/srs"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/nekoutils"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -53,6 +54,14 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 		if err != nil {
 			return nil, err
 		}
+	} else if rules, found, err := nekoRuleSet(options.LocalOptions.Path); found {
+		if err != nil {
+			return nil, err
+		}
+		err = ruleSet.reloadRules(rules)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		filePath := filemanager.BasePath(ctx, strings.ReplaceAll(options.LocalOptions.Path, C.RuleSetTagPlaceholder, tag))
 		filePath, _ = filepath.Abs(filePath)
@@ -75,6 +84,22 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 		ruleSet.watcher = watcher
 	}
 	return ruleSet, nil
+}
+
+// nekoRuleSet reads the rule sets that NekoBox names geoip:<code> and geosite:<name> from its
+// geoip.db and geosite.db, through the readers libcore registers. found is false for other paths.
+// They are read when the core starts and are not watched like rule-set files, so updated
+// databases apply at the next start.
+func nekoRuleSet(path string) (rules []option.HeadlessRule, found bool, err error) {
+	if name, ok := strings.CutPrefix(path, "geoip:"); ok && nekoutils.GetGeoIPHeadlessRules != nil {
+		rules, err = nekoutils.GetGeoIPHeadlessRules(name)
+		return rules, true, err
+	}
+	if name, ok := strings.CutPrefix(path, "geosite:"); ok && nekoutils.GetGeoSiteHeadlessRules != nil {
+		rules, err = nekoutils.GetGeoSiteHeadlessRules(name)
+		return rules, true, err
+	}
+	return nil, false, nil
 }
 
 func (s *LocalRuleSet) Name() string {
