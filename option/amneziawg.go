@@ -20,6 +20,12 @@ type AmneziaWGOutboundOptions struct {
 	MTU           uint32      `json:"mtu,omitempty"`
 	Network       NetworkList `json:"network,omitempty"`
 
+	AmneziaWGObfuscationOptions
+}
+
+// AmneziaWGObfuscationOptions are the AmneziaWG settings of a WireGuard device. Zero values
+// keep plain WireGuard.
+type AmneziaWGObfuscationOptions struct {
 	// AmneziaWG obfuscation parameters.
 	JunkPacketCount            int32  `json:"jc,omitempty"`
 	JunkPacketMinSize          int32  `json:"jmin,omitempty"`

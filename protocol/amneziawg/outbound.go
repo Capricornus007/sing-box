@@ -97,32 +97,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		},
 		Peers: peers,
 
-		JunkPacketCount:            options.JunkPacketCount,
-		JunkPacketMinSize:          options.JunkPacketMinSize,
-		JunkPacketMaxSize:          options.JunkPacketMaxSize,
-		InitPacketJunkSize:         options.InitPacketJunkSize,
-		ResponsePacketJunkSize:     options.ResponsePacketJunkSize,
-		CookieReplyPacketJunkSize:  options.CookieReplyPacketJunkSize,
-		TransportPacketJunkSize:    options.TransportPacketJunkSize,
-		InitPacketMagicHeader:      options.InitPacketMagicHeader,
-		ResponsePacketMagicHeader:  options.ResponsePacketMagicHeader,
-		UnderloadPacketMagicHeader: options.UnderloadPacketMagicHeader,
-		TransportPacketMagicHeader: options.TransportPacketMagicHeader,
-		SpecialJunk1:               options.SpecialJunk1,
-		SpecialJunk2:               options.SpecialJunk2,
-		SpecialJunk3:               options.SpecialJunk3,
-		SpecialJunk4:               options.SpecialJunk4,
-		SpecialJunk5:               options.SpecialJunk5,
-
-		HeaderProtectionKey:    options.HeaderProtectionKey,
-		ContentPaddingAddition: options.ContentPaddingAddition,
-		RekeyAfterTime:         options.RekeyAfterTime,
-		RekeyTimeout:           options.RekeyTimeout,
-		RejectAfterTime:        options.RejectAfterTime,
-		KeepaliveTimeout:       options.KeepaliveTimeout,
-		MaxHandshakeAttempts:   options.MaxHandshakeAttempts,
-		RandomTrailers:         options.RandomTrailers,
-		DisableCookies:         options.DisableCookies,
+		AmneziaWGObfuscationOptions: options.AmneziaWGObfuscationOptions,
 	})
 	if err != nil {
 		return nil, err

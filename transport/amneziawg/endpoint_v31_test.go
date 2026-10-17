@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/service/pause"
@@ -19,29 +20,31 @@ import (
 
 func v31Options(key string, address string, peers []PeerOptions, dialer N.Dialer, headerKey string) EndpointOptions {
 	return EndpointOptions{
-		Context:                pause.WithDefaultManager(context.Background()),
-		Logger:                 log.NewNOPFactory().Logger(),
-		Dialer:                 dialer,
-		Address:                []netip.Prefix{netip.MustParsePrefix(address)},
-		PrivateKey:             key,
-		Peers:                  peers,
-		JunkPacketCount:        3,
-		JunkPacketMinSize:      40,
-		JunkPacketMaxSize:      90,
-		InitPacketJunkSize:     20,
-		ResponsePacketJunkSize: 30,
-		// Header protection needs every junk size of at least 12 bytes.
-		CookieReplyPacketJunkSize:  20,
-		TransportPacketJunkSize:    16,
-		InitPacketMagicHeader:      "100000-800000",
-		ResponsePacketMagicHeader:  "1000000-8000000",
-		UnderloadPacketMagicHeader: "10000000-80000000",
-		TransportPacketMagicHeader: "100000000-800000000",
-		HeaderProtectionKey:        headerKey,
-		ContentPaddingAddition:     "8-24",
-		RekeyAfterTime:             "110-130",
-		RejectAfterTime:            "170-200",
-		RandomTrailers:             true,
+		Context:    pause.WithDefaultManager(context.Background()),
+		Logger:     log.NewNOPFactory().Logger(),
+		Dialer:     dialer,
+		Address:    []netip.Prefix{netip.MustParsePrefix(address)},
+		PrivateKey: key,
+		Peers:      peers,
+		AmneziaWGObfuscationOptions: option.AmneziaWGObfuscationOptions{
+			JunkPacketCount:        3,
+			JunkPacketMinSize:      40,
+			JunkPacketMaxSize:      90,
+			InitPacketJunkSize:     20,
+			ResponsePacketJunkSize: 30,
+			// Header protection needs every junk size of at least 12 bytes.
+			CookieReplyPacketJunkSize:  20,
+			TransportPacketJunkSize:    16,
+			InitPacketMagicHeader:      "100000-800000",
+			ResponsePacketMagicHeader:  "1000000-8000000",
+			UnderloadPacketMagicHeader: "10000000-80000000",
+			TransportPacketMagicHeader: "100000000-800000000",
+			HeaderProtectionKey:        headerKey,
+			ContentPaddingAddition:     "8-24",
+			RekeyAfterTime:             "110-130",
+			RejectAfterTime:            "170-200",
+			RandomTrailers:             true,
+		},
 	}
 }
 
@@ -102,9 +105,12 @@ func TestAmneziaWG31OptionsReachTheDevice(t *testing.T) {
 		t.Fatal(err)
 	}
 	endpoint.Close()
-	lines := generateAmneziaWGIpcLines(options, strings.Repeat("00", 32))
+	lines, err := IpcLines(options.AmneziaWGObfuscationOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, line := range []string{"header_protection_key=" + strings.Repeat("00", 32), "content_padding_addition=8-24", "rekey_after_time=110-130", "reject_after_time=170-200", "random_trailers=true"} {
-		if !strings.Contains(lines, "\n"+line) {
+		if !strings.Contains(lines, line+"\n") {
 			t.Fatalf("missing %s in %q", line, lines)
 		}
 	}

@@ -210,3 +210,8 @@ require (
 replace github.com/reF1nd/sing-snell => github.com/reF1nd/sing-snell-reF1nd v0.0.8
 
 replace github.com/sagernet/sing-vmess => github.com/hawkff/sing-vmess v0.2.8-mod.3
+
+// AmneziaWG for the Tailscale endpoint: the device obfuscation and the engine hook.
+replace github.com/sagernet/wireguard-go => github.com/hawkff/wireguard-go v0.0.8-0.20261017033643-bae70cebfb2d
+
+replace github.com/sagernet/tailscale => github.com/hawkff/tailscale v1.102.1-sing-box-1.14-mod.5.0.20261017014144-a62453cd1d3f

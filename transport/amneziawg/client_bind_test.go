@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"github.com/sagernet/sing-box/option"
 	"net"
 	"net/netip"
 	"strings"
@@ -116,7 +117,7 @@ func TestEndpointRejectsInvalidKeysAndParameterInjection(t *testing.T) {
 		{PrivateKey: key, SpecialJunk1: "<r 16>\rprivate_key=0"},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: "AA=="}}},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: key, PreSharedKey: "AA=="}}},
-		{PrivateKey: key, JunkPacketCount: 1, Peers: []PeerOptions{{PublicKey: key, Reserved: []byte{1, 2, 3}, AllowedIPs: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}}}},
+		{PrivateKey: key, AmneziaWGObfuscationOptions: option.AmneziaWGObfuscationOptions{JunkPacketCount: 1}, Peers: []PeerOptions{{PublicKey: key, Reserved: []byte{1, 2, 3}, AllowedIPs: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}}}},
 	}
 	for index, options := range cases {
 		_, err := NewEndpoint(options)

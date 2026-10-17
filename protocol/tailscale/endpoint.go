@@ -35,6 +35,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/tailscale/tailssh"
 	R "github.com/sagernet/sing-box/route/rule"
+	"github.com/sagernet/sing-box/transport/amneziawg"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/bufio"
@@ -209,6 +210,13 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	taildropDirectory = filemanager.BasePath(ctx, os.ExpandEnv(taildropDirectory))
 	taildropDirectory, _ = filepath.Abs(taildropDirectory)
+	var amneziaWG string
+	if options.AmneziaWG != nil {
+		amneziaWG, err = amneziawg.IpcLines(*options.AmneziaWG)
+		if err != nil {
+			return nil, err
+		}
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	return &Endpoint{
 		cancel:            cancel,
@@ -236,6 +244,7 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 			Port:          options.ListenPort,
 			AdvertiseTags: options.AdvertiseTags,
 			OnlyTCP443:    options.OnlyTCP443,
+			AmneziaWG:     amneziaWG,
 			Dialer:        &endpointDialer{Dialer: outboundDialer, logger: logger},
 			LookupHook: func(ctx context.Context, host string) ([]netip.Addr, error) {
 				return dnsRouter.Lookup(ctx, host, dialerQueryOptions)

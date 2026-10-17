@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/amnezia-vpn/amneziawg-go/v3/device"
+	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
@@ -45,25 +46,18 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	if len(privateKeyBytes) != 32 {
 		return nil, E.New("invalid private key length")
 	}
-	for _, value := range []string{options.InitPacketMagicHeader, options.ResponsePacketMagicHeader, options.UnderloadPacketMagicHeader, options.TransportPacketMagicHeader, options.SpecialJunk1, options.SpecialJunk2, options.SpecialJunk3, options.SpecialJunk4, options.SpecialJunk5, options.ContentPaddingAddition, options.RekeyAfterTime, options.RekeyTimeout, options.RejectAfterTime, options.KeepaliveTimeout, options.MaxHandshakeAttempts} {
-		if strings.ContainsAny(value, "\r\n") {
-			return nil, E.New("invalid line break in AmneziaWG parameter")
-		}
-	}
-	var headerProtectionKey string
-	if options.HeaderProtectionKey != "" {
-		keyBytes, err := base64.StdEncoding.DecodeString(options.HeaderProtectionKey)
-		if err != nil || len(keyBytes) != 32 {
-			return nil, E.New("invalid AmneziaWG header protection key")
-		}
-		headerProtectionKey = hex.EncodeToString(keyBytes)
+	amneziaLines, err := IpcLines(options.AmneziaWGObfuscationOptions)
+	if err != nil {
+		return nil, err
 	}
 	privateKey := hex.EncodeToString(privateKeyBytes)
 	ipcConf := "private_key=" + privateKey
 	if options.ListenPort != 0 {
 		ipcConf += "\nlisten_port=" + F.ToString(options.ListenPort)
 	}
-	ipcConf += generateAmneziaWGIpcLines(options, headerProtectionKey)
+	if amneziaLines != "" {
+		ipcConf += "\n" + strings.TrimSuffix(amneziaLines, "\n")
+	}
 	var peers []peerConfig
 	for peerIndex, rawPeer := range options.Peers {
 		peer := peerConfig{
@@ -101,7 +95,7 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 				return nil, E.New("invalid reserved value for peer ", peerIndex, ", required 3 bytes, got ", len(peer.reserved))
 			}
 			copy(peer.reserved[:], rawPeer.Reserved[:])
-			if peer.reserved != [3]uint8{} && generateAmneziaWGIpcLines(options, headerProtectionKey) != "" {
+			if peer.reserved != [3]uint8{} && amneziaLines != "" {
 				return nil, E.New("reserved bytes cannot be combined with AmneziaWG obfuscation")
 			}
 		}
@@ -296,26 +290,37 @@ func (c peerConfig) GenerateIpcLines() string {
 	return ipcLines
 }
 
-// generateAmneziaWGIpcLines emits the device-level AmneziaWG obfuscation
-// settings as UAPI configuration lines. Zero/empty values are omitted so a
-// device without any AmneziaWG parameters configures exactly like plain
-// WireGuard.
-func generateAmneziaWGIpcLines(options EndpointOptions, headerProtectionKey string) string {
+// IpcLines returns the AmneziaWG settings as wireguard-go UAPI lines, each ending in a
+// newline. Zero values are left out, so a device without settings stays plain WireGuard.
+func IpcLines(options option.AmneziaWGObfuscationOptions) (string, error) {
+	for _, value := range []string{options.InitPacketMagicHeader, options.ResponsePacketMagicHeader, options.UnderloadPacketMagicHeader, options.TransportPacketMagicHeader, options.SpecialJunk1, options.SpecialJunk2, options.SpecialJunk3, options.SpecialJunk4, options.SpecialJunk5, options.ContentPaddingAddition, options.RekeyAfterTime, options.RekeyTimeout, options.RejectAfterTime, options.KeepaliveTimeout, options.MaxHandshakeAttempts} {
+		if strings.ContainsAny(value, "\r\n") {
+			return "", E.New("invalid line break in AmneziaWG parameter")
+		}
+	}
+	var headerProtectionKey string
+	if options.HeaderProtectionKey != "" {
+		keyBytes, err := base64.StdEncoding.DecodeString(options.HeaderProtectionKey)
+		if err != nil || len(keyBytes) != 32 {
+			return "", E.New("invalid AmneziaWG header protection key")
+		}
+		headerProtectionKey = hex.EncodeToString(keyBytes)
+	}
 	var b strings.Builder
 	addInt := func(key string, value int32) {
 		if value != 0 {
-			b.WriteString("\n")
 			b.WriteString(key)
 			b.WriteString("=")
 			b.WriteString(F.ToString(value))
+			b.WriteString("\n")
 		}
 	}
 	addStr := func(key string, value string) {
 		if value != "" {
-			b.WriteString("\n")
 			b.WriteString(key)
 			b.WriteString("=")
 			b.WriteString(value)
+			b.WriteString("\n")
 		}
 	}
 	addInt("jc", options.JunkPacketCount)
@@ -347,5 +352,5 @@ func generateAmneziaWGIpcLines(options EndpointOptions, headerProtectionKey stri
 	if options.DisableCookies {
 		addStr("disable_cookies", "true")
 	}
-	return b.String()
+	return b.String(), nil
 }

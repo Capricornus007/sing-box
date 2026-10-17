@@ -35,6 +35,8 @@ type TailscaleEndpointOptions struct {
 	OnlyTCP443                 bool                       `json:"only_tcp_443,omitempty"`
 	SSHServer                  *TailscaleSSHServerOptions `json:"ssh_server,omitempty"`
 	TaildropDirectory          string                     `json:"taildrop_directory,omitempty"`
+	// AmneziaWG obfuscates the node's WireGuard packets. Every node it reaches needs the same settings.
+	AmneziaWG *AmneziaWGObfuscationOptions `json:"amnezia_wg,omitempty"`
 }
 
 type _TailscaleSSHServerOptions struct {
