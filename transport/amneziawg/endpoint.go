@@ -360,6 +360,19 @@ func IpcLines(options option.AmneziaWGObfuscationOptions) (string, error) {
 	if options.JunkPacketCount > 0 && (options.JunkPacketMinSize < 0 || options.JunkPacketMinSize > options.JunkPacketMaxSize || options.JunkPacketMaxSize > maxPacketSize) {
 		return "", E.New("invalid AmneziaWG jmin and jmax: jmin must not exceed jmax, and jmax must be at most ", maxPacketSize, " bytes")
 	}
+	// S1 to S4 pad the handshake initiation, response, cookie reply and transport messages, and the device
+	// sends each padded message as one datagram. It reads tunnel packets at offset 16+S4 into a 65535-byte
+	// buffer, so a larger S4 crashes it.
+	for index, padding := range []struct{ size, message int32 }{
+		{options.InitPacketJunkSize, 148},
+		{options.ResponsePacketJunkSize, 92},
+		{options.CookieReplyPacketJunkSize, 64},
+		{options.TransportPacketJunkSize, 32},
+	} {
+		if padding.size < 0 || padding.size > maxPacketSize-padding.message {
+			return "", E.New("invalid AmneziaWG s", index+1, ": every padded message must fit ", maxPacketSize, " bytes")
+		}
+	}
 	var headerProtectionKey string
 	if options.HeaderProtectionKey != "" {
 		keyBytes, err := base64.StdEncoding.DecodeString(options.HeaderProtectionKey)

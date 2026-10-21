@@ -124,6 +124,10 @@ func TestEndpointRejectsInvalidKeysAndParameterInjection(t *testing.T) {
 		{PrivateKey: key, JunkPacketCount: 4, JunkPacketMinSize: 200, JunkPacketMaxSize: 50},
 		{PrivateKey: key, JunkPacketCount: 4, JunkPacketMinSize: 40},
 		{PrivateKey: key, JunkPacketCount: 4, JunkPacketMinSize: 40, JunkPacketMaxSize: 70000},
+		// Padded messages larger than a datagram; a transport padding past the read buffer crashes the device.
+		{PrivateKey: key, InitPacketJunkSize: 65507 - 147},
+		{PrivateKey: key, TransportPacketJunkSize: 65520},
+		{PrivateKey: key, CookieReplyPacketJunkSize: -1},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: "AA=="}}},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: key, PreSharedKey: "AA=="}}},
 		{PrivateKey: key, AmneziaWGObfuscationOptions: option.AmneziaWGObfuscationOptions{JunkPacketCount: 1}, Peers: []PeerOptions{{PublicKey: key, Reserved: []byte{1, 2, 3}, AllowedIPs: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}}}},
@@ -136,5 +140,8 @@ func TestEndpointRejectsInvalidKeysAndParameterInjection(t *testing.T) {
 		if strings.Contains(err.Error(), key) || strings.Contains(err.Error(), "replace_peers") {
 			t.Fatalf("case %d exposed input", index)
 		}
+	}
+	if _, err := IpcLines(option.AmneziaWGObfuscationOptions{InitPacketJunkSize: 65507 - 148, TransportPacketJunkSize: 65507 - 32}); err != nil {
+		t.Fatal("refused paddings at the limit:", err)
 	}
 }
