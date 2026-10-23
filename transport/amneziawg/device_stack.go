@@ -75,7 +75,7 @@ func newStackDevice(options DeviceOptions) (*stackDevice, error) {
 	tunDevice.stack = ipStack
 	if options.Handler != nil {
 		ipStack.SetTransportProtocolHandler(tcp.ProtocolNumber, tun.NewTCPForwarder(options.Context, ipStack, options.Handler).HandlePacket)
-		tunDevice.udpForwarder = tun.NewUDPForwarder(options.Context, ipStack, options.Handler, tun.UDPNatOptions{
+		tunDevice.udpForwarder = tun.NewUDPForwarder(options.Context, ipStack, options.Handler, nil, tun.UDPNatOptions{
 			Handler: options.Handler,
 			Timeout: options.UDPTimeout,
 		})
