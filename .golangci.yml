@@ -37,6 +37,17 @@ linters:
     presets:
       - comments
       - common-false-positives
+    rules:
+      # x/net v0.58 起把 golang.org/x/net/http2 整組標成 deprecated（改推 net/http 的
+      # HTTP2Config）。本倉要用 http2 的裸連線／自訂 ConnPool／自訂 DialTLSContext 路徑
+      # （h2 傳輸層、grpclite、Reality、xhttp、web_bridge 的 TrailerPrefix），換成 net/http
+      # 那套等於重寫 transport/http 與 common/httpclient，且上游 SagerNet 目前還停在
+      # x/net v0.57、還沒Migration，我們搶先改會在合併時整片衝突。
+      # 因此只擋「被棄用的符號本身屬於 x/net/http2 套」這一類 SA1019，
+      # 其他套的 deprecation（含 golang.org/x 其他子樹）照樣會紅。
+      - linters:
+          - staticcheck
+        text: 'SA1019: \(?\*?golang\.org/x/net/http2\.'
     paths:
       - transport/simple-obfs
       - \.pb\.go$
