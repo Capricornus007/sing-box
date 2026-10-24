@@ -21,7 +21,6 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
-	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/bufio"
 	"github.com/sagernet/sing/common/canceler"
@@ -30,15 +29,16 @@ import (
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/common/x/list"
+	"github.com/sagernet/sing/service"
 )
 
 var _ adapter.ConnectionManager = (*ConnectionManager)(nil)
 
 type ConnectionManager struct {
 	urlTestHistory urltest.HistoryStorage
-	logger      logger.ContextLogger
-	access      sync.Mutex
-	connections list.List[io.Closer]
+	logger         logger.ContextLogger
+	access         sync.Mutex
+	connections    list.List[io.Closer]
 }
 
 func NewConnectionManager(ctx context.Context, logger logger.ContextLogger) *ConnectionManager {
