@@ -9,7 +9,7 @@ import (
 
 	C "github.com/sagernet/sing-box/constant"
 	transportHTTP "github.com/sagernet/sing-box/transport/http"
-	"github.com/sagernet/sing-tun"
+	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"

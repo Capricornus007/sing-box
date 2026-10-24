@@ -22,7 +22,7 @@ import (
 	"github.com/sagernet/sing-box/transport/device"
 	"github.com/sagernet/sing-box/transport/http"
 	"github.com/sagernet/sing-box/transport/masque"
-	"github.com/sagernet/sing-tun"
+	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/auth"
 	"github.com/sagernet/sing/common/buf"

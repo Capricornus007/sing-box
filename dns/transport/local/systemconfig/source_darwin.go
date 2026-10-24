@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
-	"github.com/sagernet/sing-tun"
+	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing-tun/dnsinfo"
 	"github.com/sagernet/sing/common"
 	M "github.com/sagernet/sing/common/metadata"

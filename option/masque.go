@@ -1,13 +1,13 @@
 package option
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"net"
-	"context"
 	"net/netip"
 	"reflect"
 
@@ -125,6 +125,7 @@ func (o MASQUEServerEndpointOptions) DescribeSchema(builder schema.Builder) (*sc
 	}
 	return node, nil
 }
+
 // ── fork 專有型別（上游 option/masque.go 沒有，但 common/tls/masque_client.go 與
 // fork 的 MASQUE 配置面需要；從 HEAD 版 option/masque.go 原樣搬回）──
 
@@ -185,7 +186,6 @@ type MASQUEConfig struct {
 	IPv4           string `json:"ipv4"`             // Assigned IPv4 address
 	IPv6           string `json:"ipv6"`             // Assigned IPv6 address
 }
-
 
 // ── fork 獨有：MASQUEConfig 的金鑰/端點選擇方法（common/tls 與 protocol/masque 依賴）──
 
@@ -250,4 +250,3 @@ func (c *MASQUEConfig) SelectEndpointFromConfig(useHTTP2 bool, useIPv6 bool, por
 	}
 	return &net.UDPAddr{IP: ip, Port: port}, nil
 }
-
