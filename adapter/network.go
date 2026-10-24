@@ -24,8 +24,6 @@ type NetworkManager interface {
 	AutoDetectInterface() bool
 	AutoDetectInterfaceFunc() control.Func
 	ProtectFunc() control.Func
-	RegisterExtraProtectFunc(protect control.Func)
-	UnregisterExtraProtectFunc()
 	DefaultOptions() NetworkOptions
 	RegisterAutoRedirectOutputMark(mark uint32) error
 	AutoRedirectOutputMark() uint32
@@ -39,6 +37,7 @@ type NetworkManager interface {
 	WIFIState() WIFIState
 	UpdateWIFIState(ctx context.Context)
 	ResetNetwork(ctx context.Context)
+	FlushSystemDNSCache()
 	ReleaseMemory(ctx context.Context)
 }
 
@@ -55,6 +54,10 @@ type NetworkOptions struct {
 
 type InterfaceUpdateListener interface {
 	InterfaceUpdated(ctx context.Context)
+}
+
+type SystemDNSCacheFlusher interface {
+	FlushSystemDNSCache()
 }
 
 type WIFIState struct {

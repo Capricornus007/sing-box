@@ -168,16 +168,10 @@ type _DERPSTUNListenOptions struct {
 type DERPSTUNListenOptions _DERPSTUNListenOptions
 
 func (d DERPSTUNListenOptions) MarshalJSON() ([]byte, error) {
-	//nolint:staticcheck // S1016 would convert d to _DERPSTUNListenOptions and preserve every ListenOptions field; the intent here is to zero out all fields except Enabled and ListenPort so the subsequent equality check detects "only Enabled + ListenPort are set"
-	portOptions := _DERPSTUNListenOptions{
-		Enabled:    d.Enabled,
-		ListenPort: d.ListenPort,
+	if d.Enabled && d.ListenPort != 0 && d.ListenOptions == (ListenOptions{ListenPort: d.ListenPort}) {
+		return json.Marshal(d.ListenPort)
 	}
-	if _DERPSTUNListenOptions(d) == portOptions {
-		return json.Marshal(d.Enabled)
-	} else {
-		return json.Marshal(_DERPSTUNListenOptions(d))
-	}
+	return json.Marshal(_DERPSTUNListenOptions(d))
 }
 
 func (d *DERPSTUNListenOptions) UnmarshalJSON(bytes []byte) error {

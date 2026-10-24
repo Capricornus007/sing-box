@@ -163,7 +163,7 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	for _, tracker := range r.connectionTrackers() {
 		conn = tracker.RoutedConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
 	}
-	ctx = interrupt.ContextWithIsExternalConnection(ctx)
+	ctx = interrupt.ContextWithIsExternalConnection(ctx, true)
 	onClose = registerInterrupt(chain, conn, onClose)
 	outbound := chain[len(chain)-1]
 	if outboundHandler, isHandler := outbound.(adapter.ConnectionHandler); isHandler {
@@ -317,6 +317,10 @@ func (r *Router) routePacketConnection(ctx context.Context, conn N.PacketConn, m
 		N.ReleaseMultiPacketBuffer(packetBuffers)
 		return err
 	}
+	for _, buffer := range slices.Backward(packetBuffers) {
+		conn = bufio.NewCachedPacketConn(conn, buffer.Buffer, buffer.Destination)
+		N.PutPacketBuffer(buffer)
+	}
 	conn = cachePacketBuffers(conn, packetBuffers)
 	if selectedRule != nil {
 		metadata.RouteRule = selectedRule.String()
@@ -329,7 +333,7 @@ func (r *Router) routePacketConnection(ctx context.Context, conn N.PacketConn, m
 	if metadata.FakeIP {
 		conn = newFakeIPNATPacketConn(bufio.NewNetPacketConn(conn), metadata.OriginDestination, metadata.Destination)
 	}
-	ctx = interrupt.ContextWithIsExternalConnection(ctx)
+	ctx = interrupt.ContextWithIsExternalConnection(ctx, true)
 	onClose = registerInterrupt(chain, conn, onClose)
 	outbound := chain[len(chain)-1]
 	if outboundHandler, isHandler := outbound.(adapter.PacketConnectionHandler); isHandler {
@@ -561,7 +565,7 @@ func (r *Router) preMatchFlow(ctx context.Context, metadata *adapter.InboundCont
 		if len(flowTrackers) == 1 {
 			return flowTrackers[0]
 		}
-		return multiFlowTracker(flowTrackers)
+		return &multiFlowTracker{trackers: flowTrackers}
 	}
 	return result
 }

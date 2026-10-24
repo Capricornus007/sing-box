@@ -17,9 +17,11 @@ import (
 	"github.com/sagernet/sing-box/common/sniff"
 	"github.com/sagernet/sing-box/common/tlsfragment"
 	"github.com/sagernet/sing-box/common/tlsspoof"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
+	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/bufio"
 	"github.com/sagernet/sing/common/canceler"
@@ -33,15 +35,18 @@ import (
 var _ adapter.ConnectionManager = (*ConnectionManager)(nil)
 
 type ConnectionManager struct {
+	urlTestHistory urltest.HistoryStorage
 	logger      logger.ContextLogger
 	access      sync.Mutex
 	connections list.List[io.Closer]
 }
 
-func NewConnectionManager(logger logger.ContextLogger) *ConnectionManager {
-	return &ConnectionManager{
-		logger: logger,
+func NewConnectionManager(ctx context.Context, logger logger.ContextLogger) *ConnectionManager {
+	manager := &ConnectionManager{logger: logger}
+	if history := service.PtrFromContext[urltest.HistoryStorage](ctx); history != nil {
+		manager.urlTestHistory = *history
 	}
+	return manager
 }
 
 func (m *ConnectionManager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
