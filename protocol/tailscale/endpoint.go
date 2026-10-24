@@ -429,6 +429,7 @@ func (t *Endpoint) postStart(scope *adapter.Scope) error {
 
 func (t *Endpoint) watchState(ctx context.Context, localBackend tailscaleStateWatcher) {
 	var reportedAuthURL string
+	exitNodePending := t.exitNode != ""
 	running := false
 	tryApplyExitNode := func() {
 		err := t.applyExitNode()
