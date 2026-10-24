@@ -486,20 +486,34 @@ func (t *DNSTransport) exchangeOnce(ctx context.Context, message *mDNS.Msg, allo
 		}
 		return
 	}
-	routeSuffix, forwarded := domains.matchRoute(canonicalName)
-	if forwarded {
-		transport.ExchangeSequential(ctx, resolverExchangers(routes[routeSuffix], message), nil, callback)
-		return
+	// 取「最長相符」的 route，而不是先撞到的那個：routes 是 map，Go 的迭代会次序
+	// 隨機，舊寫法在同一個 name 同時被兩個 suffix 命中時會隨機選到較不精確的
+	// resolver（我方原本就是這個寫法）。hawkff 這版是標準 DNS routing 語意，收。
+	// （2026-10-24 併 upstream/testing 後接回：上游的 domains.matchRoute 吃的是
+	//   tailnet 狀態餵進來的 domains，配置面直接給 routes 的場景（本包測試與
+	//   nb4a 用法）拿不到狀態，會全部落到 default——TestDNSTransportExchange-
+	//   MostSpecificRoute 十個子測試全紅實測。）
+	var selectedResolvers []adapter.DNSTransport
+	longestSuffix := -1
+	for domainSuffix, resolvers := range routes {
+		if len(domainSuffix) > longestSuffix && matchDomainSuffix(canonicalName, domainSuffix) {
+			longestSuffix = len(domainSuffix)
+			selectedResolvers = resolvers
+		}
 	}
-	if routeSuffix != "" {
-		callback(&mDNS.Msg{
-			MsgHdr: mDNS.MsgHdr{
-				Id:       message.Id,
-				Rcode:    mDNS.RcodeNameError,
-				Response: true,
-			},
-			Question: []mDNS.Question{question},
-		}, nil)
+	if longestSuffix >= 0 {
+		if len(selectedResolvers) == 0 {
+			callback(&mDNS.Msg{
+				MsgHdr: mDNS.MsgHdr{
+					Id:       message.Id,
+					Rcode:    mDNS.RcodeNameError,
+					Response: true,
+				},
+				Question: []mDNS.Question{question},
+			}, nil)
+			return
+		}
+		transport.ExchangeSequential(ctx, resolverExchangers(selectedResolvers, message), nil, callback)
 		return
 	}
 	if allowDefaultResolvers {
