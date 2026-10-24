@@ -22,6 +22,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
+env:
+  # 自家 fork 的 sing 系模組推的是真 tag，但 go.mod 宣告 go 1.28（未發佈版），
+  # 公開代理一律拒發——走直連 git 抓（runner https 可達公開倉）。
+  GOPRIVATE: github.com/Capricornus007
+
 jobs:
   test:
     name: Test
