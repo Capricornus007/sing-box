@@ -13,8 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -607,10 +607,10 @@ func (t *Endpoint) cancelAuthNotification() {
 	if err != nil {
 		t.logger.Error("cancel authentication notification: ", err)
 	}
+}
 
 func (t *Endpoint) MultiplexEnabled() bool {
 	return true
-}
 }
 
 func (t *Endpoint) InterfaceUpdated(ctx context.Context) {
