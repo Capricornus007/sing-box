@@ -280,7 +280,8 @@ of accepted values and platform notes.
 {
   "action": "sniff",
   "sniffer": [],
-  "timeout": ""
+  "timeout": "",
+  "override_destination": false
 }
 ```
 
@@ -301,6 +302,14 @@ Available protocol values an be found on in [Protocol Sniff](../sniff/)
 Timeout for sniffing.
 
 `300ms` is used by default.
+
+#### override_destination
+
+Connect to the sniffed domain instead of the address the client dialed: the outbound dials the
+name, and a proxy server resolves it. Names that are not domains, such as an IP address in the
+TLS server name, leave the destination unchanged.
+
+Some clients reach a server under a name that does not resolve to it; turn this off for them.
 
 ### resolve
 
