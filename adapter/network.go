@@ -28,6 +28,8 @@ type NetworkManager interface {
 	RegisterAutoRedirectOutputMark(mark uint32) error
 	AutoRedirectOutputMark() uint32
 	AutoRedirectOutputMarkFunc() control.Func
+	RegisterExtraProtectFunc(protect control.Func)
+	UnregisterExtraProtectFunc()
 	RegisterBridgeInterface(interfaceName string)
 	BridgeInterfaces() []string
 	NetworkMonitor() tun.NetworkUpdateMonitor
