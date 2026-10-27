@@ -46,7 +46,7 @@ func parsePeerStatus(state string) []PeerStatus {
 		peers         []PeerStatus
 		handshakeSecs int64
 	)
-	for _, line := range strings.Split(state, "\n") {
+	for line := range strings.SplitSeq(state, "\n") {
 		key, value, found := strings.Cut(line, "=")
 		if !found {
 			continue

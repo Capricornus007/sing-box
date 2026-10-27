@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/amnezia-vpn/amneziawg-go/v3/conn"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -16,6 +15,8 @@ import (
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/pause"
+
+	"github.com/amnezia-vpn/amneziawg-go/v3/conn"
 )
 
 var _ conn.Bind = (*ClientBind)(nil)
@@ -132,7 +133,7 @@ func (c *ClientBind) receive(packets [][]byte, sizes []int, eps []conn.Endpoint)
 	c.connAccess.Unlock()
 	if n > 3 && rewriteReserved {
 		b := packets[0]
-		common.ClearArray(b[1:4])
+		clear(b[1:4])
 	}
 	eps[0] = remoteEndpoint(M.SocksaddrFromNet(addr).Unwrap().AddrPort())
 	count = 1

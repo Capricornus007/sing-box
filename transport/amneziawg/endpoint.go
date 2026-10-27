@@ -67,7 +67,7 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 		}
 		if rawPeer.Endpoint.Addr.IsValid() {
 			peer.endpoint = rawPeer.Endpoint.AddrPort()
-		} else if rawPeer.Endpoint.IsFqdn() {
+		} else if rawPeer.Endpoint.Fqdn != "" {
 			peer.destination = rawPeer.Endpoint
 		}
 		publicKeyBytes, err := base64.StdEncoding.DecodeString(rawPeer.PublicKey)
@@ -185,20 +185,21 @@ func (e *Endpoint) Start(resolve bool) error {
 		return err
 	}
 	logger := &device.Logger{
-		Verbosef: func(format string, args ...interface{}) {
+		Verbosef: func(format string, args ...any) {
 			e.options.Logger.Debug(fmt.Sprintf(strings.ToLower(format), args...))
 		},
-		Errorf: func(format string, args ...interface{}) {
+		Errorf: func(format string, args ...any) {
 			e.options.Logger.Error(fmt.Sprintf(strings.ToLower(format), args...))
 		},
 	}
 	wgDevice := device.NewDevice(e.tunDevice, bind, logger)
 	e.tunDevice.SetDevice(wgDevice)
-	ipcConf := e.ipcConf
+	var ipcConf strings.Builder
+	ipcConf.WriteString(e.ipcConf)
 	for _, peer := range e.peers {
-		ipcConf += peer.GenerateIpcLines()
+		ipcConf.WriteString(peer.GenerateIpcLines())
 	}
-	err = wgDevice.IpcSet(ipcConf)
+	err = wgDevice.IpcSet(ipcConf.String())
 	if err != nil {
 		wgDevice.Close()
 		return E.New("invalid AmneziaWG device configuration")
@@ -275,20 +276,26 @@ type peerConfig struct {
 }
 
 func (c peerConfig) GenerateIpcLines() string {
-	ipcLines := "\npublic_key=" + c.publicKeyHex
+	var ipcLines strings.Builder
+	ipcLines.WriteString("\npublic_key=")
+	ipcLines.WriteString(c.publicKeyHex)
 	if c.endpoint.IsValid() {
-		ipcLines += "\nendpoint=" + c.endpoint.String()
+		ipcLines.WriteString("\nendpoint=")
+		ipcLines.WriteString(c.endpoint.String())
 	}
 	if c.preSharedKeyHex != "" {
-		ipcLines += "\npreshared_key=" + c.preSharedKeyHex
+		ipcLines.WriteString("\npreshared_key=")
+		ipcLines.WriteString(c.preSharedKeyHex)
 	}
 	for _, allowedIP := range c.allowedIPs {
-		ipcLines += "\nallowed_ip=" + allowedIP.String()
+		ipcLines.WriteString("\nallowed_ip=")
+		ipcLines.WriteString(allowedIP.String())
 	}
 	if c.keepalive > 0 {
-		ipcLines += "\npersistent_keepalive_interval=" + F.ToString(c.keepalive)
+		ipcLines.WriteString("\npersistent_keepalive_interval=")
+		ipcLines.WriteString(F.ToString(c.keepalive))
 	}
-	return ipcLines
+	return ipcLines.String()
 }
 
 // maxPacketSize is the largest UDP payload over IPv4; the device sends each junk and I1-I5 packet as one datagram.
