@@ -270,7 +270,8 @@ UDP 连接超时时间。
 {
   "action": "sniff",
   "sniffer": [],
-  "timeout": ""
+  "timeout": "",
+  "override_destination": false
 }
 ```
 
@@ -291,6 +292,12 @@ UDP 连接超时时间。
 探测超时时间。
 
 默认使用 300ms。
+
+#### override_destination
+
+使用嗅探到的域名代替客户端拨号的地址：出站拨号该域名，由代理服务器解析。不是域名的名称（例如 TLS 服务器名称中的 IP 地址）不会改变目标。
+
+部分客户端以并不解析到服务器的名称访问服务器；对这些客户端请关闭此选项。
 
 ### resolve
 

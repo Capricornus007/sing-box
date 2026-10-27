@@ -36,10 +36,10 @@ type Client struct {
 	serverAddr  M.Socksaddr
 	transport   *http2.Transport
 	connections *conntrack.Dialer
-	closeIdle   atomic.Bool
 	options     option.V2RayGRPCOptions
 	url         *url.URL
 	host        string
+	closeIdle   atomic.Bool
 }
 
 func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, options option.V2RayGRPCOptions, tlsConfig tls.Config) adapter.V2RayClientTransport {
@@ -70,7 +70,7 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 	}
 	if tlsConfig == nil {
 		client.transport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.STDConfig) (net.Conn, error) {
-			return connections.DialContext(adapter.ContextForMultiplexSession(ctx), network, M.ParseSocksaddr(addr))
+			return connections.DialContext(ctx, network, M.ParseSocksaddr(addr))
 		}
 	} else {
 		if len(tlsConfig.NextProtos()) == 0 {
@@ -78,7 +78,7 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 		}
 		tlsDialer := tls.NewDialer(connections, tlsConfig)
 		client.transport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.STDConfig) (net.Conn, error) {
-			return tlsDialer.DialTLSContext(adapter.ContextForMultiplexSession(ctx), M.ParseSocksaddr(addr))
+			return tlsDialer.DialTLSContext(ctx, M.ParseSocksaddr(addr))
 		}
 	}
 

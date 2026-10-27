@@ -58,11 +58,12 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	peers := common.Map(options.Peers, func(it option.LegacyWireGuardPeer) amneziawg.PeerOptions {
 		return amneziawg.PeerOptions{
-			Endpoint:     it.ServerOptions.Build(),
-			PublicKey:    it.PublicKey,
-			PreSharedKey: it.PreSharedKey,
-			AllowedIPs:   it.AllowedIPs,
-			Reserved:     it.Reserved,
+			Endpoint:                    it.ServerOptions.Build(),
+			PublicKey:                   it.PublicKey,
+			PreSharedKey:                it.PreSharedKey,
+			AllowedIPs:                  it.AllowedIPs,
+			PersistentKeepaliveInterval: it.PersistentKeepaliveInterval,
+			Reserved:                    it.Reserved,
 		}
 	})
 	if len(peers) == 0 {
@@ -108,8 +109,10 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	return outbound, nil
 }
 
-func (o *Outbound) Start(stage adapter.StartStage) error {
+func (o *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	switch stage {
+	case adapter.StartStateInitialize:
+		scope.Add(o.endpoint.Close)
 	case adapter.StartStateStart:
 		return o.endpoint.Start(false)
 	case adapter.StartStatePostStart:
@@ -118,8 +121,9 @@ func (o *Outbound) Start(stage adapter.StartStage) error {
 	return nil
 }
 
-func (o *Outbound) Close() error {
-	return o.endpoint.Close()
+// PeerStatus reports the live state of the peers.
+func (o *Outbound) PeerStatus() ([]amneziawg.PeerStatus, error) {
+	return o.endpoint.PeerStatus()
 }
 
 func (o *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {

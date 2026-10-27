@@ -81,8 +81,9 @@ func NewRuleAction(logger logger.ContextLogger, action option.RuleAction) (adapt
 		return &RuleActionHijackDNS{}, nil
 	case C.RuleActionTypeSniff:
 		sniffAction := &RuleActionSniff{
-			SnifferNames: action.SniffOptions.Sniffer,
-			Timeout:      time.Duration(action.SniffOptions.Timeout),
+			SnifferNames:        action.SniffOptions.Sniffer,
+			Timeout:             time.Duration(action.SniffOptions.Timeout),
+			OverrideDestination: action.SniffOptions.OverrideDestination,
 		}
 		return sniffAction, sniffAction.build()
 	case C.RuleActionTypeResolve:
@@ -471,7 +472,8 @@ type RuleActionSniff struct {
 	StreamSniffers []sniff.StreamSniffer
 	PacketSniffers []sniff.PacketSniffer
 	Timeout        time.Duration
-	// Deprecated
+	// The outbound dials the sniffed domain, so a proxy server resolves it, rather than the
+	// address the client looked up.
 	OverrideDestination bool
 }
 
@@ -513,15 +515,37 @@ func (r *RuleActionSniff) build() error {
 }
 
 func (r *RuleActionSniff) String() string {
-	if len(r.SnifferNames) == 0 && r.Timeout == 0 {
-		return "sniff"
-	} else if len(r.SnifferNames) > 0 && r.Timeout == 0 {
-		return F.ToString("sniff(", strings.Join(r.SnifferNames, ","), ")")
-	} else if len(r.SnifferNames) == 0 && r.Timeout > 0 {
-		return F.ToString("sniff(", r.Timeout.String(), ")")
-	} else {
-		return F.ToString("sniff(", strings.Join(r.SnifferNames, ","), ",", r.Timeout.String(), ")")
+	params := append([]string(nil), r.SnifferNames...)
+	if r.Timeout > 0 {
+		params = append(params, r.Timeout.String())
 	}
+	if r.OverrideDestination {
+		params = append(params, "override_destination")
+	}
+	if len(params) == 0 {
+		return "sniff"
+	}
+	return F.ToString("sniff(", strings.Join(params, ","), ")")
+}
+
+// ApplyDestination points the connection at the sniffed domain when the action overrides the
+// destination. A sniffed name that is not a domain, such as an IP literal in the SNI, is left alone.
+func (r *RuleActionSniff) ApplyDestination(metadata *adapter.InboundContext) {
+	if !r.OverrideDestination || !M.IsDomainName(metadata.Domain) {
+		return
+	}
+	destination := M.Socksaddr{Fqdn: metadata.Domain, Port: metadata.Destination.Port}
+	if destination == metadata.Destination {
+		return
+	}
+	// Packets already carry the address the client dialed; recording it lets the connection map
+	// them to the name and replies back, as an address override does.
+	if !metadata.RouteOriginalDestination.IsValid() {
+		metadata.RouteOriginalDestination = metadata.Destination
+	}
+	// Addresses resolved for the old destination would otherwise be dialed instead of the name.
+	metadata.DestinationAddresses = nil
+	metadata.Destination = destination
 }
 
 type RuleActionResolve struct {

@@ -1,7 +1,6 @@
 package option
 
 import (
-	"math/big"
 	"net/http"
 	"reflect"
 	"strings"
@@ -30,7 +29,7 @@ func NormalizeXHTTPMode(mode string) (string, error) {
 }
 
 type _V2RayTransportOptions struct {
-	Type               string                  `json:"type" enum:"http,ws,quic,grpc,httpupgrade,kcp,xhttp"`
+	Type               string                  `json:"type" enum:"http,ws,quic,grpc,httpupgrade,xhttp,kcp"`
 	HTTPOptions        V2RayHTTPOptions        `json:"-"`
 	WebsocketOptions   V2RayWebsocketOptions   `json:"-"`
 	QUICOptions        V2RayQUICOptions        `json:"-"`
@@ -107,6 +106,7 @@ func (o V2RayTransportOptions) DescribeSchema(builder schema.Builder) (*schema.N
 			{Value: C.V2RayTransportTypeGRPC, StructType: reflect.TypeFor[V2RayGRPCOptions]()},
 			{Value: C.V2RayTransportTypeHTTPUpgrade, StructType: reflect.TypeFor[V2RayHTTPUpgradeOptions]()},
 			{Value: C.V2RayTransportTypeXHTTP, StructType: reflect.TypeFor[V2RayXHTTPOptions]()},
+			{Value: C.V2RayTransportTypeKCP, StructType: reflect.TypeFor[V2RayKCPOptions]()},
 		}, nil)
 	})
 }
@@ -167,15 +167,11 @@ type V2RayXHTTPBaseOptions struct {
 	UplinkHTTPMethod     string                     `json:"uplink_http_method,omitempty"`
 	SessionPlacement     string                     `json:"session_placement,omitempty"`
 	SessionKey           string                     `json:"session_key,omitempty"`
-	SessionIDPlacement   string                     `json:"session_id_placement,omitempty"`
-	SessionIDKey         string                     `json:"session_id_key,omitempty"`
-	SessionIDTable       string                     `json:"session_id_table,omitempty"`
-	SessionIDLength      Xbadoption.Range           `json:"session_id_length,omitempty"`
 	SeqPlacement         string                     `json:"seq_placement,omitempty"`
 	SeqKey               string                     `json:"seq_key,omitempty"`
 	UplinkDataPlacement  string                     `json:"uplink_data_placement,omitempty"`
 	UplinkDataKey        string                     `json:"uplink_data_key,omitempty"`
-	UplinkChunkSize      Xbadoption.Range           `json:"uplink_chunk_size"`
+	UplinkChunkSize      *Xbadoption.Range          `json:"uplink_chunk_size,omitempty"`
 }
 
 type _V2RayXHTTPOptions struct {
@@ -203,18 +199,6 @@ const (
 	PlacementAuto          = "auto"
 )
 
-var XHTTPSessionIDPredefinedTable = map[string]string{
-	"ALPHABET": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-	"Alphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-	"BASE36":   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-	"Base62":   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-	"HEX":      "0123456789ABCDEF",
-	"alphabet": "abcdefghijklmnopqrstuvwxyz",
-	"base36":   "0123456789abcdefghijklmnopqrstuvwxyz",
-	"hex":      "0123456789abcdef",
-	"number":   "0123456789",
-}
-
 func (c V2RayXHTTPOptions) MarshalJSON() ([]byte, error) {
 	return json.Marshal((*_V2RayXHTTPOptions)(&c))
 }
@@ -224,27 +208,20 @@ func (c *V2RayXHTTPOptions) UnmarshalJSON(bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	c.Mode, err = NormalizeXHTTPMode(c.Mode)
+	switch c.Mode {
+	case "":
+		c.Mode = "auto"
+	case "auto", "packet-up", "stream-up", "stream-one":
+	default:
+		return E.New("unsupported mode: " + c.Mode)
+	}
+	err = checkV2RayXHTTPBaseOptions(c.Mode, &c.V2RayXHTTPBaseOptions)
 	if err != nil {
 		return err
 	}
-	if err = checkV2RayXHTTPBaseOptions(c.Mode, &c.V2RayXHTTPBaseOptions); err != nil {
-		return err
-	}
 	if c.Download != nil {
-		if c.Mode == "stream-one" {
-			c.Download = nil
-			return nil
-		}
-
-		downloadMode := c.Download.Mode
-		if downloadMode == "" {
-			downloadMode = c.Mode
-		} else if downloadMode, err = NormalizeXHTTPMode(downloadMode); err != nil {
-			return err
-		}
-		c.Download.Mode = downloadMode
-		if err = checkV2RayXHTTPBaseOptions(downloadMode, &c.Download.V2RayXHTTPBaseOptions); err != nil {
+		err = checkV2RayXHTTPBaseOptions(c.Mode, &c.Download.V2RayXHTTPBaseOptions)
+		if err != nil {
 			return err
 		}
 	}
@@ -262,9 +239,6 @@ func checkV2RayXHTTPBaseOptions(mode string, options *V2RayXHTTPBaseOptions) err
 	}
 	if options.XPaddingBytes.From <= 0 || options.XPaddingBytes.To <= 0 {
 		return E.New("x_padding_bytes cannot be disabled")
-	}
-	if err := applyXHTTPRangeLimit("x_padding_bytes", options.XPaddingBytes); err != nil {
-		return err
 	}
 	if options.XPaddingKey == "" {
 		options.XPaddingKey = "x_padding"
@@ -304,65 +278,28 @@ func checkV2RayXHTTPBaseOptions(mode string, options *V2RayXHTTPBaseOptions) err
 	if options.UplinkHTTPMethod == "GET" && mode != "packet-up" {
 		return E.New("uplink_http_method can be GET only in packet-up mode")
 	}
-
-	sessionIDPlacementConfigured := options.SessionIDPlacement != ""
-	switch options.SessionIDPlacement {
-	case "":
-		if options.SessionPlacement == "" {
-			options.SessionIDPlacement = "path"
-		}
-	case "path", "cookie", "header", "query":
-	default:
-		return E.New("unsupported session placement: " + options.SessionIDPlacement)
-	}
 	switch options.SessionPlacement {
-	case "", "path", "cookie", "header", "query":
+	case "":
+		options.SessionPlacement = "path"
+	case "path", "cookie", "header", "query":
 	default:
 		return E.New("unsupported session placement: " + options.SessionPlacement)
 	}
-	sessionPlacementForSeq := options.SessionIDPlacement
-	if !sessionIDPlacementConfigured && options.SessionPlacement != "" {
-		sessionPlacementForSeq = options.SessionPlacement
-	}
 	switch options.SeqPlacement {
 	case "":
-		options.SeqPlacement = PlacementPath
-	case PlacementPath:
-	case PlacementCookie, PlacementHeader, PlacementQuery:
-		if sessionPlacementForSeq == PlacementPath {
-			return E.New("seq_placement must be path when session_id_placement is path")
-		}
+		options.SeqPlacement = "path"
+	case "path", "cookie", "header", "query":
 	default:
 		return E.New("unsupported seq placement: " + options.SeqPlacement)
 	}
-	if options.SessionIDPlacement != "path" && options.SessionIDKey == "" {
-		switch options.SessionIDPlacement {
+	if options.SessionPlacement != "path" && options.SessionKey == "" {
+		switch options.SessionPlacement {
 		case "cookie", "query":
-			options.SessionIDKey = "x_session"
+			options.SessionKey = "x_session"
 		case "header":
-			options.SessionIDKey = "X-Session"
+			options.SessionKey = "X-Session"
 		}
 	}
-
-	if options.SessionIDTable != "" {
-		if predefined, ok := XHTTPSessionIDPredefinedTable[options.SessionIDTable]; ok {
-			options.SessionIDTable = predefined
-		}
-		if options.SessionIDLength.From <= 0 {
-			return E.New("session_id_length.from must be greater than 0")
-		}
-		room := xhttpSessionIDRoomSize(len(options.SessionIDTable), options.SessionIDLength.From, options.SessionIDLength.To)
-		// 2.1B possibilities should be enough.
-		if room.Cmp(big.NewInt(2<<30)) < 0 {
-			return E.New("session_id_table or session_id_length is too small")
-		}
-		for i := range len(options.SessionIDTable) {
-			if options.SessionIDTable[i] >= 0x80 {
-				return E.New("session_id_table must contain only ASCII characters")
-			}
-		}
-	}
-
 	if options.SeqPlacement != "path" && options.SeqKey == "" {
 		switch options.SeqPlacement {
 		case "cookie", "query":
@@ -379,53 +316,11 @@ func checkV2RayXHTTPBaseOptions(mode string, options *V2RayXHTTPBaseOptions) err
 			options.UplinkDataKey = "X-Data"
 		}
 	}
-	uplinkChunkSizeConfigured := options.UplinkChunkSize.From != 0 || options.UplinkChunkSize.To != 0
-	if options.UplinkChunkSize.To == 0 {
-		options.UplinkChunkSize = options.GetNormalizedUplinkChunkSize()
-	} else if options.UplinkChunkSize.From < 64 {
-		options.UplinkChunkSize = Xbadoption.Range{
-			From: 64,
-			To:   max(64, options.UplinkChunkSize.To),
-		}
-	}
-	if uplinkChunkSizeConfigured {
-		if err := applyXHTTPRangeLimit("uplink_chunk_size", options.UplinkChunkSize); err != nil {
-			return err
-		}
-	}
-	scMaxEachPostBytes := options.GetNormalizedScMaxEachPostBytes()
-	if options.ScMaxEachPostBytes != nil {
-		options.ScMaxEachPostBytes = &scMaxEachPostBytes
-	}
-	scMinPostsIntervalMs := options.GetNormalizedScMinPostsIntervalMs()
-	if options.ScMinPostsIntervalMs != nil {
-		options.ScMinPostsIntervalMs = &scMinPostsIntervalMs
-	}
 	if options.ServerMaxHeaderBytes < 0 {
 		return E.New("invalid negative value of maxHeaderBytes")
 	}
-	if options.Xmux != nil {
-		if err := options.Xmux.Normalize(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func xhttpSessionIDRoomSize(tableSize int, minLength int32, maxLength int32) *big.Int {
-	base := big.NewInt(int64(tableSize))
-	sum := new(big.Int)
-	term := new(big.Int)
-	for length := minLength; length <= maxLength; length++ {
-		term.Exp(base, big.NewInt(int64(length)), nil)
-		sum.Add(sum, term)
-	}
-	return sum
-}
-
-func applyXHTTPRangeLimit(name string, value Xbadoption.Range) error {
-	if value.To < value.From {
-		return E.New(name, " has invalid range")
+	if options.Xmux != nil && options.Xmux.MaxConnections.To > 0 && options.Xmux.MaxConcurrency.To > 0 {
+		return E.New("max_connections cannot be specified together with max_concurrency")
 	}
 	return nil
 }
@@ -436,11 +331,8 @@ func (c *V2RayXHTTPBaseOptions) GetNormalizedPath() string {
 	if path == "" || path[0] != '/' {
 		path = "/" + path
 	}
-	if c.GetNormalizedSessionPlacement() == PlacementPath ||
-		c.GetNormalizedSeqPlacement() == PlacementPath {
-		if path[len(path)-1] != '/' {
-			path = path + "/"
-		}
+	if path[len(path)-1] != '/' {
+		path = path + "/"
 	}
 	return path
 }
@@ -477,7 +369,7 @@ func (c *V2RayXHTTPBaseOptions) GetNormalizedUplinkHTTPMethod() string {
 	if c.UplinkHTTPMethod == "" {
 		return "POST"
 	}
-	return strings.ToUpper(c.UplinkHTTPMethod)
+	return c.UplinkHTTPMethod
 }
 
 func (c *V2RayXHTTPBaseOptions) GetNormalizedScMaxEachPostBytes() Xbadoption.Range {
@@ -501,7 +393,7 @@ func (c *V2RayXHTTPBaseOptions) GetNormalizedScMinPostsIntervalMs() Xbadoption.R
 }
 
 func (c *V2RayXHTTPBaseOptions) GetNormalizedScMaxBufferedPosts() int {
-	if c.ScMaxBufferedPosts <= 0 {
+	if c.ScMaxBufferedPosts == 0 {
 		return 30
 	}
 
@@ -519,7 +411,7 @@ func (c *V2RayXHTTPBaseOptions) GetNormalizedScStreamUpServerSecs() Xbadoption.R
 }
 
 func (c *V2RayXHTTPBaseOptions) GetNormalizedUplinkChunkSize() Xbadoption.Range {
-	if c.UplinkChunkSize.To == 0 {
+	if c.UplinkChunkSize == nil || c.UplinkChunkSize.To == 0 {
 		switch c.UplinkDataPlacement {
 		case PlacementCookie:
 			return Xbadoption.Range{
@@ -540,7 +432,7 @@ func (c *V2RayXHTTPBaseOptions) GetNormalizedUplinkChunkSize() Xbadoption.Range 
 			To:   max(64, c.UplinkChunkSize.To),
 		}
 	}
-	return c.UplinkChunkSize
+	return *c.UplinkChunkSize
 }
 
 func (c *V2RayXHTTPBaseOptions) GetNormalizedServerMaxHeaderBytes() int {
@@ -551,13 +443,10 @@ func (c *V2RayXHTTPBaseOptions) GetNormalizedServerMaxHeaderBytes() int {
 }
 
 func (c *V2RayXHTTPBaseOptions) GetNormalizedSessionPlacement() string {
-	if c.SessionIDPlacement != "" {
-		return c.SessionIDPlacement
+	if c.SessionPlacement == "" {
+		return PlacementPath
 	}
-	if c.SessionPlacement != "" {
-		return c.SessionPlacement
-	}
-	return PlacementPath
+	return c.SessionPlacement
 }
 
 func (c *V2RayXHTTPBaseOptions) GetNormalizedSeqPlacement() string {
@@ -574,24 +463,7 @@ func (c *V2RayXHTTPBaseOptions) GetNormalizedUplinkDataPlacement() string {
 	return c.UplinkDataPlacement
 }
 
-func (c *V2RayXHTTPBaseOptions) GetNormalizedUplinkDataKey() string {
-	if c.UplinkDataKey != "" {
-		return c.UplinkDataKey
-	}
-	switch c.GetNormalizedUplinkDataPlacement() {
-	case PlacementAuto, PlacementHeader:
-		return "X-Data"
-	case PlacementCookie:
-		return "x_data"
-	default:
-		return ""
-	}
-}
-
 func (c *V2RayXHTTPBaseOptions) GetNormalizedSessionKey() string {
-	if c.SessionIDKey != "" {
-		return c.SessionIDKey
-	}
 	if c.SessionKey != "" {
 		return c.SessionKey
 	}
@@ -626,43 +498,17 @@ type V2RayXHTTPXmuxOptions struct {
 	HMaxRequestTimes Xbadoption.Range `json:"h_max_request_times"`
 	HMaxReusableSecs Xbadoption.Range `json:"h_max_reusable_secs"`
 	HKeepAlivePeriod int64            `json:"h_keep_alive_period"`
-
-	// 哪個 key 是使用者自己寫的。xray 的語意是「寫了 0 就是 0（不限）」，跟「沒寫」
-	// 不能混為一談，而 Range{0,0} 兩種情況看起來一模一樣，所以只能另外記。
-	// 用 uint8 當遮罩而不是 map，是為了讓這個結構仍可比較（isZero 用 ==）。
-	present uint8
+	explicit         bool
 }
 
-const (
-	xmuxPresentMaxConcurrency = 1 << iota
-	xmuxPresentMaxConnections
-	xmuxPresentCMaxReuseTimes
-	xmuxPresentHMaxRequestTimes
-	xmuxPresentHMaxReusableSecs
-	xmuxPresentHKeepAlivePeriod
-)
-
-var xmuxPresenceBits = map[string]uint8{
-	"max_concurrency":     xmuxPresentMaxConcurrency,
-	"max_connections":     xmuxPresentMaxConnections,
-	"c_max_reuse_times":   xmuxPresentCMaxReuseTimes,
-	"h_max_request_times": xmuxPresentHMaxRequestTimes,
-	"h_max_reusable_secs": xmuxPresentHMaxReusableSecs,
-	"h_keep_alive_period": xmuxPresentHKeepAlivePeriod,
-}
-
-func (m *V2RayXHTTPXmuxOptions) wasSet(bit uint8) bool {
-	return m.present&bit != 0
-}
-
-// UnmarshalJSON 有兩條規則，都是照 xray：
-//   - `{"xmux":{}}`（空物件）＝「全部用預設值」，把 max_connections 6..6、
-//     h_max_request_times 600..900、h_max_reusable_secs 1800..3000 直接填進欄位。
-//   - 只要有寫任何一個 key，就**不預填**：沒寫的欄位由 GetNormalized* 依「有沒有寫」
-//     決定要給預設值還是保留明確的 0（`{"max_concurrency":0}` 是不限，不是沒寫）。
 func (m *V2RayXHTTPXmuxOptions) UnmarshalJSON(content []byte) error {
 	type plain V2RayXHTTPXmuxOptions
-	var value plain
+	value := plain{
+		MaxConcurrency:   Xbadoption.Range{From: 1, To: 1},
+		HMaxRequestTimes: Xbadoption.Range{From: 600, To: 900},
+		HMaxReusableSecs: Xbadoption.Range{From: 1800, To: 3000},
+		explicit:         true,
+	}
 	if err := json.Unmarshal(content, &value); err != nil {
 		return err
 	}
@@ -670,21 +516,15 @@ func (m *V2RayXHTTPXmuxOptions) UnmarshalJSON(content []byte) error {
 	if err := json.Unmarshal(content, &fields); err != nil {
 		return err
 	}
-	var present uint8
-	for key, bit := range xmuxPresenceBits {
-		if _, ok := fields[key]; ok {
-			present |= bit
-		}
-	}
-	if len(fields) == 0 {
-		value.MaxConnections = Xbadoption.Range{From: 6, To: 6}
-		value.HMaxRequestTimes = Xbadoption.Range{From: 600, To: 900}
-		value.HMaxReusableSecs = Xbadoption.Range{From: 1800, To: 3000}
+	if _, present := fields["max_concurrency"]; !present && value.MaxConnections.To > 0 {
 		value.MaxConcurrency = Xbadoption.Range{}
 	}
 	*m = V2RayXHTTPXmuxOptions(value)
-	m.present = present
 	return m.Validate()
+}
+
+func (m V2RayXHTTPXmuxOptions) isZero() bool {
+	return m == (V2RayXHTTPXmuxOptions{})
 }
 
 func (m *V2RayXHTTPXmuxOptions) Validate() error {
@@ -694,48 +534,15 @@ func (m *V2RayXHTTPXmuxOptions) Validate() error {
 	return nil
 }
 
-func (m *V2RayXHTTPXmuxOptions) Normalize() error {
-	// 只把負數夾到 0（Xbadoption.Range 自己也會做），預設值一律交給 GetNormalized*，
-	// 否則「明確寫 0」會被當成「沒寫」而蓋掉。
-	normalizeXHTTPOptionalNonNegativeRange(&m.MaxConcurrency)
-	normalizeXHTTPOptionalNonNegativeRange(&m.MaxConnections)
-	normalizeXHTTPOptionalNonNegativeRange(&m.CMaxReuseTimes)
-	normalizeXHTTPOptionalNonNegativeRange(&m.HMaxRequestTimes)
-	normalizeXHTTPOptionalNonNegativeRange(&m.HMaxReusableSecs)
-	return m.Validate()
-}
-
-func normalizeXHTTPOptionalNonNegativeRange(value *Xbadoption.Range) {
-	if value.From < 0 {
-		value.From = 0
-	}
-	if value.To < 0 {
-		value.To = 0
-		if value.To == value.From && value.To == 0 {
-			value.From = 1
-		}
-	}
-}
-
-// 三個 getter 的共同規矩：**欄位已经有值就以它為準**（選項也可能是程式內直接建結構、
-// 不經 JSON，這時 present 是 0）；present 只用來分辨「明確寫 0」跟「根本沒寫」。
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedMaxConcurrency() Xbadoption.Range {
-	if m.MaxConcurrency.From != 0 || m.MaxConcurrency.To != 0 || m.wasSet(xmuxPresentMaxConcurrency) {
-		return m.MaxConcurrency
+	if m.isZero() {
+		return Xbadoption.Range{From: 1, To: 1}
 	}
-	// 沒寫 max_concurrency：走 connections 模式，這裡回零值代表不啟用 concurrency 上限。
-	return Xbadoption.Range{}
+	return m.MaxConcurrency
 }
 
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedMaxConnections() Xbadoption.Range {
-	if m.MaxConnections.From != 0 || m.MaxConnections.To != 0 || m.wasSet(xmuxPresentMaxConnections) {
-		return m.MaxConnections
-	}
-	if m.MaxConcurrency.To > 0 {
-		// 使用者選的是 concurrency 模式，connections 不該被動補 6。
-		return Xbadoption.Range{}
-	}
-	return Xbadoption.Range{From: 6, To: 6}
+	return m.MaxConnections
 }
 
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedCMaxReuseTimes() Xbadoption.Range {
@@ -743,90 +550,15 @@ func (m *V2RayXHTTPXmuxOptions) GetNormalizedCMaxReuseTimes() Xbadoption.Range {
 }
 
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedHMaxRequestTimes() Xbadoption.Range {
-	if m.HMaxRequestTimes.From != 0 || m.HMaxRequestTimes.To != 0 || m.wasSet(xmuxPresentHMaxRequestTimes) {
-		return m.HMaxRequestTimes
+	if m.isZero() && m.HMaxRequestTimes.From == 0 && m.HMaxRequestTimes.To == 0 {
+		return Xbadoption.Range{From: 600, To: 900}
 	}
-	return Xbadoption.Range{From: 600, To: 900}
+	return m.HMaxRequestTimes
 }
 
 func (m *V2RayXHTTPXmuxOptions) GetNormalizedHMaxReusableSecs() Xbadoption.Range {
-	if m.HMaxReusableSecs.From != 0 || m.HMaxReusableSecs.To != 0 || m.wasSet(xmuxPresentHMaxReusableSecs) {
-		return m.HMaxReusableSecs
+	if m.isZero() && m.HMaxReusableSecs.From == 0 && m.HMaxReusableSecs.To == 0 {
+		return Xbadoption.Range{From: 1800, To: 3000}
 	}
-	return Xbadoption.Range{From: 1800, To: 3000}
-}
-
-type V2RayKCPOptions struct {
-	MTU              uint32 `json:"mtu,omitempty"`
-	TTI              uint32 `json:"tti,omitempty"`
-	UplinkCapacity   uint32 `json:"uplink_capacity,omitempty"`
-	DownlinkCapacity uint32 `json:"downlink_capacity,omitempty"`
-	Congestion       bool   `json:"congestion,omitempty"`
-	ReadBufferSize   uint32 `json:"read_buffer_size,omitempty"`
-	WriteBufferSize  uint32 `json:"write_buffer_size,omitempty"`
-	HeaderType       string `json:"header_type,omitempty"`
-	Seed             string `json:"seed,omitempty"`
-	CwndMultiplier   uint32 `json:"cwnd_multiplier,omitempty"`
-	MaxSendingWindow uint32 `json:"max_sending_window,omitempty"`
-}
-
-func (k *V2RayKCPOptions) GetMTU() uint32 {
-	if k.MTU == 0 {
-		return 1350
-	}
-	return k.MTU
-}
-
-func (k *V2RayKCPOptions) GetTTI() uint32 {
-	if k.TTI == 0 {
-		return 50
-	}
-	// Valid range: 10-5000 (extended from 10-100 to support high-latency networks)
-	return k.TTI
-}
-
-func (k *V2RayKCPOptions) GetUplinkCapacity() uint32 {
-	if k.UplinkCapacity == 0 {
-		return 12
-	}
-	return k.UplinkCapacity
-}
-
-func (k *V2RayKCPOptions) GetDownlinkCapacity() uint32 {
-	if k.DownlinkCapacity == 0 {
-		return 100
-	}
-	return k.DownlinkCapacity
-}
-
-func (k *V2RayKCPOptions) GetReadBufferSize() uint32 {
-	if k.ReadBufferSize == 0 {
-		return 1
-	}
-	return k.ReadBufferSize
-}
-
-func (k *V2RayKCPOptions) GetWriteBufferSize() uint32 {
-	if k.WriteBufferSize == 0 {
-		return 1
-	}
-	return k.WriteBufferSize
-}
-
-func (k *V2RayKCPOptions) GetHeaderType() string {
-	if k.HeaderType == "" {
-		return "none"
-	}
-	return k.HeaderType
-}
-
-func (k *V2RayKCPOptions) GetCwndMultiplier() uint32 {
-	if k.CwndMultiplier == 0 {
-		return 20
-	}
-	return k.CwndMultiplier
-}
-
-func (k *V2RayKCPOptions) GetMaxSendingWindow() uint32 {
-	return k.MaxSendingWindow
+	return m.HMaxReusableSecs
 }

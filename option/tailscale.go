@@ -24,7 +24,7 @@ type TailscaleEndpointOptions struct {
 	ExitNodeAllowLANAccess     bool                       `json:"exit_node_allow_lan_access,omitempty"`
 	AdvertiseRoutes            []netip.Prefix             `json:"advertise_routes,omitempty"`
 	AdvertiseExitNode          bool                       `json:"advertise_exit_node,omitempty"`
-	AdvertiseTags              LegacyListable[string]     `json:"advertise_tags,omitempty"`
+	AdvertiseTags              badoption.Listable[string] `json:"advertise_tags,omitempty"`
 	ListenPort                 uint16                     `json:"listen_port,omitempty"`
 	RelayServerPort            *uint16                    `json:"relay_server_port,omitempty"`
 	RelayServerStaticEndpoints []netip.AddrPort           `json:"relay_server_static_endpoints,omitempty"`
@@ -35,7 +35,8 @@ type TailscaleEndpointOptions struct {
 	OnlyTCP443                 bool                       `json:"only_tcp_443,omitempty"`
 	SSHServer                  *TailscaleSSHServerOptions `json:"ssh_server,omitempty"`
 	TaildropDirectory          string                     `json:"taildrop_directory,omitempty"`
-	OnDemand                   bool                       `json:"on_demand,omitempty"`
+	// AmneziaWG obfuscates the node's WireGuard packets. Every node it reaches needs the same settings.
+	AmneziaWG *AmneziaWGObfuscationOptions `json:"amnezia_wg,omitempty"`
 }
 
 type _TailscaleSSHServerOptions struct {
@@ -87,8 +88,6 @@ type DERPServiceOptions struct {
 	ConfigPath           string                                          `json:"config_path,omitempty"`
 	VerifyClientEndpoint badoption.Listable[string]                      `json:"verify_client_endpoint,omitempty"`
 	VerifyClientURL      badoption.Listable[*DERPVerifyClientURLOptions] `json:"verify_client_url,omitempty"`
-	VerifyClientInbound  badoption.Listable[string]                      `json:"verify_client_inbound,omitempty"`
-	VerifyClientKey      badoption.Listable[string]                      `json:"verify_client_key,omitempty"`
 	Home                 string                                          `json:"home,omitempty"`
 	MeshWith             badoption.Listable[*DERPMeshOptions]            `json:"mesh_with,omitempty"`
 	MeshPSK              string                                          `json:"mesh_psk,omitempty"`
@@ -127,7 +126,7 @@ func (d *DERPVerifyClientURLOptions) UnmarshalJSON(bytes []byte) error {
 	err := json.Unmarshal(bytes, &stringValue)
 	if err == nil {
 		*d = DERPVerifyClientURLOptions{
-			URL: stringValue,
+			_DERPVerifyClientURLBase: _DERPVerifyClientURLBase{URL: stringValue},
 		}
 		return nil
 	}
@@ -168,10 +167,17 @@ type _DERPSTUNListenOptions struct {
 type DERPSTUNListenOptions _DERPSTUNListenOptions
 
 func (d DERPSTUNListenOptions) MarshalJSON() ([]byte, error) {
-	if d.Enabled && d.ListenPort != 0 && d.ListenOptions == (ListenOptions{ListenPort: d.ListenPort}) {
-		return json.Marshal(d.ListenPort)
+	portOptions := _DERPSTUNListenOptions{
+		Enabled: d.Enabled,
+		ListenOptions: ListenOptions{
+			ListenPort: d.ListenPort,
+		},
 	}
-	return json.Marshal(_DERPSTUNListenOptions(d))
+	if _DERPSTUNListenOptions(d) == portOptions {
+		return json.Marshal(d.Enabled)
+	} else {
+		return json.Marshal(_DERPSTUNListenOptions(d))
+	}
 }
 
 func (d *DERPSTUNListenOptions) UnmarshalJSON(bytes []byte) error {

@@ -33,7 +33,6 @@ import (
 	"github.com/sagernet/sing/common/debug"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
-	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/ntp"
 	aTLS "github.com/sagernet/sing/common/tls"
 
@@ -141,6 +140,7 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	uConfig.VerifyPeerCertificate = verifier.VerifyPeerCertificate
 	uConn := utls.UClient(conn, uConfig, e.uClient.id)
 	verifier.UConn = uConn
+	// Keep the fingerprint's X25519MLKEM768 key share: REALITY servers since Xray-core v26.9.8 reject a hello without it.
 	err := uConn.BuildHandshakeState()
 	if err != nil {
 		return nil, err
@@ -167,9 +167,9 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	}
 	binary.BigEndian.PutUint64(hello.SessionId, uint64(nowTime.Unix()))
 
-	hello.SessionId[0] = 26
-	hello.SessionId[1] = 3
-	hello.SessionId[2] = 27
+	hello.SessionId[0] = 1
+	hello.SessionId[1] = 8
+	hello.SessionId[2] = 1
 	binary.BigEndian.PutUint32(hello.SessionId[4:], uint32(time.Now().Unix()))
 	copy(hello.SessionId[8:], e.shortID[:])
 	if debug.Enabled {
@@ -183,9 +183,13 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	if keyShareKeys == nil {
 		return nil, E.New("nil KeyShareKeys")
 	}
-	ecdheKey := realityAuthPrivateKey(keyShareKeys)
+	ecdheKey := keyShareKeys.Ecdhe
 	if ecdheKey == nil {
-		return nil, E.New("fingerprint does not provide an X25519 key share")
+		// Without a standalone X25519 share the server authenticates with the X25519 half of X25519MLKEM768.
+		ecdheKey = keyShareKeys.MlkemEcdhe
+	}
+	if ecdheKey == nil {
+		return nil, E.New("nil ecdheKey")
 	}
 	authKey, err := ecdheKey.ECDH(publicKey)
 	if err != nil {
@@ -225,19 +229,6 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	return &realityClientConnWrapper{uConn}, nil
 }
 
-func realityAuthPrivateKey(keys *utls.KeySharePrivateKeys) *ecdh.PrivateKey {
-	if keys == nil {
-		return nil
-	}
-	if keys.Ecdhe != nil && keys.Ecdhe.Curve() == ecdh.X25519() {
-		return keys.Ecdhe
-	}
-	if keys.MlkemEcdhe != nil && keys.MlkemEcdhe.Curve() == ecdh.X25519() {
-		return keys.MlkemEcdhe
-	}
-	return nil
-}
-
 func realityClientFallback(ctx context.Context, uConn net.Conn, serverName string, fingerprint utls.ClientHelloID) {
 	defer uConn.Close()
 	client := &http.Client{
@@ -251,15 +242,7 @@ func realityClientFallback(ctx context.Context, uConn net.Conn, serverName strin
 			},
 		},
 	}
-	serverAddress := M.ParseSocksaddrHostPort(serverName, 0)
-	host := serverAddress.AddrString()
-	if serverAddress.IsIPv6() {
-		host = "[" + host + "]"
-	}
-	request, err := http.NewRequest("GET", "https://"+host, nil)
-	if err != nil {
-		return
-	}
+	request, _ := http.NewRequest("GET", "https://"+serverName, nil)
 	request.Header.Set("User-Agent", fingerprint.Client)
 	request.AddCookie(&http.Cookie{Name: "padding", Value: strings.Repeat("0", mRand.Intn(32)+30)})
 	response, err := client.Do(request)

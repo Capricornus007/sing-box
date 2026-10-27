@@ -54,11 +54,12 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	peers := common.Map(options.Peers, func(it option.LegacyWireGuardPeer) amneziawg.PeerOptions {
 		return amneziawg.PeerOptions{
-			Endpoint:     it.ServerOptions.Build(),
-			PublicKey:    it.PublicKey,
-			PreSharedKey: it.PreSharedKey,
-			AllowedIPs:   it.AllowedIPs,
-			Reserved:     it.Reserved,
+			Endpoint:                    it.ServerOptions.Build(),
+			PublicKey:                   it.PublicKey,
+			PreSharedKey:                it.PreSharedKey,
+			AllowedIPs:                  it.AllowedIPs,
+			PersistentKeepaliveInterval: it.PersistentKeepaliveInterval,
+			Reserved:                    it.Reserved,
 		}
 	})
 	if len(peers) == 0 {
@@ -96,22 +97,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		},
 		Peers: peers,
 
-		JunkPacketCount:            options.JunkPacketCount,
-		JunkPacketMinSize:          options.JunkPacketMinSize,
-		JunkPacketMaxSize:          options.JunkPacketMaxSize,
-		InitPacketJunkSize:         options.InitPacketJunkSize,
-		ResponsePacketJunkSize:     options.ResponsePacketJunkSize,
-		CookieReplyPacketJunkSize:  options.CookieReplyPacketJunkSize,
-		TransportPacketJunkSize:    options.TransportPacketJunkSize,
-		InitPacketMagicHeader:      options.InitPacketMagicHeader,
-		ResponsePacketMagicHeader:  options.ResponsePacketMagicHeader,
-		UnderloadPacketMagicHeader: options.UnderloadPacketMagicHeader,
-		TransportPacketMagicHeader: options.TransportPacketMagicHeader,
-		SpecialJunk1:               options.SpecialJunk1,
-		SpecialJunk2:               options.SpecialJunk2,
-		SpecialJunk3:               options.SpecialJunk3,
-		SpecialJunk4:               options.SpecialJunk4,
-		SpecialJunk5:               options.SpecialJunk5,
+		AmneziaWGObfuscationOptions: options.AmneziaWGObfuscationOptions,
 	})
 	if err != nil {
 		return nil, err
@@ -122,6 +108,8 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 
 func (o *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	switch stage {
+	case adapter.StartStateInitialize:
+		scope.Add(o.endpoint.Close)
 	case adapter.StartStateStart:
 		scope.Add(o.Close)
 		return o.endpoint.Start(false)
@@ -131,8 +119,9 @@ func (o *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	return nil
 }
 
-func (o *Outbound) Close() error {
-	return o.endpoint.Close()
+// PeerStatus reports the live state of the peers.
+func (o *Outbound) PeerStatus() ([]amneziawg.PeerStatus, error) {
+	return o.endpoint.PeerStatus()
 }
 
 func (o *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {

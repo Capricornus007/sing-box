@@ -48,7 +48,6 @@ type Inbound struct {
 	tlsConfig  tls.ServerConfig
 	transport  adapter.V2RayServerTransport
 	decryption *encryption.ServerInstance
-	vision     bool
 	references []string
 }
 
@@ -59,9 +58,6 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		router:  uot.NewRouter(router, logger),
 		logger:  logger,
 		users:   options.Users,
-		vision: common.Any(options.Users, func(it option.VLESSUser) bool {
-			return it.Flow == vless.FlowVision
-		}),
 	}
 	var err error
 	inbound.router, err = mux.NewRouterWithOptions(inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
@@ -128,10 +124,8 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		return nil
 	}
 	if h.decryption != nil {
-		scope.Add(func() error {
-			h.decryption.Close()
-			return nil
-		})
+		// Registered first so it closes after the listener and transport stop accepting.
+		scope.Add(h.decryption.Close)
 	}
 	if h.tlsConfig != nil {
 		err := h.tlsConfig.Start()
@@ -205,12 +199,7 @@ func (h *Inbound) newConnectionExInternal(ctx context.Context, conn net.Conn, me
 		}
 		conn = encConn
 	}
-	var err error
-	if needsEnhancedVision(h.vision, h.decryption != nil, h.transport != nil) {
-		err = h.service.NewConnectionWithOptions(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose, canSplice)
-	} else {
-		err = h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
-	}
+	err := h.service.NewConnectionWithOptions(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose, canSplice)
 	if err != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, err)
 		h.logger.ErrorContext(ctx, E.Cause(err, "process connection from ", metadata.Source))

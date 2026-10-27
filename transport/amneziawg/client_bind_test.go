@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"github.com/sagernet/sing-box/option"
 	"net"
 	"net/netip"
 	"strings"
@@ -115,9 +116,22 @@ func TestEndpointRejectsInvalidKeysAndParameterInjection(t *testing.T) {
 		{PrivateKey: "AA=="},
 		{PrivateKey: key, InitPacketMagicHeader: "64\nreplace_peers=true"},
 		{PrivateKey: key, SpecialJunk1: "<r 16>\rprivate_key=0"},
+		// The device would panic building these packets or allocate without bound.
+		{PrivateKey: key, SpecialJunk1: "<b 0xc7><r -5>"},
+		{PrivateKey: key, SpecialJunk2: "<rc 40000><rd 40000>"},
+		{PrivateKey: key, SpecialJunk5: "<dz -1>"},
+		// More junk packets than one send batch, and junk sizes that wrap around to gigabytes.
+		{PrivateKey: key, JunkPacketCount: 129, JunkPacketMinSize: 40, JunkPacketMaxSize: 70},
+		{PrivateKey: key, JunkPacketCount: 4, JunkPacketMinSize: 200, JunkPacketMaxSize: 50},
+		{PrivateKey: key, JunkPacketCount: 4, JunkPacketMinSize: 40},
+		{PrivateKey: key, JunkPacketCount: 4, JunkPacketMinSize: 40, JunkPacketMaxSize: 70000},
+		// Padded messages larger than a datagram; a transport padding past the read buffer crashes the device.
+		{PrivateKey: key, InitPacketJunkSize: 65507 - 147},
+		{PrivateKey: key, TransportPacketJunkSize: 65520},
+		{PrivateKey: key, CookieReplyPacketJunkSize: -1},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: "AA=="}}},
 		{PrivateKey: key, Peers: []PeerOptions{{PublicKey: key, PreSharedKey: "AA=="}}},
-		{PrivateKey: key, JunkPacketCount: 1, Peers: []PeerOptions{{PublicKey: key, Reserved: []byte{1, 2, 3}, AllowedIPs: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}}}},
+		{PrivateKey: key, AmneziaWGObfuscationOptions: option.AmneziaWGObfuscationOptions{JunkPacketCount: 1}, Peers: []PeerOptions{{PublicKey: key, Reserved: []byte{1, 2, 3}, AllowedIPs: []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0")}}}},
 	}
 	for index, options := range cases {
 		_, err := NewEndpoint(options)
@@ -127,5 +141,8 @@ func TestEndpointRejectsInvalidKeysAndParameterInjection(t *testing.T) {
 		if strings.Contains(err.Error(), key) || strings.Contains(err.Error(), "replace_peers") {
 			t.Fatalf("case %d exposed input", index)
 		}
+	}
+	if _, err := IpcLines(option.AmneziaWGObfuscationOptions{InitPacketJunkSize: 65507 - 148, TransportPacketJunkSize: 65507 - 32}); err != nil {
+		t.Fatal("refused paddings at the limit:", err)
 	}
 }
