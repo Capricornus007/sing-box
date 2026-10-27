@@ -81,9 +81,8 @@ func NewRuleAction(logger logger.ContextLogger, action option.RuleAction) (adapt
 		return &RuleActionHijackDNS{}, nil
 	case C.RuleActionTypeSniff:
 		sniffAction := &RuleActionSniff{
-			SnifferNames:        action.SniffOptions.Sniffer,
-			Timeout:             time.Duration(action.SniffOptions.Timeout),
-			OverrideDestination: action.SniffOptions.OverrideDestination,
+			SnifferNames: action.SniffOptions.Sniffer,
+			Timeout:      time.Duration(action.SniffOptions.Timeout),
 		}
 		return sniffAction, sniffAction.build()
 	case C.RuleActionTypeResolve:
@@ -472,8 +471,7 @@ type RuleActionSniff struct {
 	StreamSniffers []sniff.StreamSniffer
 	PacketSniffers []sniff.PacketSniffer
 	Timeout        time.Duration
-	// The outbound dials the sniffed domain, so a proxy server resolves it, rather than the
-	// address the client looked up.
+	// Deprecated
 	OverrideDestination bool
 }
 
@@ -515,17 +513,15 @@ func (r *RuleActionSniff) build() error {
 }
 
 func (r *RuleActionSniff) String() string {
-	params := append([]string(nil), r.SnifferNames...)
-	if r.Timeout > 0 {
-		params = append(params, r.Timeout.String())
-	}
-	if r.OverrideDestination {
-		params = append(params, "override_destination")
-	}
-	if len(params) == 0 {
+	if len(r.SnifferNames) == 0 && r.Timeout == 0 {
 		return "sniff"
+	} else if len(r.SnifferNames) > 0 && r.Timeout == 0 {
+		return F.ToString("sniff(", strings.Join(r.SnifferNames, ","), ")")
+	} else if len(r.SnifferNames) == 0 && r.Timeout > 0 {
+		return F.ToString("sniff(", r.Timeout.String(), ")")
+	} else {
+		return F.ToString("sniff(", strings.Join(r.SnifferNames, ","), ",", r.Timeout.String(), ")")
 	}
-	return F.ToString("sniff(", strings.Join(params, ","), ")")
 }
 
 // ApplyDestination points the connection at the sniffed domain when the action overrides the

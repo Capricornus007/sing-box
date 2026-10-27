@@ -9,10 +9,15 @@ import (
 	"testing"
 	"time"
 
-	anytls "github.com/anytls/sing-anytls"
+	anytls "github.com/sagernet/sing-anytls"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
 	M "github.com/sagernet/sing/common/metadata"
+)
+
+const (
+	testFrameHeaderSize = 7
+	testCommandSettings = 4
 )
 
 func TestClientMetadataOnWire(t *testing.T) {
@@ -38,7 +43,7 @@ func TestClientMetadataOnWire(t *testing.T) {
 						return err
 					}
 					for {
-						var header [frameHeaderSize]byte
+						var header [testFrameHeaderSize]byte
 						if _, err := io.ReadFull(serverConn, header[:]); err != nil {
 							return err
 						}
@@ -46,7 +51,7 @@ func TestClientMetadataOnWire(t *testing.T) {
 						if _, err := io.ReadFull(serverConn, data); err != nil {
 							return err
 						}
-						if header[0] == commandSettings {
+						if header[0] == testCommandSettings {
 							captured.settings = string(data)
 						}
 						if header[0] == 2 { // PSH contains the destination, after settings and SYN.
@@ -59,28 +64,34 @@ func TestClientMetadataOnWire(t *testing.T) {
 				results <- captured
 				io.Copy(io.Discard, serverConn)
 			}()
-			h := &Outbound{ctx: context.Background(), clientMetadata: metadata, clientOptions: anytls.ClientConfig{
-				Password: "example-password",
-				Logger:   log.NewNOPFactory().Logger(),
-				DialOut:  func(context.Context) (net.Conn, error) { return clientConn, nil },
+			h := &Outbound{logger: log.NewNOPFactory().Logger(), clientOptions: anytls.ClientOptions{
+				Password:       "example-password",
+				ClientMetadata: metadata,
+				Logger:         log.NewNOPFactory().Logger(),
+				DialOut:        func(context.Context) (net.Conn, error) { return clientConn, nil },
 			}}
 			scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
-			defer scope.Close()
 			if err := h.Start(adapter.StartStateInitialize, scope); err != nil {
 				t.Fatal(err)
 			}
+			defer func() { _ = scope.Close() }()
 			destination := M.ParseSocksaddr("example.invalid:443")
-			stream, err := h.createProxy(context.Background(), destination)
+			stream, err := h.client.DialContext(context.Background(), destination)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer stream.Close()
+			// 本倉使用的 sing-anytls 把目的地放在首次寫入觸發的 PSH 幀（SYN 本身 length=0），
+			// 所以要寫一-byte 才會看到 destination；設定幀在撥號時就已發出。
+			if _, err = stream.Write([]byte{0x00}); err != nil {
+				t.Fatal(err)
+			}
 			captured := <-results
 			if captured.err != nil {
 				t.Fatal(captured.err)
 			}
 			settings := make(map[string]string)
-			for _, line := range strings.Split(captured.settings, "\n") {
+			for line := range strings.SplitSeq(captured.settings, "\n") {
 				key, value, _ := strings.Cut(line, "=")
 				settings[key] = value
 			}

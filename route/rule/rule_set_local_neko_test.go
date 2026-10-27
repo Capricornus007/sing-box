@@ -2,6 +2,7 @@ package rule
 
 import (
 	"context"
+	"net/netip"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -9,6 +10,7 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/nekoutils"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/json/badoption"
 	M "github.com/sagernet/sing/common/metadata"
 
@@ -39,7 +41,7 @@ func TestLocalRuleSetReadsNekoGeoNames(t *testing.T) {
 	}
 	nekoutils.GetGeoIPHeadlessRules = func(name string) ([]option.HeadlessRule, error) {
 		asked = append(asked, "geoip "+name)
-		return []option.HeadlessRule{{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultHeadlessRule{IPCIDR: badoption.Listable[string]{"198.51.100.0/24"}}}}, nil
+		return []option.HeadlessRule{{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultHeadlessRule{IPCIDR: badoption.Listable[*badoption.Prefixable]{common.Ptr(badoption.Prefixable(netip.MustParsePrefix("198.51.100.0/24")))}}}}, nil
 	}
 	site, err := newSet("geosite:category-ads-all")
 	require.NoError(t, err)

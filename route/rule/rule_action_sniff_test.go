@@ -1,7 +1,6 @@
 package rule
 
 import (
-	"context"
 	"net/netip"
 	"testing"
 
@@ -20,7 +19,7 @@ func newSniffAction(t *testing.T, config string) *RuleActionSniff {
 	var options option.RuleAction
 	require.NoError(t, json.Unmarshal([]byte(config), &options))
 	require.Equal(t, C.RuleActionTypeSniff, options.Action)
-	action, err := NewRuleAction(context.Background(), log.NewNOPFactory().NewLogger("router"), options)
+	action, err := NewRuleAction(log.NewNOPFactory().NewLogger("router"), options)
 	require.NoError(t, err)
 	return action.(*RuleActionSniff)
 }
