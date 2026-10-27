@@ -1,4 +1,4 @@
-//go:build with_gvisor
+//go:build with_tailscale
 
 package tailscale
 
@@ -220,6 +220,7 @@ type routeTestDNSTransport struct {
 }
 
 func (*routeTestDNSTransport) Start(adapter.StartStage, *adapter.Scope) error { return nil }
+func (*routeTestDNSTransport) Close() error                                   { return nil }
 func (*routeTestDNSTransport) Reset()                                         {}
 
 func (t *routeTestDNSTransport) Exchange(_ context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {

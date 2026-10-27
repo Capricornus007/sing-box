@@ -229,6 +229,19 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	return &realityClientConnWrapper{uConn}, nil
 }
 
+func realityAuthPrivateKey(keys *utls.KeySharePrivateKeys) *ecdh.PrivateKey {
+	if keys == nil {
+		return nil
+	}
+	if keys.Ecdhe != nil && keys.Ecdhe.Curve() == ecdh.X25519() {
+		return keys.Ecdhe
+	}
+	if keys.MlkemEcdhe != nil && keys.MlkemEcdhe.Curve() == ecdh.X25519() {
+		return keys.MlkemEcdhe
+	}
+	return nil
+}
+
 func realityClientFallback(ctx context.Context, uConn net.Conn, serverName string, fingerprint utls.ClientHelloID) {
 	defer uConn.Close()
 	client := &http.Client{
