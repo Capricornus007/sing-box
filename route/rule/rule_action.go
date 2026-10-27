@@ -514,15 +514,17 @@ func (r *RuleActionSniff) build() error {
 }
 
 func (r *RuleActionSniff) String() string {
-	if len(r.SnifferNames) == 0 && r.Timeout == 0 {
-		return "sniff"
-	} else if len(r.SnifferNames) > 0 && r.Timeout == 0 {
-		return F.ToString("sniff(", strings.Join(r.SnifferNames, ","), ")")
-	} else if len(r.SnifferNames) == 0 && r.Timeout > 0 {
-		return F.ToString("sniff(", r.Timeout.String(), ")")
-	} else {
-		return F.ToString("sniff(", strings.Join(r.SnifferNames, ","), ",", r.Timeout.String(), ")")
+	params := append([]string(nil), r.SnifferNames...)
+	if r.Timeout > 0 {
+		params = append(params, r.Timeout.String())
 	}
+	if r.OverrideDestination {
+		params = append(params, "override_destination")
+	}
+	if len(params) == 0 {
+		return "sniff"
+	}
+	return F.ToString("sniff(", strings.Join(params, ","), ")")
 }
 
 // ApplyDestination points the connection at the sniffed domain when the action overrides the
