@@ -9,15 +9,14 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/amnezia-vpn/amneziawg-go/v3/device"
+	wgTun "github.com/amnezia-vpn/amneziawg-go/v3/tun"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/service"
-
-	"github.com/amnezia-vpn/amneziawg-go/v3/device"
-	wgTun "github.com/amnezia-vpn/amneziawg-go/v3/tun"
 )
 
 var _ Device = (*systemDevice)(nil)
@@ -120,7 +119,7 @@ func (w *systemDevice) Write(bufs [][]byte, offset int) (count int, err error) {
 	} else {
 		for _, packet := range bufs {
 			if tun.PacketOffset > 0 {
-				clear(packet[offset-tun.PacketOffset : offset])
+				common.ClearArray(packet[offset-tun.PacketOffset : offset])
 				tun.PacketFillHeader(packet[offset-tun.PacketOffset:], tun.PacketIPVersion(packet[offset:]))
 			}
 			_, err = w.device.Write(packet[offset-tun.PacketOffset:])

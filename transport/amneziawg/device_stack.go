@@ -8,6 +8,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/amnezia-vpn/amneziawg-go/v3/device"
+	wgTun "github.com/amnezia-vpn/amneziawg-go/v3/tun"
 	"github.com/sagernet/gvisor/pkg/buffer"
 	"github.com/sagernet/gvisor/pkg/tcpip"
 	"github.com/sagernet/gvisor/pkg/tcpip/adapters/gonet"
@@ -21,9 +23,6 @@ import (
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
-
-	"github.com/amnezia-vpn/amneziawg-go/v3/device"
-	wgTun "github.com/amnezia-vpn/amneziawg-go/v3/tun"
 )
 
 var _ Device = (*stackDevice)(nil)
@@ -75,10 +74,7 @@ func newStackDevice(options DeviceOptions) (*stackDevice, error) {
 	tunDevice.stack = ipStack
 	if options.Handler != nil {
 		ipStack.SetTransportProtocolHandler(tcp.ProtocolNumber, tun.NewTCPForwarder(options.Context, ipStack, options.Handler).HandlePacket)
-		tunDevice.udpForwarder = tun.NewUDPForwarder(options.Context, ipStack, options.Handler, nil, tun.UDPNatOptions{
-			Handler: options.Handler,
-			Timeout: options.UDPTimeout,
-		})
+		tunDevice.udpForwarder = tun.NewUDPForwarder(options.Context, ipStack, options.Handler, tun.UDPNatOptions{Timeout: options.UDPTimeout})
 		ipStack.SetTransportProtocolHandler(udp.ProtocolNumber, tunDevice.udpForwarder.HandlePacket)
 	}
 	return tunDevice, nil
@@ -142,6 +138,11 @@ func (w *stackDevice) SetDevice(device *device.Device) {
 }
 
 func (w *stackDevice) Start() error {
+	if w.udpForwarder != nil {
+		if err := w.udpForwarder.Start(); err != nil {
+			return err
+		}
+	}
 	w.events <- wgTun.EventUp
 	return nil
 }

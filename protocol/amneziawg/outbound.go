@@ -111,7 +111,6 @@ func (o *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	case adapter.StartStateInitialize:
 		scope.Add(o.endpoint.Close)
 	case adapter.StartStateStart:
-		scope.Add(o.Close)
 		return o.endpoint.Start(false)
 	case adapter.StartStatePostStart:
 		return o.endpoint.Start(true)
@@ -131,7 +130,7 @@ func (o *Outbound) DialContext(ctx context.Context, network string, destination 
 	case N.NetworkUDP:
 		o.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	}
-	if destination.IsFqdn() { //nolint:staticcheck // strict FQDN routing gate preserved; M.IsDomain change would alter which destinations take the resolve-and-serial path
+	if destination.IsFqdn() {
 		destinationAddresses, err := o.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})
 		if err != nil {
 			return nil, err
@@ -145,7 +144,7 @@ func (o *Outbound) DialContext(ctx context.Context, network string, destination 
 
 func (o *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	o.logger.InfoContext(ctx, "outbound packet connection to ", destination)
-	if destination.IsFqdn() { //nolint:staticcheck // strict FQDN routing gate preserved; M.IsDomain change would alter which destinations take the resolve-and-serial path
+	if destination.IsFqdn() {
 		destinationAddresses, err := o.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})
 		if err != nil {
 			return nil, err

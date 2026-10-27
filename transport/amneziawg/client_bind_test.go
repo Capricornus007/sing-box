@@ -12,10 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/amnezia-vpn/amneziawg-go/v3/conn"
 	"github.com/sagernet/sing-box/log"
 	M "github.com/sagernet/sing/common/metadata"
-
-	"github.com/amnezia-vpn/amneziawg-go/v3/conn"
 )
 
 type testDialer struct{}
