@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/amnezia-vpn/amneziawg-go/v3/device"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -21,6 +20,7 @@ import (
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/pause"
 
+	"github.com/amnezia-vpn/amneziawg-go/v3/device"
 	"go4.org/netipx"
 )
 
@@ -144,13 +144,13 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 
 func (e *Endpoint) Start(resolve bool) error {
 	if common.Any(e.peers, func(peer peerConfig) bool {
-		return !peer.endpoint.IsValid() && peer.destination.IsFqdn()
+		return !peer.endpoint.IsValid() && peer.destination.IsDomain()
 	}) {
 		if !resolve {
 			return nil
 		}
 		for peerIndex, peer := range e.peers {
-			if peer.endpoint.IsValid() || !peer.destination.IsFqdn() {
+			if peer.endpoint.IsValid() || !peer.destination.IsDomain() {
 				continue
 			}
 			destinationAddress, err := e.options.ResolvePeer(peer.destination.Fqdn)

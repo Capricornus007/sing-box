@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"github.com/sagernet/sing-box/option"
 	"net"
 	"net/netip"
 	"strings"
@@ -12,9 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/amnezia-vpn/amneziawg-go/v3/conn"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
 	M "github.com/sagernet/sing/common/metadata"
+
+	"github.com/amnezia-vpn/amneziawg-go/v3/conn"
 )
 
 type testDialer struct{}
