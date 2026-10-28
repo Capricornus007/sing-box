@@ -31,8 +31,6 @@ github.com/Capricornus007/sing v0.9.5-0.20261023032553-61708a50b695 h1:dYSD7Dhld
 github.com/Capricornus007/sing v0.9.5-0.20261023032553-61708a50b695/go.mod h1:tS2ZRqgJ2Tj2Umk4OTnZ9rUOwpgCY+mT0HZvOHjGsDw=
 github.com/Capricornus007/sing-mux v0.3.7-0.20261023034436-b5ac5e2ea4b4 h1:z6lShn9uiomqMaLl8lcATT75lvYCiZuVrNxBQ4J5sT0=
 github.com/Capricornus007/sing-mux v0.3.7-0.20261023034436-b5ac5e2ea4b4/go.mod h1:fNF3rzCU8LmMfkYmKhXU4z2wb1AtNWiJWV/YeZbj0MA=
-github.com/Capricornus007/sing-quic v0.7.0-beta.2.0.20261023034421-e8d980d7061e h1:9JLCnm+j8x/HVZNkCV4s0PktsM4s6Ls6zCWm/qADUXI=
-github.com/Capricornus007/sing-quic v0.7.0-beta.2.0.20261023034421-e8d980d7061e/go.mod h1:xF6Phc5XtbArigWVU7m1eQlJVEPBge+0YIrFibdul0Q=
 github.com/Capricornus007/sing-quic v0.7.0-beta.2.0.20261023050252-3f72bc0d75eb h1:ldRQE540L/3g+mxDJMta3XkWicGTWHRwzkCnuLbAQyg=
 github.com/Capricornus007/sing-quic v0.7.0-beta.2.0.20261023050252-3f72bc0d75eb/go.mod h1:xF6Phc5XtbArigWVU7m1eQlJVEPBge+0YIrFibdul0Q=
 github.com/Capricornus007/sing-snell v0.0.0-20261023034450-2a45f12a2599 h1:HSY5Vn9/kXItyX1olAXcGGEDUObww7WS+n5LAdKURvc=
@@ -45,10 +43,8 @@ github.com/Capricornus007/tailscale v1.102.1-sing-box-1.14-mod.5.0.2026102303453
 github.com/Capricornus007/tailscale v1.102.1-sing-box-1.14-mod.5.0.20261023034533-b3c1784682e2/go.mod h1:2CWtqJ/2+fJ44j46/qTgoX1PN5SIN5aiiuJJVn+PsGY=
 github.com/Capricornus007/utls v1.8.8-0.20261023032810-2c28a526ca61 h1:jG+3wywcNnQP5w5pON4qIWnFaJ+JFME9zRxA7brbZfs=
 github.com/Capricornus007/utls v1.8.8-0.20261023032810-2c28a526ca61/go.mod h1:Fq+U8ICIJgaM6Tpi9/n7kWYZjyld7zsO9xwbmoiKZ4I=
-github.com/Capricornus007/wireguard-go v0.0.6-mod.1.0.20261023032835-5bd3301fdba3 h1:oDF3mKErr7jy44x5coecZJp6JLetuvpcruupVQtBKgg=
-github.com/Capricornus007/wireguard-go v0.0.6-mod.1.0.20261023032835-5bd3301fdba3/go.mod h1:hCwxP7u7I2VLKAbLMmz2802556xf/yz++sG1lSBnWoY=
-github.com/Capricornus007/wireguard-go v0.0.6-mod.1.0.20261023071148-4261874ba2bd h1:mECbv4R05l87XU6iq3T6kF03yY0SgI4QcNny0DqHSBw=
-github.com/Capricornus007/wireguard-go v0.0.6-mod.1.0.20261023071148-4261874ba2bd/go.mod h1:hCwxP7u7I2VLKAbLMmz2802556xf/yz++sG1lSBnWoY=
+github.com/Capricornus007/wireguard-go v0.0.6-mod.1.0.20261028022610-cb3f78f1915c h1:ZCHu92gtQALp2j9k7zYa3aAqY+5O4vTBwxqIPTLZe3A=
+github.com/Capricornus007/wireguard-go v0.0.6-mod.1.0.20261028022610-cb3f78f1915c/go.mod h1:hCwxP7u7I2VLKAbLMmz2802556xf/yz++sG1lSBnWoY=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=
 github.com/RyuaNerin/go-krypto v1.3.0/go.mod h1:9R9TU936laAIqAmjcHo/LsaXYOZlymudOAxjaBf62UM=
 github.com/RyuaNerin/testingutil v0.1.0 h1:IYT6JL57RV3U2ml3dLHZsVtPOP6yNK7WUVdzzlpNrss=
