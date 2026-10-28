@@ -13,7 +13,7 @@ require (
 	github.com/caddyserver/certmagic v0.25.6
 	github.com/caddyserver/zerossl v0.1.6
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/cilium/ebpf v0.22.0
+	github.com/cilium/ebpf v0.22.1-0.20261027100858-b5a5a86f850a
 	github.com/coder/websocket v1.8.15
 	github.com/creack/pty v1.1.24
 	github.com/cretz/bine v0.2.0
