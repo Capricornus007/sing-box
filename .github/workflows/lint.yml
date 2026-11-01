@@ -65,11 +65,14 @@ jobs:
       # 不能用 golangci/golangci-lint-action：它（v2.14.0 連 main）釘 x/tools v0.50.0，
       # 而那顆讀不了 go tip 的 std export data → 十個矩陣目標全紅（run #65）。
       # 換依賴重 build 的步驟與實測交叉表在 feed 倉 .github/actions/setup-gcl。
+      # 2026-11-01：v0.52.0 也不夠——go tip 的 iexport 已是 v4，x/tools 到
+      # v0.52.1-0.20261030190145（master）才認得；v0.52.0 是最新正式版，
+      # 也就是正式版全都太舊，只能指 master 偽版本（理由與本地驗證見該 action）。
       - name: Install golangci-lint that reads Go tip export data
         uses: Capricornus007/repo/.github/actions/setup-gcl@master
         with:
           version: v2.15.0
-          xtools: v0.52.0
+          xtools: v0.52.1-0.20261030190145-0f433775b36d
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
       - name: golangci-lint
