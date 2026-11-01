@@ -270,18 +270,6 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 	if spliced {
 		return
 	}
-	udpTimeout := packetTimeout(&metadata)
-	var (
-		spliceRemote any = remotePacketConn
-		spliced      bool
-	)
-	if remoteConn != nil {
-		spliceRemote = remoteConn
-	}
-	conn, spliced = m.splicePacketConnection(ctx, conn, spliceRemote, &metadata, destinationAddress, udpTimeout, onClose)
-	if spliced {
-		return
-	}
 	if destinationAddress.IsValid() {
 		var originDestination M.Socksaddr
 		if metadata.RouteOriginalDestination.IsValid() {
