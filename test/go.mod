@@ -151,7 +151,7 @@ require (
 	github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20260912104006-c10c03c318db // indirect
 	github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20260912104006-c10c03c318db // indirect
 	github.com/sagernet/fswatch v0.1.2 // indirect
-	github.com/sagernet/gliderssh v0.3.4-0.20260531100337-2194faca5648 // indirect
+	github.com/sagernet/gliderssh v0.3.4-0.20261019052224-9a4de39cf131 // indirect
 	github.com/sagernet/gvisor v0.0.0-20250822052253-5558536cf237 // indirect
 	github.com/sagernet/netlink v0.0.0-20260814022025-64455d367bbf // indirect
 	github.com/sagernet/nftables v0.3.0-mod.4 // indirect

@@ -17,6 +17,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/httpclient"
 	qtls "github.com/sagernet/sing-quic"
+
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -308,6 +309,7 @@ func (s *http3RequestDatagramStream) SendDatagram(payload []byte) error {
 		return nil
 	}
 	if tooLarge, ok := errors.AsType[*quic.DatagramTooLargeError](err); ok {
+
 		return &DatagramTooLargeError{MaxPayloadSize: int(tooLarge.MaxDatagramPayloadSize) - VarintLen(uint64(s.stream.StreamID()/4))}
 	}
 	return err

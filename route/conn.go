@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -20,6 +21,7 @@ import (
 	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	tun "github.com/sagernet/sing-tun"
+
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/bufio"
@@ -35,18 +37,17 @@ import (
 var _ adapter.ConnectionManager = (*ConnectionManager)(nil)
 
 type ConnectionManager struct {
-	urlTestHistory urltest.HistoryStorage
 	logger         logger.ContextLogger
+	urlTestHistory *urltest.HistoryStorage
 	access         sync.Mutex
 	connections    list.List[io.Closer]
 }
 
 func NewConnectionManager(ctx context.Context, logger logger.ContextLogger) *ConnectionManager {
-	manager := &ConnectionManager{logger: logger}
-	if history := service.PtrFromContext[urltest.HistoryStorage](ctx); history != nil {
-		manager.urlTestHistory = *history
+	return &ConnectionManager{
+		logger:         logger,
+		urlTestHistory: service.PtrFromContext[urltest.HistoryStorage](ctx),
 	}
-	return manager
 }
 
 func (m *ConnectionManager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
@@ -85,6 +86,7 @@ func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
 	tracked := &trackedConn{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段，Go 禁止位置與具名元素混用
 		Conn:        conn,
 		socketOwner: socketOwner{original: conn}, //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段（CI 的 v2.14 記在欄位行、本機 2.13 記在 literal 起始行，兩邊都標才壓得住）
+
 		manager:     m,
 	}
 	m.access.Lock()
@@ -97,6 +99,7 @@ func (m *ConnectionManager) TrackPacketConn(conn net.PacketConn) net.PacketConn 
 	tracked := &trackedPacketConn{ //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段，Go 禁止位置與具名元素混用
 		NetPacketConn: bufio.NewPacketConn(conn),
 		socketOwner:   socketOwner{original: conn}, //nolint:modernize // 嵌入寫法在此編不過：同一 literal 還帶其他具名字段（CI 的 v2.14 記在欄位行、本機 2.13 記在 literal 起始行，兩邊都標才壓得住）
+
 		manager:       m,
 	}
 	m.access.Lock()
@@ -128,6 +131,7 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 			dialerString = " using outbound/" + outbound.Type() + "[" + outbound.Tag() + "]"
 		}
 		err = E.Cause(err, "open connection to ", remoteString, dialerString)
+		m.deleteURLTestHistory(metadata.OutboundChain)
 		N.CloseOnHandshakeFailure(conn, onClose, err)
 		m.logger.ErrorContext(ctx, err)
 		return
@@ -216,6 +220,7 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 				dialerString = " using outbound/" + outbound.Type() + "[" + outbound.Tag() + "]"
 			}
 			err = E.Cause(err, "open packet connection to ", remoteString, dialerString)
+			m.deleteURLTestHistory(metadata.OutboundChain)
 			N.CloseOnHandshakeFailure(conn, onClose, err)
 			m.logger.ErrorContext(ctx, err)
 			return
@@ -239,6 +244,7 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 				dialerString = " using outbound/" + outbound.Type() + "[" + outbound.Tag() + "]"
 			}
 			err = E.Cause(err, "listen packet connection using ", dialerString)
+			m.deleteURLTestHistory(metadata.OutboundChain)
 			N.CloseOnHandshakeFailure(conn, onClose, err)
 			m.logger.ErrorContext(ctx, err)
 			return
@@ -246,9 +252,22 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 	}
 	err = N.ReportPacketConnHandshakeSuccess(conn, remotePacketConn)
 	if err != nil {
-		conn.Close()
+		err = E.Cause(err, "report handshake success")
 		remotePacketConn.Close()
-		m.logger.ErrorContext(ctx, "report handshake success: ", err)
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		m.logger.ErrorContext(ctx, err)
+		return
+	}
+	udpTimeout := packetTimeout(&metadata)
+	var (
+		spliceRemote any = remotePacketConn
+		spliced      bool
+	)
+	if remoteConn != nil {
+		spliceRemote = remoteConn
+	}
+	conn, spliced = m.splicePacketConnection(ctx, conn, spliceRemote, &metadata, destinationAddress, udpTimeout, onClose)
+	if spliced {
 		return
 	}
 	udpTimeout := packetTimeout(&metadata)
@@ -294,6 +313,15 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 	var done atomic.Bool
 	go m.packetConnectionCopy(ctx, conn, destination, false, &done, onClose)
 	go m.packetConnectionCopy(ctx, destination, conn, true, &done, onClose)
+}
+
+func (m *ConnectionManager) deleteURLTestHistory(chain []adapter.Outbound) {
+	if slices.ContainsFunc(chain, func(it adapter.Outbound) bool {
+		_, isURLTestGroup := it.(adapter.URLTestGroup)
+		return isURLTestGroup
+	}) {
+		m.urlTestHistory.DeleteURLTestHistory(chain[len(chain)-1].Tag())
+	}
 }
 
 func (m *ConnectionManager) connectionCopy(ctx context.Context, source net.Conn, destination net.Conn, direction bool, done *atomic.Bool, onClose N.CloseHandlerFunc) {

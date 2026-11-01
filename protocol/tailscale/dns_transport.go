@@ -514,6 +514,7 @@ func (t *DNSTransport) exchangeOnce(ctx context.Context, message *mDNS.Msg, allo
 			return
 		}
 		transport.ExchangeSequential(ctx, resolverExchangers(selectedResolvers, message), nil, callback)
+
 		return
 	}
 	if allowDefaultResolvers {

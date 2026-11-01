@@ -228,6 +228,7 @@ func (e *Endpoint) Start(postStart bool) error {
 	if err != nil {
 		wgDevice.Close()
 		return err
+
 	}
 	if resolver != nil {
 		wgDevice.SetEndpointResolverFunc(resolver)

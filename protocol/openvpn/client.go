@@ -78,9 +78,14 @@ type clientState struct {
 func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.OpenVPNClientEndpointOptions) (adapter.Endpoint, error) {
 	loopContext, cancelLoop := context.WithCancel(ctx)
 	clientEndpoint := &ClientEndpoint{
-		Adapter:       endpoint.NewAdapterWithDialerOptions(C.TypeOpenVPNClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
-		router:        router,
-		logger:        logger,
+		endpointBase: endpointBase{
+			Adapter: endpoint.NewAdapterWithDialerOptions(C.TypeOpenVPNClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
+			router:  router,
+			logger:  logger,
+			system:  options.System,
+			network: service.FromContext[adapter.NetworkManager](ctx),
+		},
+
 		ctx:           ctx,
 		loopContext:   loopContext,
 		cancelLoop:    cancelLoop,
@@ -750,7 +755,7 @@ func (c *ClientEndpoint) DetachReturn(returnPath tun.Return) error {
 }
 
 func (c *ClientEndpoint) JudgeFlow(network uint8, source netip.AddrPort, destination netip.AddrPort, firstPacket []byte) tun.FlowVerdict {
-	return judgeOpenVPNFlow(c.router, c.Tag(), c.Type(), c.state.Load().localAddresses, network, source, destination, firstPacket)
+	return c.judgeFlow(c.ctx, c, c.state.Load().localAddresses, network, source, destination, firstPacket)
 }
 
 func (c *ClientEndpoint) NewDNSPacket(payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {

@@ -16,20 +16,14 @@ import (
 
 var (
 	_ tun.FlowTracker = (*flowLogger)(nil)
+
 	_ tun.FlowTracker = (*flowInterrupter)(nil)
 	_ tun.FlowTracker = (*multiFlowTracker)(nil)
 )
 
-type flowLogger struct {
-	ctx         context.Context
-	logger      log.ContextLogger
-	network     string
-	source      string
-	destination string
-	outbound    adapter.Outbound
-	createdAt   time.Time
-	upload      atomic.Int64
-	download    atomic.Int64
+type multiFlowTracker struct {
+	access   sync.Mutex
+	trackers []tun.FlowTracker
 }
 
 func newFlowLogger(ctx context.Context, logger log.ContextLogger, metadata adapter.InboundContext, outbound adapter.Outbound) *flowLogger {
@@ -75,6 +69,7 @@ type multiFlowTracker struct {
 	access   sync.Mutex
 	trackers []tun.FlowTracker
 }
+
 
 func (t *multiFlowTracker) AttachFlow(handle tun.FlowHandle) {
 	t.access.Lock()

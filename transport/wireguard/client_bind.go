@@ -137,6 +137,7 @@ func (c *ClientBind) receive(packets [][]byte, sizes []int, eps []conn.Endpoint)
 			return 0, net.ErrClosed
 		}
 		return 0, nil
+
 	}
 	n, addr, err := udpConn.ReadFrom(packets[0])
 	if err != nil {
@@ -197,6 +198,7 @@ func (c *ClientBind) Send(bufs [][]byte, ep conn.Endpoint, offset int) error {
 		if !c.waitForRetry() {
 			return net.ErrClosed
 		}
+
 		return err
 	}
 	destination := netip.AddrPort(ep.(remoteEndpoint))

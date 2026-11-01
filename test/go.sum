@@ -321,8 +321,8 @@ github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20260912104006-c10c03c318
 github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20260912104006-c10c03c318db/go.mod h1:n34YyLgapgjWdKa0IoeczjAFCwD3/dxbsH5sucKw0bw=
 github.com/sagernet/fswatch v0.1.2 h1:/TT7k4mkce1qFPxamLO842WjqBgbTBiXP2mlUjp9PFk=
 github.com/sagernet/fswatch v0.1.2/go.mod h1:5BpGmpUQVd3Mc5r313HRpvADHRg3/rKn5QbwFteB880=
-github.com/sagernet/gliderssh v0.3.4-0.20260531100337-2194faca5648 h1:IWVjKBARzVjdmH0VUaeTBOBli1qkwKmTG4XfbkpSS20=
-github.com/sagernet/gliderssh v0.3.4-0.20260531100337-2194faca5648/go.mod h1:FmW0l0t/PzGIdJMr3iXOL+KuxvJTt6XAfF4GxbMlfZc=
+github.com/sagernet/gliderssh v0.3.4-0.20261019052224-9a4de39cf131 h1:4OWPQs5SquCxkDKT7f10S4wVblx0XwZhKoePYbYLl2c=
+github.com/sagernet/gliderssh v0.3.4-0.20261019052224-9a4de39cf131/go.mod h1:FmW0l0t/PzGIdJMr3iXOL+KuxvJTt6XAfF4GxbMlfZc=
 github.com/sagernet/gvisor v0.0.0-20250822052253-5558536cf237 h1:SUPFNB+vSP4RBPrSEgNII+HkfqC8hKMpYLodom4o4EU=
 github.com/sagernet/gvisor v0.0.0-20250822052253-5558536cf237/go.mod h1:QkkPEJLw59/tfxgapHta14UL5qMUah5NXhO0Kw2Kan4=
 github.com/sagernet/netlink v0.0.0-20260814022025-64455d367bbf h1:b/3rm+KvxzuYRcnMdLq/hmcqX6/2B8k24l6SDHL2Piw=

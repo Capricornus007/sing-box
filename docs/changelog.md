@@ -2,6 +2,14 @@
 icon: material/alert-decagram
 ---
 
+#### 1.15.0-alpha.13
+
+* Fixes and improvements
+
+#### 1.14.4
+
+* Fixes and improvements
+
 #### 1.15.0-alpha.12
 
 * Desktop: Improve the tray menu on Wayland **1**
