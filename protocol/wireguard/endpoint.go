@@ -51,10 +51,10 @@ type Endpoint struct {
 	endpoint       *wireguard.Endpoint
 	resolveOnStart bool
 
-	onDemand       bool
-	bindAccess     sync.Mutex
-	started        atomic.Bool
-	detoured       bool
+	onDemand   bool
+	bindAccess sync.Mutex
+	started    atomic.Bool
+	detoured   bool
 }
 
 func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.WireGuardEndpointOptions) (adapter.Endpoint, error) {

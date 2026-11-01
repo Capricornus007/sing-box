@@ -32,7 +32,6 @@ type endpointBase struct {
 	logger  log.ContextLogger
 	system  bool
 	network adapter.NetworkManager
-
 }
 
 func newDeviceOptions(ctx context.Context, logger log.ContextLogger, handler tun.Handler, options option.MASQUEEndpointOptions, udpTimeout time.Duration, address []netip.Prefix) *device.Options {

@@ -358,7 +358,6 @@ func (h *Outbound) DialParallelNetwork(ctx context.Context, network string, dest
 		}
 	}
 	return conn, nil
-
 }
 
 func (h *Outbound) ListenSerialNetworkPacket(ctx context.Context, destination M.Socksaddr, destinationAddresses []netip.Addr, networkStrategy *C.NetworkStrategy, networkType []C.InterfaceType, fallbackNetworkType []C.InterfaceType, fallbackDelay time.Duration) (net.PacketConn, netip.Addr, error) {

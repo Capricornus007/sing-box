@@ -14,7 +14,6 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
-
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/service/powerreport"
@@ -142,7 +141,7 @@ func (w *platformInterfaceWrapper) NetworkInterfaces() ([]adapter.NetworkInterfa
 			Flags:     linkFlags(uint32(netInterface.Flags)),
 		}
 		interfaces = append(interfaces, adapter.NetworkInterface{
-			Interface:        baseInterface,
+			Interface: baseInterface,
 
 			Type:             C.InterfaceType(netInterface.Type),
 			DNSServers:       iteratorToArray[string](netInterface.DNSServer),

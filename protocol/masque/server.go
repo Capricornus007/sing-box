@@ -23,7 +23,6 @@ import (
 	"github.com/sagernet/sing-box/transport/http"
 	"github.com/sagernet/sing-box/transport/masque"
 	tun "github.com/sagernet/sing-tun"
-
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/auth"
 	"github.com/sagernet/sing/common/buf"
@@ -83,7 +82,6 @@ func NewServerEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 			logger:  logger,
 			system:  options.System,
 			network: service.FromContext[adapter.NetworkManager](ctx),
-
 		},
 		ctx:            ctx,
 		dnsRouter:      service.FromContext[adapter.DNSRouter](ctx),
@@ -254,7 +252,6 @@ func (s *ServerEndpoint) DetachReturn(returnPath tun.Return) error {
 
 func (s *ServerEndpoint) JudgeFlow(network uint8, source netip.AddrPort, destination netip.AddrPort, firstPacket []byte) tun.FlowVerdict {
 	return s.judgeFlow(s.ctx, s, s.localAddresses, network, source, destination, firstPacket)
-
 }
 
 func (s *ServerEndpoint) NewDNSPacket(payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {

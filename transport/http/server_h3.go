@@ -17,7 +17,6 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	qtls "github.com/sagernet/sing-quic"
-
 	congestion_meta2 "github.com/sagernet/sing-quic/congestion_meta2"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
@@ -97,7 +96,6 @@ func (s *datagramStream) SendDatagram(payload []byte) error {
 		return nil
 	}
 	if tooLarge, ok := errors.AsType[*quic.DatagramTooLargeError](err); ok {
-
 		return &DatagramTooLargeError{MaxPayloadSize: int(tooLarge.MaxDatagramPayloadSize) - VarintLen(uint64(s.Stream.StreamID()/4))}
 	}
 	return err

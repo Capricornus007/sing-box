@@ -38,7 +38,6 @@ type TailscaleEndpointOptions struct {
 	OnDemand                   bool                       `json:"on_demand,omitempty"`
 	// AmneziaWG obfuscates the node's WireGuard packets. Every node it reaches needs the same settings.
 	AmneziaWG *AmneziaWGObfuscationOptions `json:"amnezia_wg,omitempty"`
-
 }
 
 type _TailscaleSSHServerOptions struct {

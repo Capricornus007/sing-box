@@ -109,7 +109,6 @@ func (e *endpointBase) judgeFlow(ctx context.Context, endpoint adapter.Endpoint,
 		}
 	}
 	return adapter.JudgeFlow(e.router, adapter.InboundContext{Inbound: endpoint.Tag(), InboundType: endpoint.Type()}, network, source, destination, firstPacket)
-
 }
 
 func keyDirectionValue(direction string) (int, error) {
