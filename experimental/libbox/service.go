@@ -141,7 +141,7 @@ func (w *platformInterfaceWrapper) NetworkInterfaces() ([]adapter.NetworkInterfa
 			Flags:     linkFlags(uint32(netInterface.Flags)),
 		}
 		interfaces = append(interfaces, adapter.NetworkInterface{
-			Interface: baseInterface,
+			Interface:        baseInterface,
 			Type:             C.InterfaceType(netInterface.Type),
 			DNSServers:       iteratorToArray[string](netInterface.DNSServer),
 			DNSSearchDomains: iteratorToArray[string](netInterface.DNSSearchDomain),

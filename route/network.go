@@ -35,15 +35,15 @@ import (
 var _ adapter.NetworkManager = (*NetworkManager)(nil)
 
 type NetworkManager struct {
-	ctx                    context.Context
-	logger                 logger.ContextLogger
-	router                 adapter.Router
-	interfaceFinder        *control.DefaultInterfaceFinder
-	networkInterfaces      common.TypedValue[[]adapter.NetworkInterface]
-	autoDetectInterface    bool
-	defaultOptions         adapter.NetworkOptions
-	autoRedirectOutputMark uint32
-	hostPort               common.TypedValue[tun.RoutedPort]
+	ctx                     context.Context
+	logger                  logger.ContextLogger
+	router                  adapter.Router
+	interfaceFinder         *control.DefaultInterfaceFinder
+	networkInterfaces       common.TypedValue[[]adapter.NetworkInterface]
+	autoDetectInterface     bool
+	defaultOptions          adapter.NetworkOptions
+	autoRedirectOutputMark  uint32
+	hostPort                common.TypedValue[tun.RoutedPort]
 	bridgeInterfaceAccess   sync.Mutex
 	bridgeInterfaces        []string
 	networkMonitor          tun.NetworkUpdateMonitor
