@@ -44,7 +44,6 @@ type NetworkManager struct {
 	defaultOptions         adapter.NetworkOptions
 	autoRedirectOutputMark uint32
 	hostPort               common.TypedValue[tun.RoutedPort]
-
 	bridgeInterfaceAccess   sync.Mutex
 	bridgeInterfaces        []string
 	networkMonitor          tun.NetworkUpdateMonitor

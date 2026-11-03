@@ -857,6 +857,7 @@ jobs:
         with:
           name: binary-linux-client-${{ matrix.desktop_arch }}
           path: 'dist'
+
   upload:
     name: Upload builds
     if: "!failure() && github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'Android' || inputs.build == 'Linux')"

@@ -546,7 +546,6 @@ func (r *Router) preMatchFlow(ctx context.Context, metadata *adapter.InboundCont
 		trackers := r.connectionTrackers()
 		flowTrackers := make([]tun.FlowTracker, 0, len(trackers)+2)
 		flowTrackers = append(flowTrackers, newFlowLogger(ctx, r.logger, metadataCopy, outbound))
-
 		flowInterrupter := newFlowInterrupter(chain)
 		if flowInterrupter != nil {
 			flowTrackers = append(flowTrackers, flowInterrupter)

@@ -1,6 +1,6 @@
 module test
 
-go 1.25.5
+go 1.28
 
 require github.com/sagernet/sing-box v0.0.0
 
@@ -18,7 +18,7 @@ require (
 	github.com/sagernet/sing-quic v0.7.2-0.20261020082049-7e0a5869a5f4
 	github.com/sagernet/sing-shadowsocks v0.2.9-0.20260929204512-65740e0f0e3e
 	github.com/sagernet/sing-shadowsocks2 v0.2.2-0.20260929152114-a69d1086332b
-	github.com/sagernet/sing-tun v0.9.7-0.20261028024126-5b0a1a7a394e
+	github.com/sagernet/sing-tun v0.9.7-0.20261103032840-7ac0256fa09d
 	github.com/sagernet/tailscale v1.102.1-sing-box-1.14-mod.5.0.20261028024127-670967df7dbf
 	github.com/spyzhov/ajson v0.9.4
 	github.com/stretchr/testify v1.12.0

@@ -16,7 +16,6 @@ import (
 
 var (
 	_ tun.FlowTracker = (*flowLogger)(nil)
-
 	_ tun.FlowTracker = (*flowInterrupter)(nil)
 	_ tun.FlowTracker = (*multiFlowTracker)(nil)
 )
