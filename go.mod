@@ -28,8 +28,8 @@ require (
 	github.com/insomniacslk/dhcp v0.0.0-20261014062924-c6bb46ad3f3a
 	github.com/jsimonetti/rtnetlink v1.4.2
 	github.com/keybase/go-keychain v0.0.1
-	github.com/klauspost/compress v1.20.3
-	github.com/klauspost/cpuid/v2 v2.4.1
+	github.com/klauspost/compress v1.20.6-0.20261123150203-3457d7fdcc5a
+	github.com/klauspost/cpuid/v2 v2.4.2
 	github.com/libdns/acmedns v0.5.0
 	github.com/libdns/alidns v1.0.7
 	github.com/libdns/cloudflare v0.2.2
@@ -82,14 +82,14 @@ require (
 	go.uber.org/zap v1.28.0
 	go4.org/mem v0.0.0-20240501181205-ae6ca9944745
 	go4.org/netipx v0.0.0-20260823151212-3075585bcbeb
-	golang.org/x/crypto v0.58.0
-	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e
-	golang.org/x/mod v0.42.0
-	golang.org/x/net v0.61.0
-	golang.org/x/sync v0.24.0
-	golang.org/x/sys v0.49.0
-	golang.org/x/term v0.47.0
-	golang.org/x/text v0.43.0
+	golang.org/x/crypto v0.59.1-0.20261123192653-4dc4fb521066
+	golang.org/x/exp v0.0.0-20261124000051-d6646c509b6d
+	golang.org/x/mod v0.43.1-0.20261112161916-2b553c8b61bf
+	golang.org/x/net v0.63.1-0.20261119175338-fd4c9ad54137
+	golang.org/x/sync v0.25.0
+	golang.org/x/sys v0.50.1-0.20261120131340-d4690d67735d
+	golang.org/x/term v0.48.0
+	golang.org/x/text v0.44.1-0.20261117190556-9e7a977af666
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
@@ -221,9 +221,9 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/oauth2 v0.37.0 // indirect
+	golang.org/x/image v0.48.0 // indirect
+	golang.org/x/oauth2 v0.38.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	golang.org/x/tools v0.52.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
 	golang.zx2c4.com/wireguard/windows v1.1.1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
